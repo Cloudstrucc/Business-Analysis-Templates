@@ -89,7 +89,7 @@ You are free to use, modify, and distribute these templates for personal, commer
 
 ## About
 
-Maintained by **CloudStrucc Inc.** — Cloud migration, Power Platform consulting, and cybersecurity services for government and enterprise clients.
+Maintained by **Cloudstrucc Inc.** — Cloud migration, Power Platform consulting, and cybersecurity services for government and enterprise clients.
 
 ---
 
