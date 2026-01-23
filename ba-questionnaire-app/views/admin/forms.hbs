@@ -1,0 +1,117 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Manage Forms</h1>
+      <p class="text-muted mb-0">View and manage available questionnaire templates</p>
+    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reloadFormsModal">
+      <i class="bi bi-arrow-clockwise me-2"></i>Reload Forms
+    </button>
+  </div>
+  
+  <div class="row g-4">
+    {{#each forms}}
+      <div class="col-md-6">
+        <div class="card h-100">
+          <div class="card-header d-flex justify-content-between align-items-center bg-light">
+            <span class="fw-semibold">{{this.title}}</span>
+            {{#if this.is_active}}
+              <span class="badge bg-success">Active</span>
+            {{else}}
+              <span class="badge bg-secondary">Inactive</span>
+            {{/if}}
+          </div>
+          <div class="card-body">
+            {{#if this.description}}
+              <p class="text-muted">{{this.description}}</p>
+            {{/if}}
+            <table class="table table-sm table-borderless mb-0">
+              <tr>
+                <td class="text-muted" style="width: 120px;">Slug:</td>
+                <td><code>{{this.slug}}</code></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Source File:</td>
+                <td><small>{{this.markdown_file}}</small></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Created:</td>
+                <td><small>{{this.created_at}}</small></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Invites:</td>
+                <td><span class="badge bg-info">{{this.invite_count}}</span></td>
+              </tr>
+              <tr>
+                <td class="text-muted">Submissions:</td>
+                <td><span class="badge bg-success">{{this.submission_count}}</span></td>
+              </tr>
+            </table>
+          </div>
+          <div class="card-footer bg-transparent">
+            <div class="btn-group btn-group-sm">
+              <a href="/admin/forms/{{this.id}}/preview" class="btn btn-outline-primary" target="_blank">
+                <i class="bi bi-eye me-1"></i>Preview
+              </a>
+              {{#if this.is_active}}
+                <button type="button" class="btn btn-outline-warning" onclick="toggleForm({{this.id}}, false)">
+                  <i class="bi bi-pause me-1"></i>Deactivate
+                </button>
+              {{else}}
+                <button type="button" class="btn btn-outline-success" onclick="toggleForm({{this.id}}, true)">
+                  <i class="bi bi-play me-1"></i>Activate
+                </button>
+              {{/if}}
+            </div>
+          </div>
+        </div>
+      </div>
+    {{else}}
+      <div class="col-12">
+        <div class="card">
+          <div class="card-body text-center py-5">
+            <i class="bi bi-file-text fs-1 text-muted"></i>
+            <p class="text-muted mt-3">No forms loaded yet</p>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reloadFormsModal">
+              <i class="bi bi-arrow-clockwise me-2"></i>Load Forms
+            </button>
+          </div>
+        </div>
+      </div>
+    {{/each}}
+  </div>
+</div>
+
+<!-- Reload Forms Modal -->
+<div class="modal fade" id="reloadFormsModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Reload Forms</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>This will reload all markdown template files from the templates directory.</p>
+        <p class="text-muted small">Existing form data and submissions will not be affected.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form action="/admin/forms/reload" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-primary">
+            <i class="bi bi-arrow-clockwise me-2"></i>Reload Forms
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleForm(id, active) {
+  fetch('/admin/forms/' + id + '/toggle', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ active })
+  }).then(() => window.location.reload());
+}
+</script>

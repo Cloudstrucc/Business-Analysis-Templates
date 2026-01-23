@@ -1,0 +1,39 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6 text-center">
+      <div class="mb-4">
+        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 5rem;"></i>
+      </div>
+      
+      <h1 class="h2 mb-3">{{title}}</h1>
+      <p class="lead text-muted mb-4">{{message}}</p>
+      
+      {{#if showAccessForm}}
+        <div class="card text-start">
+          <div class="card-body p-4">
+            <h5><i class="bi bi-key me-2"></i>Have an Access Code?</h5>
+            <form action="/form/access" method="POST">
+              <div class="input-group mb-3">
+                <input type="text" class="form-control" name="code" 
+                  placeholder="Enter your access code..." required
+                  style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
+                <button class="btn btn-primary" type="submit">Access</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      {{/if}}
+      
+      <div class="mt-4">
+        <a href="/" class="btn btn-outline-secondary me-2">
+          <i class="bi bi-house me-2"></i>Go Home
+        </a>
+        {{#if isAdmin}}
+          <a href="/admin/dashboard" class="btn btn-primary">
+            <i class="bi bi-speedometer2 me-2"></i>Dashboard
+          </a>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+</div>

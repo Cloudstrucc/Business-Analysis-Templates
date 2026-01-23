@@ -1,0 +1,295 @@
+<div class="container py-4">
+  <!-- Back Navigation -->
+  <div class="mb-3">
+    <a href="/form/{{inviteCode}}" class="btn btn-outline-secondary btn-sm">
+      <i class="bi bi-arrow-left me-1"></i>Back to All Forms
+    </a>
+  </div>
+  
+  <!-- Form Header -->
+  <div class="card mb-4" style="background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);">
+    <div class="card-body p-4 text-white">
+      <h2 class="mb-2">{{form.title}}</h2>
+      <p class="mb-0 opacity-75">{{invite.client_name}} {{#if invite.client_company}}| {{invite.client_company}}{{/if}}</p>
+    </div>
+  </div>
+  
+  <!-- Progress Sticky Bar -->
+  <div class="progress-sticky">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="fw-semibold">Overall Progress</span>
+      <span id="progressPercent">{{progress}}%</span>
+    </div>
+    <div class="progress">
+      <div class="progress-bar" id="progressBar" style="width: {{progress}}%"></div>
+    </div>
+    <div class="d-flex justify-content-between mt-2">
+      <small class="text-muted">
+        <i class="bi bi-clock me-1"></i>Auto-saves every change
+      </small>
+      <small class="text-muted" id="lastSaved">
+        {{#if lastSaved}}Last saved: {{lastSaved}}{{/if}}
+      </small>
+    </div>
+  </div>
+  
+  <!-- Questionnaire Form -->
+  <form id="questionnaireForm" action="/form/{{inviteCode}}/{{form.slug}}/submit" method="POST">
+    
+    <!-- Header Fields -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="section-number"><i class="bi bi-building"></i></span>
+          Project Information
+        </h2>
+      </div>
+      <div class="section-content">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="header_client_name">Client Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="header_client_name" name="header_client_name" 
+              value="{{invite.client_name}}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="header_company">Company</label>
+            <input type="text" class="form-control" id="header_company" name="header_company" 
+              value="{{invite.client_company}}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="header_project_start_date">Project Start Date</label>
+            <input type="date" class="form-control" id="header_project_start_date" name="header_project_start_date" 
+              value="{{savedData.header_project_start_date}}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="header_target_go_live_date">Target Go-Live Date</label>
+            <input type="date" class="form-control" id="header_target_go_live_date" name="header_target_go_live_date"
+              value="{{savedData.header_target_go_live_date}}">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="header_prepared_by">Prepared By <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="header_prepared_by" name="header_prepared_by" 
+              value="{{savedData.header_prepared_by}}" placeholder="Your name" required>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Dynamic Form Content -->
+    {{{formHtml}}}
+    
+    <!-- Sign-Off Section -->
+    <div class="form-section">
+      <div class="section-header">
+        <h2 class="section-title">
+          <span class="section-number"><i class="bi bi-pen"></i></span>
+          Sign-Off & Confirmation
+        </h2>
+      </div>
+      <div class="section-content">
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle me-2"></i>
+          By submitting this questionnaire, you confirm that the information provided is accurate to the best of your knowledge.
+        </div>
+        
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="signoff_name">Your Full Name <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="signoff_name" name="signoff_name" 
+              value="{{savedData.signoff_name}}" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label fw-semibold" for="signoff_title">Your Title/Role</label>
+            <input type="text" class="form-control" id="signoff_title" name="signoff_title" 
+              value="{{savedData.signoff_title}}">
+          </div>
+          <div class="col-12">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="signoff_confirm" name="signoff_confirm" required>
+              <label class="form-check-label" for="signoff_confirm">
+                I confirm that I have reviewed and completed this questionnaire to the best of my ability
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Submit Actions -->
+    <div class="card">
+      <div class="card-body">
+        <div class="row align-items-center">
+          <div class="col-md-6">
+            <p class="mb-0 text-muted">
+              <i class="bi bi-shield-check me-2"></i>
+              Your data is automatically saved and securely stored
+            </p>
+          </div>
+          <div class="col-md-6 text-md-end mt-3 mt-md-0">
+            <button type="button" class="btn btn-outline-secondary me-2" id="saveBtn">
+              <i class="bi bi-save me-2"></i>Save Draft
+            </button>
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+              <i class="bi bi-send me-2"></i>Submit Questionnaire
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('questionnaireForm');
+  const saveBtn = document.getElementById('saveBtn');
+  const submitBtn = document.getElementById('submitBtn');
+  const progressBar = document.getElementById('progressBar');
+  const progressPercent = document.getElementById('progressPercent');
+  const lastSavedEl = document.getElementById('lastSaved');
+  
+  let saveTimeout = null;
+  let savedData = {{{savedDataJson}}};
+  
+  // Restore saved data
+  if (savedData) {
+    Object.keys(savedData).forEach(key => {
+      const field = form.querySelector('[name="' + key + '"]');
+      if (field) {
+        if (field.type === 'checkbox') {
+          if (Array.isArray(savedData[key])) {
+            // Multiple checkboxes with same name
+            const checkboxes = form.querySelectorAll('[name="' + key + '"]');
+            checkboxes.forEach(cb => {
+              cb.checked = savedData[key].includes(cb.value);
+            });
+          } else {
+            field.checked = savedData[key] === 'on' || savedData[key] === true;
+          }
+        } else if (field.type === 'radio') {
+          const radio = form.querySelector('[name="' + key + '"][value="' + savedData[key] + '"]');
+          if (radio) radio.checked = true;
+        } else {
+          field.value = savedData[key];
+        }
+      } else {
+        // Handle multiple checkboxes with same name
+        const checkboxes = form.querySelectorAll('[name="' + key + '"]');
+        if (checkboxes.length > 0 && Array.isArray(savedData[key])) {
+          checkboxes.forEach(cb => {
+            cb.checked = savedData[key].includes(cb.value);
+          });
+        }
+      }
+    });
+  }
+  
+  // Calculate progress
+  function calculateProgress() {
+    const allFields = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), textarea, select');
+    let filled = 0;
+    let total = 0;
+    
+    allFields.forEach(field => {
+      if (field.name && !field.name.startsWith('signoff_')) {
+        total++;
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          if (field.checked) filled++;
+        } else if (field.value && field.value.trim()) {
+          filled++;
+        }
+      }
+    });
+    
+    return total > 0 ? Math.round((filled / total) * 100) : 0;
+  }
+  
+  // Update progress display
+  function updateProgress() {
+    const progress = calculateProgress();
+    progressBar.style.width = progress + '%';
+    progressPercent.textContent = progress + '%';
+  }
+  
+  // Auto-save function
+  function autoSave() {
+    const formData = new FormData(form);
+    const data = {};
+    
+    for (let [key, value] of formData.entries()) {
+      if (data[key]) {
+        // Handle multiple values (checkboxes)
+        if (!Array.isArray(data[key])) {
+          data[key] = [data[key]];
+        }
+        data[key].push(value);
+      } else {
+        data[key] = value;
+      }
+    }
+    
+    fetch('/form/{{inviteCode}}/{{form.slug}}/save', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, progress: calculateProgress() })
+    })
+    .then(res => res.json())
+    .then(result => {
+      if (result.success) {
+        lastSavedEl.textContent = 'Saved just now';
+        setTimeout(() => {
+          lastSavedEl.textContent = 'Last saved: ' + new Date().toLocaleTimeString();
+        }, 2000);
+      }
+    })
+    .catch(err => console.error('Auto-save failed:', err));
+  }
+  
+  // Debounced auto-save on change
+  form.addEventListener('change', function() {
+    updateProgress();
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(autoSave, 1000);
+  });
+  
+  form.addEventListener('input', function(e) {
+    if (e.target.tagName === 'TEXTAREA' || e.target.type === 'text') {
+      updateProgress();
+      clearTimeout(saveTimeout);
+      saveTimeout = setTimeout(autoSave, 2000);
+    }
+  });
+  
+  // Manual save button
+  saveBtn.addEventListener('click', function() {
+    autoSave();
+    saveBtn.innerHTML = '<i class="bi bi-check me-2"></i>Saved!';
+    setTimeout(() => {
+      saveBtn.innerHTML = '<i class="bi bi-save me-2"></i>Save Draft';
+    }, 2000);
+  });
+  
+  // Form submission
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!document.getElementById('signoff_confirm').checked) {
+      alert('Please confirm that you have reviewed the questionnaire before submitting.');
+      return;
+    }
+    
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
+    
+    // Final save before submit
+    autoSave();
+    
+    setTimeout(() => {
+      form.submit();
+    }, 500);
+  });
+  
+  // Initial progress calculation
+  updateProgress();
+});
+</script>

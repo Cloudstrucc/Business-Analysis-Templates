@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{#if title}}{{title}} | {{/if}}Cloudstrucc BA Forms</title>
+  
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --cs-primary: #0d1f3c;
+      --cs-secondary: #1a3a5c;
+      --cs-accent: #00a8e8;
+      --cs-accent-hover: #0090c9;
+      --cs-light: #f8f9fa;
+      --cs-dark: #0d1f3c;
+      --cs-success: #28a745;
+      --cs-warning: #ffc107;
+      --cs-danger: #dc3545;
+      --cs-border: #dee2e6;
+      --cs-text: #333;
+      --cs-text-muted: #6c757d;
+    }
+    
+    * {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+    }
+    
+    body {
+      background-color: #f5f7fa;
+      color: var(--cs-text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Navbar */
+    .navbar-cloudstrucc {
+      background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .navbar-cloudstrucc .navbar-brand {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+      color: var(--cs-accent) !important;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .navbar-cloudstrucc .navbar-brand .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: var(--cs-accent);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 1.2rem;
+    }
+    
+    .navbar-cloudstrucc .nav-link {
+      color: rgba(255,255,255,0.85) !important;
+      font-weight: 500;
+      padding: 0.5rem 1rem !important;
+      transition: color 0.2s;
+    }
+    
+    .navbar-cloudstrucc .nav-link:hover {
+      color: var(--cs-accent) !important;
+    }
+    
+    .navbar-cloudstrucc .nav-link.active {
+      color: var(--cs-accent) !important;
+    }
+    
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      padding: 2rem 0;
+    }
+    
+    /* Cards */
+    .card {
+      border: none;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    
+    .card-header {
+      background: var(--cs-primary);
+      color: white;
+      font-weight: 600;
+      padding: 1rem 1.5rem;
+      border-bottom: none;
+    }
+    
+    .card-header.bg-light {
+      background: var(--cs-light) !important;
+      color: var(--cs-text);
+    }
+    
+    /* Buttons */
+    .btn-primary {
+      background: var(--cs-accent);
+      border-color: var(--cs-accent);
+      font-weight: 500;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      transition: all 0.2s;
+    }
+    
+    .btn-primary:hover, .btn-primary:focus {
+      background: var(--cs-accent-hover);
+      border-color: var(--cs-accent-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,168,232,0.3);
+    }
+    
+    .btn-outline-primary {
+      color: var(--cs-accent);
+      border-color: var(--cs-accent);
+    }
+    
+    .btn-outline-primary:hover {
+      background: var(--cs-accent);
+      border-color: var(--cs-accent);
+    }
+    
+    .btn-dark {
+      background: var(--cs-primary);
+      border-color: var(--cs-primary);
+    }
+    
+    .btn-dark:hover {
+      background: var(--cs-secondary);
+      border-color: var(--cs-secondary);
+    }
+    
+    /* Forms */
+    .form-control, .form-select {
+      border-radius: 6px;
+      border: 1px solid var(--cs-border);
+      padding: 0.625rem 1rem;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+      border-color: var(--cs-accent);
+      box-shadow: 0 0 0 3px rgba(0,168,232,0.15);
+    }
+    
+    .form-label {
+      font-weight: 500;
+      color: var(--cs-text);
+      margin-bottom: 0.375rem;
+    }
+    
+    .form-check-input:checked {
+      background-color: var(--cs-accent);
+      border-color: var(--cs-accent);
+    }
+    
+    /* Form Sections */
+    .form-section {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      border-left: 4px solid var(--cs-accent);
+    }
+    
+    .section-header {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid var(--cs-border);
+    }
+    
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin: 0;
+      font-size: 1.25rem;
+    }
+    
+    .section-number {
+      background: var(--cs-accent);
+      color: white;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.875rem;
+      font-weight: 600;
+    }
+    
+    .section-description {
+      color: var(--cs-text-muted);
+      margin-top: 0.5rem;
+      font-size: 0.9375rem;
+    }
+    
+    .subsection {
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px dashed var(--cs-border);
+    }
+    
+    .subsection:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+    
+    .subsection-title {
+      font-size: 1rem;
+      color: var(--cs-secondary);
+      margin-bottom: 0.75rem;
+    }
+    
+    /* Progress Bar */
+    .progress {
+      height: 8px;
+      border-radius: 4px;
+      background: #e9ecef;
+    }
+    
+    .progress-bar {
+      background: linear-gradient(90deg, var(--cs-accent) 0%, #00d4ff 100%);
+      border-radius: 4px;
+    }
+    
+    /* Checkbox & Radio Groups */
+    .checkbox-group, .radio-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+    }
+    
+    .form-check {
+      padding-left: 1.75rem;
+    }
+    
+    .form-check-input {
+      width: 1.125rem;
+      height: 1.125rem;
+      margin-top: 0.125rem;
+      cursor: pointer;
+    }
+    
+    .form-check-label {
+      cursor: pointer;
+      user-select: none;
+    }
+    
+    /* Alerts */
+    .alert {
+      border: none;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+    }
+    
+    .alert-success {
+      background: #d4edda;
+      color: #155724;
+      border-left: 4px solid var(--cs-success);
+    }
+    
+    .alert-danger {
+      background: #f8d7da;
+      color: #721c24;
+      border-left: 4px solid var(--cs-danger);
+    }
+    
+    .alert-warning {
+      background: #fff3cd;
+      color: #856404;
+      border-left: 4px solid var(--cs-warning);
+    }
+    
+    .alert-info {
+      background: #e7f5ff;
+      color: #0d6efd;
+      border-left: 4px solid var(--cs-accent);
+    }
+    
+    /* Tables */
+    .table {
+      margin-bottom: 0;
+    }
+    
+    .table thead th {
+      background: var(--cs-light);
+      border-bottom: 2px solid var(--cs-border);
+      font-weight: 600;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--cs-text-muted);
+    }
+    
+    .table td {
+      vertical-align: middle;
+    }
+    
+    /* Badge */
+    .badge {
+      font-weight: 500;
+      padding: 0.375rem 0.75rem;
+      border-radius: 50px;
+    }
+    
+    .badge.bg-success {
+      background: var(--cs-success) !important;
+    }
+    
+    .badge.bg-warning {
+      background: var(--cs-warning) !important;
+      color: #333 !important;
+    }
+    
+    .badge.bg-danger {
+      background: var(--cs-danger) !important;
+    }
+    
+    .badge.bg-info {
+      background: var(--cs-accent) !important;
+    }
+    
+    /* Stats Cards */
+    .stat-card {
+      background: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: transform 0.2s;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+    }
+    
+    .stat-card .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin: 0 auto 1rem;
+    }
+    
+    .stat-card .stat-number {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--cs-primary);
+      line-height: 1;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-card .stat-label {
+      font-size: 0.875rem;
+      color: var(--cs-text-muted);
+    }
+    
+    /* Footer */
+    .footer {
+      background: var(--cs-primary);
+      color: rgba(255,255,255,0.7);
+      padding: 1.5rem 0;
+      text-align: center;
+      font-size: 0.875rem;
+    }
+    
+    .footer a {
+      color: var(--cs-accent);
+      text-decoration: none;
+    }
+    
+    .footer a:hover {
+      text-decoration: underline;
+    }
+    
+    /* Loading Spinner */
+    .spinner-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    
+    /* Form Field Validation */
+    .form-field.is-valid .form-control,
+    .form-field.is-valid .form-select {
+      border-color: var(--cs-success);
+    }
+    
+    .form-field.is-invalid .form-control,
+    .form-field.is-invalid .form-select {
+      border-color: var(--cs-danger);
+    }
+    
+    .invalid-feedback {
+      font-size: 0.8125rem;
+      color: var(--cs-danger);
+    }
+    
+    /* Sticky Progress */
+    .progress-sticky {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: white;
+      padding: 1rem;
+      border-radius: 0 0 12px 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      margin-bottom: 1.5rem;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .main-content {
+        padding: 1rem 0;
+      }
+      
+      .form-section {
+        padding: 1rem;
+        border-radius: 8px;
+      }
+      
+      .section-title {
+        font-size: 1.1rem;
+      }
+      
+      .checkbox-group, .radio-group {
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+      
+      .stat-card {
+        padding: 1rem;
+      }
+      
+      .stat-card .stat-number {
+        font-size: 1.5rem;
+      }
+    }
+    
+    /* Print Styles */
+    @media print {
+      .navbar-cloudstrucc, .footer, .btn, .progress-sticky {
+        display: none !important;
+      }
+      
+      .form-section {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+      }
+    }
+  </style>
+  
+  {{#if extraStyles}}
+  {{{extraStyles}}}
+  {{/if}}
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-cloudstrucc">
+    <div class="container">
+      <a class="navbar-brand" href="{{#if isAdmin}}/admin/dashboard{{else}}/{{/if}}">
+        <span class="brand-icon"><i class="bi bi-cloud-fill"></i></span>
+        Cloudstrucc
+      </a>
+      
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          {{#if isAdmin}}
+            <li class="nav-item">
+              <a class="nav-link {{#if isDashboard}}active{{/if}}" href="/admin/dashboard">
+                <i class="bi bi-speedometer2 me-1"></i> Dashboard
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {{#if isInvites}}active{{/if}}" href="/admin/invites">
+                <i class="bi bi-envelope-paper me-1"></i> Invites
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {{#if isSubmissions}}active{{/if}}" href="/admin/submissions">
+                <i class="bi bi-file-earmark-check me-1"></i> Submissions
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link {{#if isForms}}active{{/if}}" href="/admin/forms">
+                <i class="bi bi-file-text me-1"></i> Forms
+              </a>
+            </li>
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                <i class="bi bi-person-circle me-1"></i> {{admin.name}}
+              </a>
+              <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="/admin/logout"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+              </ul>
+            </li>
+          {{else}}
+            {{#if inviteCode}}
+              <li class="nav-item">
+                <span class="nav-link">
+                  <i class="bi bi-person me-1"></i> {{clientName}}
+                </span>
+              </li>
+            {{/if}}
+          {{/if}}
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Flash Messages -->
+  {{#if messages.success}}
+    <div class="container mt-3">
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>{{messages.success}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  {{/if}}
+  
+  {{#if messages.error}}
+    <div class="container mt-3">
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-circle me-2"></i>{{messages.error}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  {{/if}}
+  
+  {{#if messages.warning}}
+    <div class="container mt-3">
+      <div class="alert alert-warning alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{messages.warning}}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    </div>
+  {{/if}}
+
+  <!-- Main Content -->
+  <main class="main-content">
+    {{{body}}}
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <p class="mb-0">
+        &copy; {{currentYear}} <a href="https://www.cloudstrucc.com" target="_blank">Cloudstrucc Inc.</a> | 
+        Cloud Solutions & Digital Transformation
+      </p>
+    </div>
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  
+  {{#if extraScripts}}
+  {{{extraScripts}}}
+  {{/if}}
+</body>
+</html>

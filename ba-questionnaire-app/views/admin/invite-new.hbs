@@ -1,0 +1,124 @@
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-lg-8">
+      <div class="d-flex align-items-center mb-4">
+        <a href="/admin/invites" class="btn btn-outline-secondary me-3">
+          <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+          <h1 class="h3 mb-0">Create New Invite</h1>
+          <p class="text-muted mb-0">Send a questionnaire invitation to a client</p>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-body p-4">
+          <form action="/admin/invites/create" method="POST" id="inviteForm">
+            <!-- Client Information -->
+            <h5 class="mb-3"><i class="bi bi-person me-2"></i>Client Information</h5>
+            
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label for="clientName" class="form-label">Client Name <span class="text-danger">*</span></label>
+                <input type="text" class="form-control" id="clientName" name="clientName" required 
+                  placeholder="John Smith">
+              </div>
+              <div class="col-md-6">
+                <label for="clientEmail" class="form-label">Email Address <span class="text-danger">*</span></label>
+                <input type="email" class="form-control" id="clientEmail" name="clientEmail" required 
+                  placeholder="john@company.com">
+              </div>
+              <div class="col-12">
+                <label for="clientCompany" class="form-label">Company Name</label>
+                <input type="text" class="form-control" id="clientCompany" name="clientCompany" 
+                  placeholder="Acme Corporation">
+              </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- Form Selection -->
+            <h5 class="mb-3"><i class="bi bi-file-text me-2"></i>Select Forms <span class="text-danger">*</span></h5>
+            <p class="text-muted small mb-3">Choose which questionnaire(s) the client should complete:</p>
+            
+            <div class="row g-3 mb-4">
+              {{#each forms}}
+                <div class="col-md-6">
+                  <div class="form-check card p-3">
+                    <input class="form-check-input" type="checkbox" name="forms" value="{{this.id}}" 
+                      id="form_{{this.id}}">
+                    <label class="form-check-label d-block ms-2" for="form_{{this.id}}">
+                      <strong>{{this.title}}</strong>
+                      {{#if this.description}}
+                        <br><small class="text-muted">{{this.description}}</small>
+                      {{/if}}
+                    </label>
+                  </div>
+                </div>
+              {{/each}}
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- Timing -->
+            <h5 class="mb-3"><i class="bi bi-calendar-event me-2"></i>Timing</h5>
+            
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label for="expiresAt" class="form-label">Link Expires <span class="text-danger">*</span></label>
+                <input type="datetime-local" class="form-control" id="expiresAt" name="expiresAt" required>
+                <small class="text-muted">After this date, the invite link will no longer work</small>
+              </div>
+              <div class="col-md-6">
+                <label for="submissionDeadline" class="form-label">Submission Deadline</label>
+                <input type="datetime-local" class="form-control" id="submissionDeadline" name="submissionDeadline">
+                <small class="text-muted">Optional: Display a deadline to the client</small>
+              </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- Options -->
+            <h5 class="mb-3"><i class="bi bi-gear me-2"></i>Options</h5>
+            
+            <div class="form-check mb-3">
+              <input class="form-check-input" type="checkbox" id="sendEmail" name="sendEmail" checked>
+              <label class="form-check-label" for="sendEmail">
+                Send invitation email automatically
+              </label>
+            </div>
+            
+            <hr class="my-4">
+            
+            <!-- Submit -->
+            <div class="d-flex justify-content-between">
+              <a href="/admin/invites" class="btn btn-outline-secondary">Cancel</a>
+              <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-envelope-plus me-2"></i>Create & Send Invite
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Set default expiry date to 14 days from now
+document.addEventListener('DOMContentLoaded', function() {
+  const expiresAt = document.getElementById('expiresAt');
+  const now = new Date();
+  now.setDate(now.getDate() + 14);
+  expiresAt.value = now.toISOString().slice(0, 16);
+  
+  // Form validation
+  document.getElementById('inviteForm').addEventListener('submit', function(e) {
+    const forms = document.querySelectorAll('input[name="forms"]:checked');
+    if (forms.length === 0) {
+      e.preventDefault();
+      alert('Please select at least one form for the client to complete.');
+    }
+  });
+});
+</script>

@@ -1,0 +1,132 @@
+<div class="container py-4">
+  <!-- Welcome Header -->
+  <div class="card mb-4" style="background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);">
+    <div class="card-body p-4 text-white">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h2 class="mb-2">Welcome, {{invite.client_name}}!</h2>
+          <p class="mb-0 opacity-75">
+            {{#if invite.client_company}}{{invite.client_company}} | {{/if}}
+            Please complete the questionnaire(s) below
+          </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+          {{#if invite.submission_deadline}}
+            <div class="d-inline-block bg-white bg-opacity-10 rounded px-3 py-2">
+              <small class="d-block opacity-75">Deadline</small>
+              <strong>{{deadlineFormatted}}</strong>
+            </div>
+          {{/if}}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Progress Overview -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(0,168,232,0.1); color: var(--cs-accent);">
+          <i class="bi bi-file-text"></i>
+        </div>
+        <div class="stat-number">{{totalForms}}</div>
+        <div class="stat-label">Total Forms</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(255,193,7,0.1); color: var(--cs-warning);">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="stat-number">{{inProgressCount}}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(40,167,69,0.1); color: var(--cs-success);">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-number">{{completedCount}}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Forms List -->
+  <h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Your Questionnaires</h4>
+  
+  <div class="row g-4">
+    {{#each forms}}
+      <div class="col-md-6">
+        <div class="card h-100 {{#eq this.status 'submitted'}}border-success{{/eq}}">
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <h5 class="card-title mb-0">{{this.title}}</h5>
+              {{#eq this.status "submitted"}}
+                <span class="badge bg-success">Completed</span>
+              {{else}}
+                {{#if this.progress}}
+                  <span class="badge bg-warning">In Progress</span>
+                {{else}}
+                  <span class="badge bg-secondary">Not Started</span>
+                {{/if}}
+              {{/eq}}
+            </div>
+            
+            {{#if this.description}}
+              <p class="text-muted small mb-3">{{this.description}}</p>
+            {{/if}}
+            
+            <div class="mb-3">
+              <div class="d-flex justify-content-between mb-1">
+                <small class="text-muted">Progress</small>
+                <small class="text-muted">{{this.progress}}%</small>
+              </div>
+              <div class="progress" style="height: 8px;">
+                <div class="progress-bar {{#eq this.status 'submitted'}}bg-success{{/eq}}" 
+                  style="width: {{this.progress}}%"></div>
+              </div>
+            </div>
+          </div>
+          <div class="card-footer bg-transparent">
+            {{#eq this.status "submitted"}}
+              <span class="text-success">
+                <i class="bi bi-check-circle me-1"></i>
+                Submitted on {{this.submitted_at}}
+              </span>
+            {{else}}
+              <a href="/form/{{../invite.code}}/{{this.slug}}" class="btn btn-primary w-100">
+                {{#if this.progress}}
+                  <i class="bi bi-pencil me-2"></i>Continue
+                {{else}}
+                  <i class="bi bi-play me-2"></i>Start Questionnaire
+                {{/if}}
+              </a>
+            {{/eq}}
+          </div>
+        </div>
+      </div>
+    {{/each}}
+  </div>
+  
+  <!-- Help Section -->
+  <div class="card mt-4 bg-light border-0">
+    <div class="card-body">
+      <div class="row align-items-center">
+        <div class="col-md-8">
+          <h5><i class="bi bi-question-circle me-2"></i>Need Help?</h5>
+          <p class="mb-0 text-muted">
+            Your progress is automatically saved as you work. Use your access code 
+            <code>{{invite.code}}</code> to return anytime.
+          </p>
+        </div>
+        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+          <a href="mailto:contact-us@cloudstrucc.com" class="btn btn-outline-primary">
+            <i class="bi bi-envelope me-2"></i>Contact Support
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

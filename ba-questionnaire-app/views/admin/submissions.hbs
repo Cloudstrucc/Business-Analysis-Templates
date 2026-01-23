@@ -1,0 +1,116 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Submissions</h1>
+      <p class="text-muted mb-0">View and manage questionnaire submissions</p>
+    </div>
+  </div>
+  
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form action="/admin/submissions" method="GET" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select class="form-select" name="status">
+            <option value="">All Statuses</option>
+            <option value="submitted" {{#eq filters.status "submitted"}}selected{{/eq}}>Submitted</option>
+            <option value="in_progress" {{#eq filters.status "in_progress"}}selected{{/eq}}>In Progress</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Form</label>
+          <select class="form-select" name="form">
+            <option value="">All Forms</option>
+            {{#each forms}}
+              <option value="{{this.id}}" {{#eq ../filters.form this.id}}selected{{/eq}}>{{this.title}}</option>
+            {{/each}}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Search</label>
+          <input type="text" class="form-control" name="search" value="{{filters.search}}" placeholder="Client name...">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-primary w-100">
+            <i class="bi bi-search me-1"></i>Filter
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Submissions Table -->
+  <div class="card">
+    <div class="card-body p-0">
+      {{#if submissions.length}}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Form</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Started</th>
+                <th>Submitted</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each submissions}}
+                <tr>
+                  <td>
+                    <strong>{{this.client_name}}</strong>
+                    {{#if this.client_company}}
+                      <br><small class="text-muted">{{this.client_company}}</small>
+                    {{/if}}
+                  </td>
+                  <td>{{this.form_title}}</td>
+                  <td>
+                    {{#eq this.status "submitted"}}
+                      <span class="badge bg-success">Submitted</span>
+                    {{else}}
+                      <span class="badge bg-warning">In Progress</span>
+                    {{/eq}}
+                  </td>
+                  <td>
+                    <div class="progress" style="width: 80px; height: 6px;">
+                      <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                    </div>
+                    <small class="text-muted">{{this.progress}}%</small>
+                  </td>
+                  <td><small>{{this.started_at}}</small></td>
+                  <td>
+                    {{#if this.submitted_at}}
+                      <small>{{this.submitted_at}}</small>
+                    {{else}}
+                      <small class="text-muted">-</small>
+                    {{/if}}
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <a href="/admin/submissions/{{this.id}}" class="btn btn-outline-primary" title="View">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                      {{#eq this.status "submitted"}}
+                        <a href="/admin/submissions/{{this.id}}/export" class="btn btn-outline-secondary" title="Export PDF">
+                          <i class="bi bi-file-pdf"></i>
+                        </a>
+                      {{/eq}}
+                    </div>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <div class="text-center py-5">
+          <i class="bi bi-inbox fs-1 text-muted"></i>
+          <p class="text-muted mt-3">No submissions found</p>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</div>

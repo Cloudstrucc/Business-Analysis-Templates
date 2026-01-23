@@ -1,0 +1,186 @@
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Manage Invites</h1>
+      <p class="text-muted mb-0">Create and manage client questionnaire invitations</p>
+    </div>
+    <a href="/admin/invites/new" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-2"></i>Create New Invite
+    </a>
+  </div>
+  
+  <!-- Filters -->
+  <div class="card mb-4">
+    <div class="card-body">
+      <form action="/admin/invites" method="GET" class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select class="form-select" name="status">
+            <option value="">All Statuses</option>
+            <option value="active" {{#eq filters.status "active"}}selected{{/eq}}>Active</option>
+            <option value="expired" {{#eq filters.status "expired"}}selected{{/eq}}>Expired</option>
+            <option value="revoked" {{#eq filters.status "revoked"}}selected{{/eq}}>Revoked</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Search</label>
+          <input type="text" class="form-control" name="search" value="{{filters.search}}" placeholder="Client name or email...">
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-outline-primary w-100">
+            <i class="bi bi-search me-1"></i>Filter
+          </button>
+        </div>
+        {{#if filters.status}}
+          <div class="col-md-2">
+            <a href="/admin/invites" class="btn btn-outline-secondary w-100">Clear Filters</a>
+          </div>
+        {{/if}}
+      </form>
+    </div>
+  </div>
+  
+  <!-- Invites Table -->
+  <div class="card">
+    <div class="card-body p-0">
+      {{#if invites.length}}
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Forms</th>
+                <th>Code</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Expires</th>
+                <th>Progress</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each invites}}
+                <tr>
+                  <td>
+                    <strong>{{this.client_name}}</strong>
+                    <br><small class="text-muted">{{this.client_email}}</small>
+                    {{#if this.client_company}}
+                      <br><small class="text-muted">{{this.client_company}}</small>
+                    {{/if}}
+                  </td>
+                  <td>
+                    <span class="badge bg-info">{{this.form_count}} form(s)</span>
+                  </td>
+                  <td>
+                    <code class="user-select-all">{{this.code}}</code>
+                  </td>
+                  <td>
+                    {{#if this.is_revoked}}
+                      <span class="badge bg-secondary">Revoked</span>
+                    {{else}}
+                      {{#if this.is_expired}}
+                        <span class="badge bg-danger">Expired</span>
+                      {{else}}
+                        <span class="badge bg-success">Active</span>
+                      {{/if}}
+                    {{/if}}
+                  </td>
+                  <td><small>{{this.created_at}}</small></td>
+                  <td><small>{{this.expires_at}}</small></td>
+                  <td>
+                    <div class="progress" style="width: 80px; height: 6px;">
+                      <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                    </div>
+                    <small class="text-muted">{{this.progress}}%</small>
+                  </td>
+                  <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                      <a href="/admin/invites/{{this.id}}" class="btn btn-outline-primary" title="View Details">
+                        <i class="bi bi-eye"></i>
+                      </a>
+                      {{#unless this.is_revoked}}
+                        {{#unless this.is_expired}}
+                          <button type="button" class="btn btn-outline-secondary" title="Copy Link" 
+                            onclick="copyInviteLink('{{this.code}}')">
+                            <i class="bi bi-link-45deg"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-warning" title="Resend Email"
+                            onclick="resendInvite('{{this.id}}')">
+                            <i class="bi bi-envelope"></i>
+                          </button>
+                          <button type="button" class="btn btn-outline-danger" title="Revoke"
+                            onclick="revokeInvite('{{this.id}}', '{{this.client_name}}')">
+                            <i class="bi bi-x-circle"></i>
+                          </button>
+                        {{/unless}}
+                      {{/unless}}
+                    </div>
+                  </td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
+        </div>
+      {{else}}
+        <div class="text-center py-5">
+          <i class="bi bi-envelope-paper fs-1 text-muted"></i>
+          <p class="text-muted mt-3">No invites found</p>
+          <a href="/admin/invites/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Create First Invite
+          </a>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</div>
+
+<!-- Revoke Modal -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Revoke Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to revoke the invite for <strong id="revokeClientName"></strong>?</p>
+        <p class="text-muted small">This action cannot be undone. The client will no longer be able to access their questionnaire.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="revokeForm" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-danger">Revoke Invite</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyInviteLink(code) {
+  const link = window.location.origin + '/form/' + code;
+  navigator.clipboard.writeText(link).then(() => {
+    alert('Invite link copied to clipboard!');
+  });
+}
+
+function resendInvite(id) {
+  if (confirm('Resend invite email?')) {
+    fetch('/admin/invites/' + id + '/resend', { method: 'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          alert('Invite email resent successfully!');
+        } else {
+          alert('Failed to resend email: ' + (data.message || 'Unknown error'));
+        }
+      });
+  }
+}
+
+function revokeInvite(id, clientName) {
+  document.getElementById('revokeClientName').textContent = clientName;
+  document.getElementById('revokeForm').action = '/admin/invites/' + id + '/revoke';
+  new bootstrap.Modal(document.getElementById('revokeModal')).show();
+}
+</script>

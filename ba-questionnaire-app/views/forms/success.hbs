@@ -1,0 +1,69 @@
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-8 col-lg-6">
+      <div class="card text-center">
+        <div class="card-body py-5">
+          <div class="mb-4">
+            <div class="d-inline-flex align-items-center justify-content-center rounded-circle bg-success" 
+              style="width: 100px; height: 100px;">
+              <i class="bi bi-check-lg text-white" style="font-size: 3rem;"></i>
+            </div>
+          </div>
+          
+          <h2 class="mb-3">Thank You!</h2>
+          <p class="lead text-muted mb-4">
+            Your questionnaire has been successfully submitted.
+          </p>
+          
+          <div class="alert alert-success text-start">
+            <h5 class="alert-heading"><i class="bi bi-envelope-check me-2"></i>What's Next?</h5>
+            <p class="mb-0">
+              A confirmation email has been sent to <strong>{{invite.client_email}}</strong>. 
+              Our team will review your responses and be in touch soon to discuss the next steps for your project.
+            </p>
+          </div>
+          
+          <hr class="my-4">
+          
+          <div class="text-start mb-4">
+            <h5><i class="bi bi-file-earmark-check me-2"></i>Submitted Form</h5>
+            <p class="mb-2">
+              <strong>{{form.title}}</strong><br>
+              <small class="text-muted">Submitted on {{submittedAt}}</small>
+            </p>
+          </div>
+          
+          {{#if hasMoreForms}}
+            <div class="alert alert-info text-start">
+              <strong><i class="bi bi-list-task me-2"></i>You have more forms to complete!</strong>
+              <p class="mb-0 small">Return to your dashboard to complete the remaining questionnaires.</p>
+            </div>
+            
+            <a href="/form/{{inviteCode}}" class="btn btn-primary btn-lg">
+              <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
+          {{else}}
+            <div class="alert alert-success text-start">
+              <strong><i class="bi bi-trophy me-2"></i>All Done!</strong>
+              <p class="mb-0 small">You have completed all assigned questionnaires.</p>
+            </div>
+            
+            <a href="/" class="btn btn-outline-primary">
+              <i class="bi bi-house me-2"></i>Return Home
+            </a>
+          {{/if}}
+        </div>
+      </div>
+      
+      <!-- Contact Info -->
+      <div class="card mt-4 bg-light border-0">
+        <div class="card-body text-center">
+          <p class="mb-2">Questions or need to make changes?</p>
+          <a href="mailto:contact-us@cloudstrucc.com" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-envelope me-2"></i>Contact Us
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
