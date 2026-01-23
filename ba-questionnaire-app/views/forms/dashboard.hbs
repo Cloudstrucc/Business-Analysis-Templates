@@ -11,7 +11,7 @@
           </p>
         </div>
         <div class="col-md-4 text-md-end mt-3 mt-md-0">
-          {{#if invite.submission_deadline}}
+          {{#if deadlineFormatted}}
             <div class="d-inline-block bg-white bg-opacity-10 rounded px-3 py-2">
               <small class="d-block opacity-75">Deadline</small>
               <strong>{{deadlineFormatted}}</strong>
@@ -56,22 +56,14 @@
   <!-- Forms List -->
   <h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Your Questionnaires</h4>
   
-  <div class="row g-4">
+  <div class="row g-4" id="formsList" data-invite-code="{{inviteCode}}">
     {{#each forms}}
       <div class="col-md-6">
-        <div class="card h-100 {{#eq this.status 'submitted'}}border-success{{/eq}}">
+        <div class="card h-100 form-card" data-slug="{{this.slug}}" data-status="{{this.status}}" data-progress="{{this.progress}}">
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-start mb-3">
               <h5 class="card-title mb-0">{{this.title}}</h5>
-              {{#eq this.status "submitted"}}
-                <span class="badge bg-success">Completed</span>
-              {{else}}
-                {{#if this.progress}}
-                  <span class="badge bg-warning">In Progress</span>
-                {{else}}
-                  <span class="badge bg-secondary">Not Started</span>
-                {{/if}}
-              {{/eq}}
+              <span class="badge status-badge"></span>
             </div>
             
             {{#if this.description}}
@@ -81,29 +73,17 @@
             <div class="mb-3">
               <div class="d-flex justify-content-between mb-1">
                 <small class="text-muted">Progress</small>
-                <small class="text-muted">{{this.progress}}%</small>
+                <small class="text-muted progress-text">0%</small>
               </div>
               <div class="progress" style="height: 8px;">
-                <div class="progress-bar {{#eq this.status 'submitted'}}bg-success{{/eq}}" 
-                  style="width: {{this.progress}}%"></div>
+                <div class="progress-bar" style="width: 0%"></div>
               </div>
             </div>
           </div>
           <div class="card-footer bg-transparent">
-            {{#eq this.status "submitted"}}
-              <span class="text-success">
-                <i class="bi bi-check-circle me-1"></i>
-                Submitted on {{this.submitted_at}}
-              </span>
-            {{else}}
-              <a href="/form/{{../invite.code}}/{{this.slug}}" class="btn btn-primary w-100">
-                {{#if this.progress}}
-                  <i class="bi bi-pencil me-2"></i>Continue
-                {{else}}
-                  <i class="bi bi-play me-2"></i>Start Questionnaire
-                {{/if}}
-              </a>
-            {{/eq}}
+            <a href="#" class="btn btn-primary w-100 form-link">
+              <i class="bi bi-play me-2"></i>Start Questionnaire
+            </a>
           </div>
         </div>
       </div>
@@ -118,7 +98,7 @@
           <h5><i class="bi bi-question-circle me-2"></i>Need Help?</h5>
           <p class="mb-0 text-muted">
             Your progress is automatically saved as you work. Use your access code 
-            <code>{{invite.code}}</code> to return anytime.
+            <code>{{inviteCode}}</code> to return anytime.
           </p>
         </div>
         <div class="col-md-4 text-md-end mt-3 mt-md-0">
@@ -130,3 +110,51 @@
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const inviteCode = document.getElementById('formsList').dataset.inviteCode;
+  console.log('Invite code:', inviteCode);
+  
+  document.querySelectorAll('.form-card').forEach(function(card) {
+    const slug = card.dataset.slug;
+    const status = card.dataset.status || '';
+    const progress = parseInt(card.dataset.progress) || 0;
+    
+    console.log('Form:', slug, 'Status:', status, 'Progress:', progress);
+    
+    // Set status badge
+    const badge = card.querySelector('.status-badge');
+    if (status === 'submitted') {
+      badge.className = 'badge bg-success';
+      badge.textContent = 'Completed';
+    } else if (status === 'in_progress' || progress > 0) {
+      badge.className = 'badge bg-warning';
+      badge.textContent = 'In Progress';
+    } else {
+      badge.className = 'badge bg-secondary';
+      badge.textContent = 'Not Started';
+    }
+    
+    // Set progress
+    card.querySelector('.progress-text').textContent = progress + '%';
+    card.querySelector('.progress-bar').style.width = progress + '%';
+    
+    // Set link
+    const link = card.querySelector('.form-link');
+    if (status === 'submitted') {
+      link.className = 'btn btn-success w-100 disabled';
+      link.innerHTML = '<i class="bi bi-check-circle me-2"></i>Completed';
+    } else {
+      const formUrl = '/form/' + inviteCode + '/' + slug;
+      console.log('Form URL:', formUrl);
+      link.href = formUrl;
+      if (progress > 0) {
+        link.innerHTML = '<i class="bi bi-pencil me-2"></i>Continue';
+      } else {
+        link.innerHTML = '<i class="bi bi-play me-2"></i>Start Questionnaire';
+      }
+    }
+  });
+});
+</script>

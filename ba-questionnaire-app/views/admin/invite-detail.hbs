@@ -1,0 +1,242 @@
+<div class="container py-4">
+  <div class="d-flex align-items-center mb-4">
+    <a href="/admin/invites" class="btn btn-outline-secondary me-3">
+      <i class="bi bi-arrow-left"></i>
+    </a>
+    <div class="flex-grow-1">
+      <h1 class="h3 mb-0">Invite Details</h1>
+      <p class="text-muted mb-0">{{invite.client_name}} - {{invite.client_email}}</p>
+    </div>
+    {{#unless invite.is_revoked}}
+      {{#unless invite.is_expired}}
+        <button type="button" class="btn btn-outline-danger" onclick="revokeInvite()">
+          <i class="bi bi-x-circle me-2"></i>Revoke Invite
+        </button>
+      {{/unless}}
+    {{/unless}}
+  </div>
+
+  <div class="row">
+    <!-- Invite Info -->
+    <div class="col-lg-4 mb-4">
+      <div class="card">
+        <div class="card-header bg-light">
+          <i class="bi bi-info-circle me-2"></i>Invite Information
+        </div>
+        <div class="card-body">
+          <table class="table table-sm table-borderless mb-0">
+            <tr>
+              <td class="text-muted" style="width: 120px;">Status:</td>
+              <td>
+                {{#if invite.is_revoked}}
+                  <span class="badge bg-secondary">Revoked</span>
+                {{else}}
+                  {{#if invite.is_expired}}
+                    <span class="badge bg-danger">Expired</span>
+                  {{else}}
+                    <span class="badge bg-success">Active</span>
+                  {{/if}}
+                {{/if}}
+              </td>
+            </tr>
+            <tr>
+              <td class="text-muted">Code:</td>
+              <td><code class="user-select-all">{{invite.code}}</code></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Client:</td>
+              <td><strong>{{invite.client_name}}</strong></td>
+            </tr>
+            <tr>
+              <td class="text-muted">Email:</td>
+              <td>{{invite.client_email}}</td>
+            </tr>
+            {{#if invite.client_company}}
+              <tr>
+                <td class="text-muted">Company:</td>
+                <td>{{invite.client_company}}</td>
+              </tr>
+            {{/if}}
+            <tr>
+              <td class="text-muted">Created:</td>
+              <td>{{invite.created_at}}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Expires:</td>
+              <td>{{invite.expires_at}}</td>
+            </tr>
+            {{#if invite.submission_deadline}}
+              <tr>
+                <td class="text-muted">Deadline:</td>
+                <td>{{invite.submission_deadline}}</td>
+              </tr>
+            {{/if}}
+            <tr>
+              <td class="text-muted">First Access:</td>
+              <td>{{#if invite.first_accessed_at}}{{invite.first_accessed_at}}{{else}}<span class="text-muted">Not yet</span>{{/if}}</td>
+            </tr>
+            <tr>
+              <td class="text-muted">Last Access:</td>
+              <td>{{#if invite.last_accessed_at}}{{invite.last_accessed_at}}{{else}}<span class="text-muted">Not yet</span>{{/if}}</td>
+            </tr>
+          </table>
+        </div>
+        <div class="card-footer bg-transparent">
+          <button type="button" class="btn btn-sm btn-outline-primary w-100" onclick="copyInviteLink()">
+            <i class="bi bi-link-45deg me-1"></i>Copy Invite Link
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Assigned Forms -->
+    <div class="col-lg-8">
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <i class="bi bi-file-text me-2"></i>Assigned Forms ({{forms.length}})
+        </div>
+        <div class="card-body p-0">
+          {{#if forms.length}}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Form</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{#each forms}}
+                    <tr>
+                      <td>
+                        <strong>{{this.title}}</strong>
+                        {{#if this.description}}
+                          <br><small class="text-muted">{{this.description}}</small>
+                        {{/if}}
+                      </td>
+                      <td>
+                        {{#each ../submissions}}
+                          {{#eq this.form_id ../this.id}}
+                            {{#eq this.status "submitted"}}
+                              <span class="badge bg-success">Submitted</span>
+                            {{else}}
+                              <span class="badge bg-warning">In Progress</span>
+                            {{/eq}}
+                          {{/eq}}
+                        {{else}}
+                          <span class="badge bg-secondary">Not Started</span>
+                        {{/each}}
+                      </td>
+                      <td>
+                        {{#each ../submissions}}
+                          {{#eq this.form_id ../this.id}}
+                            <div class="progress" style="width: 100px; height: 6px;">
+                              <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                            </div>
+                            <small class="text-muted">{{this.progress}}%</small>
+                          {{/eq}}
+                        {{else}}
+                          <small class="text-muted">0%</small>
+                        {{/each}}
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+            </div>
+          {{else}}
+            <div class="text-center py-4">
+              <p class="text-muted mb-0">No forms assigned</p>
+            </div>
+          {{/if}}
+        </div>
+      </div>
+
+      <!-- Submissions -->
+      {{#if submissions.length}}
+        <div class="card">
+          <div class="card-header bg-light">
+            <i class="bi bi-check-circle me-2"></i>Submissions
+          </div>
+          <div class="card-body p-0">
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
+                  <tr>
+                    <th>Form</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Updated</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {{#each submissions}}
+                    <tr>
+                      <td>{{this.form_title}}</td>
+                      <td>
+                        {{#eq this.status "submitted"}}
+                          <span class="badge bg-success">Submitted</span>
+                        {{else}}
+                          <span class="badge bg-warning">In Progress</span>
+                        {{/eq}}
+                      </td>
+                      <td>
+                        <div class="progress" style="width: 80px; height: 6px;">
+                          <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                        </div>
+                        <small>{{this.progress}}%</small>
+                      </td>
+                      <td><small>{{this.updated_at}}</small></td>
+                      <td>
+                        <a href="/admin/submissions/{{this.id}}" class="btn btn-sm btn-outline-primary">
+                          <i class="bi bi-eye"></i> View
+                        </a>
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      {{/if}}
+    </div>
+  </div>
+</div>
+
+<!-- Revoke Modal -->
+<div class="modal fade" id="revokeModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Revoke Invite</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to revoke this invite for <strong>{{invite.client_name}}</strong>?</p>
+        <p class="text-muted small">This action cannot be undone. The client will no longer be able to access their questionnaire.</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form action="/admin/invites/{{invite.id}}/revoke" method="POST" style="display: inline;">
+          <button type="submit" class="btn btn-danger">Revoke Invite</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function copyInviteLink() {
+  const link = window.location.origin + '/form/{{invite.code}}';
+  navigator.clipboard.writeText(link).then(() => {
+    alert('Invite link copied to clipboard!\n\n' + link);
+  });
+}
+
+function revokeInvite() {
+  new bootstrap.Modal(document.getElementById('revokeModal')).show();
+}
+</script>

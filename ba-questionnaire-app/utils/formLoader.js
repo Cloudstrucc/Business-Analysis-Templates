@@ -23,27 +23,6 @@ const IGNORED_FILES = [
   'support.md'
 ];
 
-// Directories to ignore when scanning root
-const IGNORED_DIRS = [
-  'node_modules',
-  '.git',
-  'data',
-  'public',
-  'views',
-  'routes',
-  'utils',
-  'models',
-  'config',
-  'middleware',
-  'templates', // We handle templates separately
-  'scripts',
-  'test',
-  'tests',
-  'coverage',
-  'dist',
-  'build'
-];
-
 /**
  * Check if a file should be ignored
  */
@@ -63,7 +42,6 @@ function extractTitle(content) {
 
 /**
  * Extract description from markdown content
- * Looks for "This checklist" or similar intro text
  */
 function extractDescription(content) {
   const lines = content.split('\n');
@@ -78,13 +56,7 @@ function extractDescription(content) {
     if (foundHeader && line.startsWith('## ')) {
       break;
     }
-    // Look for common intro patterns
-    if (foundHeader && (
-      line.toLowerCase().includes('this checklist') ||
-      line.toLowerCase().includes('this document') ||
-      line.toLowerCase().includes('this template') ||
-      line.toLowerCase().includes('designed to help')
-    )) {
+    if (foundHeader && line.trim().length > 20 && !line.startsWith('*') && !line.startsWith('|')) {
       description = line.trim();
       break;
     }
@@ -95,20 +67,18 @@ function extractDescription(content) {
 
 /**
  * Check if markdown file looks like a form/checklist
- * (has tables with checkboxes or decision columns)
+ * SIMPLIFIED - just check for tables and title
  */
 function isFormTemplate(content) {
   // Must have at least one H1 title
-  if (!content.match(/^#\s+.+$/m)) return false;
+  const hasTitle = /^#\s+.+/m.test(content);
   
-  // Should have tables with checkbox patterns or decision columns
-  const hasCheckboxes = content.includes('☐') || content.includes('[ ]');
-  const hasDecisionColumn = content.toLowerCase().includes('your decision') ||
-                            content.toLowerCase().includes('your answer') ||
-                            content.toLowerCase().includes('your choice');
-  const hasTables = content.includes('|---|');
+  // Should have markdown tables
+  const hasTables = content.includes('|') && (content.includes('|---') || content.includes('| ---') || content.includes('---|'));
   
-  return hasTables && (hasCheckboxes || hasDecisionColumn);
+  console.log(`    Validation: hasTitle=${hasTitle}, hasTables=${hasTables}`);
+  
+  return hasTitle && hasTables;
 }
 
 /**
@@ -123,36 +93,49 @@ function generateSlug(filename) {
 }
 
 /**
- * Scan a directory for markdown form files
+ * Scan a directory for markdown files
  */
 function scanDirectory(dir, isRoot = false) {
   const files = [];
   
   if (!fs.existsSync(dir)) {
+    console.log(`   Directory does not exist: ${dir}`);
     return files;
   }
   
   const entries = fs.readdirSync(dir, { withFileTypes: true });
   
   for (const entry of entries) {
-    // Skip hidden files and directories
+    // Skip hidden files
     if (entry.name.startsWith('.')) continue;
     
-    if (entry.isFile() && entry.name.toLowerCase().endsWith('.md')) {
-      // Skip ignored files
-      if (shouldIgnoreFile(entry.name)) continue;
-      
-      const filePath = path.join(dir, entry.name);
-      const content = fs.readFileSync(filePath, 'utf8');
-      
-      // Only include if it looks like a form template
-      if (isFormTemplate(content)) {
-        files.push({
-          filename: entry.name,
-          filepath: filePath,
-          relativePath: isRoot ? entry.name : `templates/${entry.name}`
-        });
-      }
+    // Skip directories
+    if (!entry.isFile()) continue;
+    
+    // Only .md files
+    if (!entry.name.toLowerCase().endsWith('.md')) continue;
+    
+    // Skip ignored files
+    if (shouldIgnoreFile(entry.name)) {
+      console.log(`   Skipping ignored file: ${entry.name}`);
+      continue;
+    }
+    
+    const filePath = path.join(dir, entry.name);
+    console.log(`   Checking file: ${entry.name}`);
+    
+    const content = fs.readFileSync(filePath, 'utf8');
+    
+    // Check if it looks like a form
+    if (isFormTemplate(content)) {
+      files.push({
+        filename: entry.name,
+        filepath: filePath,
+        relativePath: entry.name
+      });
+      console.log(`   ✓ Valid form template: ${entry.name}`);
+    } else {
+      console.log(`   ✗ Not a form template: ${entry.name}`);
     }
   }
   
@@ -163,7 +146,7 @@ function scanDirectory(dir, isRoot = false) {
  * Load a single markdown file into the database
  */
 function loadForm(fileInfo, db) {
-  const { run, get } = db || require('../models/database');
+  const { run, get } = db;
   
   if (!fs.existsSync(fileInfo.filepath)) {
     console.error(`  ✗ File not found: ${fileInfo.filepath}`);
@@ -179,13 +162,11 @@ function loadForm(fileInfo, db) {
   const existing = get(`SELECT id, title FROM forms WHERE slug = ?`, [slug]);
   
   if (existing) {
-    // Update existing form
     run(`UPDATE forms SET title = ?, description = ?, markdown_file = ? WHERE slug = ?`,
       [title, description, fileInfo.relativePath, slug]);
     console.log(`  ↻ Updated: ${title}`);
     return { id: existing.id, action: 'updated', title, slug };
   } else {
-    // Insert new form
     const id = run(`INSERT INTO forms (slug, title, description, markdown_file, is_active) VALUES (?, ?, ?, ?, 1)`,
       [slug, title, description, fileInfo.relativePath]);
     console.log(`  ✓ Added: ${title}`);
@@ -194,31 +175,11 @@ function loadForm(fileInfo, db) {
 }
 
 /**
- * Copy markdown file from root to templates directory
- */
-function copyToTemplates(filepath, filename) {
-  const destPath = path.join(TEMPLATES_DIR, filename);
-  
-  // Create templates dir if needed
-  if (!fs.existsSync(TEMPLATES_DIR)) {
-    fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
-  }
-  
-  // Copy file
-  fs.copyFileSync(filepath, destPath);
-  console.log(`  → Copied to templates/: ${filename}`);
-  
-  return destPath;
-}
-
-/**
- * Load all markdown files from both root and templates directories
- * Auto-discovers new forms added to the root folder
+ * Load all markdown files from templates directory
  */
 function loadAllForms(options = {}) {
-  const { copyToTemplatesDir = true, verbose = true } = options;
+  const { verbose = true } = options;
   
-  // Lazy load database to avoid circular dependency
   const db = require('../models/database');
   
   if (verbose) {
@@ -237,117 +198,58 @@ function loadAllForms(options = {}) {
   // Ensure templates directory exists
   if (!fs.existsSync(TEMPLATES_DIR)) {
     fs.mkdirSync(TEMPLATES_DIR, { recursive: true });
-    if (verbose) console.log('Created templates/ directory\n');
+    console.log('Created templates/ directory\n');
   }
   
-  // 1. Scan root directory for new MD files
-  if (verbose) console.log('📂 Scanning root directory...');
-  const rootFiles = scanDirectory(ROOT_DIR, true);
+  // First try templates directory
+  console.log('📂 Scanning templates/ directory...');
+  console.log(`   Path: ${TEMPLATES_DIR}`);
+  let templateFiles = scanDirectory(TEMPLATES_DIR, false);
   
-  if (rootFiles.length > 0) {
-    if (verbose) console.log(`   Found ${rootFiles.length} form template(s) in root\n`);
+  // If no templates found, try root directory
+  if (templateFiles.length === 0) {
+    console.log('\n📂 No templates in templates/, scanning root directory...');
+    console.log(`   Path: ${ROOT_DIR}`);
+    templateFiles = scanDirectory(ROOT_DIR, true);
     
-    for (const file of rootFiles) {
-      if (copyToTemplatesDir) {
-        // Copy to templates directory
-        const newPath = copyToTemplates(file.filepath, file.filename);
-        file.filepath = newPath;
-        file.relativePath = file.filename;
-      }
-      
-      const result = loadForm(file, db);
-      if (result) {
-        if (result.action === 'added') results.added.push(result);
-        else results.updated.push(result);
+    // Copy found files to templates directory
+    if (templateFiles.length > 0) {
+      console.log('\n   Copying found templates to templates/ directory...');
+      for (const file of templateFiles) {
+        const destPath = path.join(TEMPLATES_DIR, file.filename);
+        fs.copyFileSync(file.filepath, destPath);
+        file.filepath = destPath;
+        console.log(`   → Copied: ${file.filename}`);
       }
     }
-  } else {
-    if (verbose) console.log('   No new templates found in root\n');
   }
   
-  // 2. Scan templates directory
-  if (verbose) console.log('📂 Scanning templates/ directory...');
-  const templateFiles = scanDirectory(TEMPLATES_DIR, false);
+  console.log(`\n   Found ${templateFiles.length} form template(s)\n`);
   
-  if (templateFiles.length > 0) {
-    if (verbose) console.log(`   Found ${templateFiles.length} template(s)\n`);
-    
-    for (const file of templateFiles) {
-      // Skip if we already processed this file from root
-      const alreadyProcessed = rootFiles.some(rf => rf.filename === file.filename);
-      if (alreadyProcessed) {
-        if (verbose) console.log(`  ⊘ Skipped (already processed): ${file.filename}`);
-        results.skipped.push({ filename: file.filename, reason: 'already processed' });
-        continue;
-      }
-      
-      const result = loadForm(file, db);
-      if (result) {
-        if (result.action === 'added') results.added.push(result);
-        else results.updated.push(result);
-      }
+  // Load each form into database
+  for (const file of templateFiles) {
+    const result = loadForm(file, db);
+    if (result) {
+      if (result.action === 'added') results.added.push(result);
+      else results.updated.push(result);
     }
-  } else {
-    if (verbose) console.log('   No templates found\n');
   }
   
   // Summary
-  if (verbose) {
-    console.log('\n──────────────────────────────────────────────────────────');
-    console.log('SUMMARY:');
-    console.log(`  ✓ Added:   ${results.added.length} form(s)`);
-    console.log(`  ↻ Updated: ${results.updated.length} form(s)`);
-    console.log(`  ⊘ Skipped: ${results.skipped.length} file(s)`);
-    if (results.errors.length > 0) {
-      console.log(`  ✗ Errors:  ${results.errors.length}`);
-    }
-    console.log('──────────────────────────────────────────────────────────\n');
+  console.log('\n──────────────────────────────────────────────────────────');
+  console.log('SUMMARY:');
+  console.log(`  ✓ Added:   ${results.added.length} form(s)`);
+  console.log(`  ↻ Updated: ${results.updated.length} form(s)`);
+  console.log(`  ⊘ Skipped: ${results.skipped.length} file(s)`);
+  if (results.errors.length > 0) {
+    console.log(`  ✗ Errors:  ${results.errors.length}`);
   }
+  console.log('──────────────────────────────────────────────────────────\n');
   
   // Save database
   db.saveDatabase();
   
   return results;
-}
-
-/**
- * Watch for new files (development mode)
- */
-function watchForNewForms(callback) {
-  console.log('👁️  Watching for new form templates...');
-  console.log('   Add .md files to root or templates/ directory\n');
-  
-  // Simple polling-based watcher (no external deps)
-  let lastFiles = new Set();
-  
-  const scan = () => {
-    const rootFiles = scanDirectory(ROOT_DIR, true);
-    const templateFiles = scanDirectory(TEMPLATES_DIR, false);
-    const allFiles = [...rootFiles, ...templateFiles].map(f => f.filepath);
-    const currentFiles = new Set(allFiles);
-    
-    // Check for new files
-    for (const file of currentFiles) {
-      if (!lastFiles.has(file)) {
-        console.log(`\n📄 New/changed file detected: ${path.basename(file)}`);
-        const results = loadAllForms({ verbose: true });
-        if (callback) callback(results);
-        break;
-      }
-    }
-    
-    lastFiles = currentFiles;
-  };
-  
-  // Initial scan
-  scan();
-  
-  // Poll every 2 seconds
-  const interval = setInterval(scan, 2000);
-  
-  return {
-    stop: () => clearInterval(interval)
-  };
 }
 
 /**
@@ -371,19 +273,14 @@ function getFormStats() {
   return { total, active, forms };
 }
 
-// CLI support - run directly with: node utils/formLoader.js
+// CLI support
 if (require.main === module) {
   const { initDatabase } = require('../models/database');
   
   initDatabase().then(() => {
     const args = process.argv.slice(2);
     
-    if (args.includes('--watch') || args.includes('-w')) {
-      // Watch mode
-      loadAllForms();
-      watchForNewForms();
-    } else if (args.includes('--stats') || args.includes('-s')) {
-      // Show stats
+    if (args.includes('--stats') || args.includes('-s')) {
       const stats = getFormStats();
       console.log('\nForm Statistics:');
       console.log(`  Total: ${stats.total}`);
@@ -393,7 +290,6 @@ if (require.main === module) {
         console.log(`  ${f.is_active ? '✓' : '✗'} ${f.title} (${f.slug})`);
       });
     } else {
-      // Default: load all forms
       loadAllForms();
     }
   }).catch(err => {
@@ -407,7 +303,6 @@ module.exports = {
   loadAllForms,
   getAllForms,
   getFormStats,
-  watchForNewForms,
   scanDirectory,
   isFormTemplate,
   TEMPLATES_DIR,

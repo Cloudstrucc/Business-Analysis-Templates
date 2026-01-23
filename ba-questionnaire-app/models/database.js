@@ -20,8 +20,10 @@ async function initDatabase() {
   if (fs.existsSync(DB_PATH)) {
     const fileBuffer = fs.readFileSync(DB_PATH);
     db = new SQL.Database(fileBuffer);
+    console.log('Database loaded from file');
   } else {
     db = new SQL.Database();
+    console.log('New database created');
   }
 
   // Create tables
@@ -104,16 +106,17 @@ async function initDatabase() {
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@cloudstrucc.com';
   const adminPassword = process.env.ADMIN_PASSWORD || 'ChangeThisPassword123!';
   
-  const existingAdmin = db.exec(`SELECT id FROM admins WHERE email = ?`, [adminEmail]);
-  if (!existingAdmin.length || !existingAdmin[0].values.length) {
+  const existingAdmin = get(`SELECT id FROM admins WHERE email = ?`, [adminEmail]);
+  if (!existingAdmin) {
     const hashedPassword = bcrypt.hashSync(adminPassword, 10);
-    db.run(`INSERT INTO admins (email, password, name) VALUES (?, ?, ?)`, 
+    run(`INSERT INTO admins (email, password, name) VALUES (?, ?, ?)`, 
       [adminEmail, hashedPassword, 'Administrator']);
     console.log('Default admin created:', adminEmail);
   }
 
   // Save database
   saveDatabase();
+  console.log('Database initialized');
 
   return db;
 }
@@ -133,27 +136,48 @@ function getDb() {
   return db;
 }
 
-// Helper to run parameterized queries
+// Helper to run parameterized queries (INSERT, UPDATE, DELETE)
 function run(sql, params = []) {
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  stmt.step();
-  stmt.free();
-  saveDatabase();
-  return db.exec('SELECT last_insert_rowid()')[0]?.values[0][0];
+  try {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    stmt.step();
+    stmt.free();
+    
+    // Get the last inserted row ID
+    const result = db.exec('SELECT last_insert_rowid() as id');
+    const lastId = result[0]?.values[0]?.[0] || 0;
+    
+    // Auto-save after write operations
+    saveDatabase();
+    
+    return lastId;
+  } catch (error) {
+    console.error('Database run error:', error);
+    console.error('SQL:', sql);
+    console.error('Params:', params);
+    throw error;
+  }
 }
 
 // Helper to get all rows
 function all(sql, params = []) {
-  const stmt = db.prepare(sql);
-  stmt.bind(params);
-  const results = [];
-  while (stmt.step()) {
-    const row = stmt.getAsObject();
-    results.push(row);
+  try {
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
+    const results = [];
+    while (stmt.step()) {
+      const row = stmt.getAsObject();
+      results.push(row);
+    }
+    stmt.free();
+    return results;
+  } catch (error) {
+    console.error('Database all error:', error);
+    console.error('SQL:', sql);
+    console.error('Params:', params);
+    throw error;
   }
-  stmt.free();
-  return results;
 }
 
 // Helper to get single row

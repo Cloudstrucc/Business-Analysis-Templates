@@ -132,6 +132,8 @@ router.get('/invites', ensureAuthenticated, (req, res) => {
 router.get('/invites/new', ensureAuthenticated, (req, res) => {
   const forms = all(`SELECT * FROM forms WHERE is_active = 1 ORDER BY title`);
   
+  console.log('Available forms for invite:', forms.map(f => ({ id: f.id, title: f.title })));
+  
   res.render('admin/invite-new', {
     title: 'Create Invite',
     isAdmin: true,
@@ -147,17 +149,30 @@ router.get('/invites/new', ensureAuthenticated, (req, res) => {
 // Create invite
 router.post('/invites/create', ensureAuthenticated, async (req, res) => {
   try {
+    console.log('=== CREATE INVITE ===');
+    console.log('Request body:', req.body);
+    
     const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
     
-    if (!clientName || !clientEmail || !forms || !expiresAt) {
+    console.log('Forms from request:', forms);
+    
+    if (!clientName || !clientEmail || !expiresAt) {
       req.flash('error', 'Please fill in all required fields');
       return res.redirect('/admin/invites/new');
     }
 
+    if (!forms) {
+      req.flash('error', 'Please select at least one form');
+      return res.redirect('/admin/invites/new');
+    }
+
+    // Handle forms - could be string or array
     const formIds = Array.isArray(forms) ? forms : [forms];
+    console.log('Form IDs to link:', formIds);
     
     // Generate unique code
     const code = uuidv4().substring(0, 8).toUpperCase();
+    console.log('Generated code:', code);
     
     // Create invite
     const inviteId = run(`
@@ -165,26 +180,43 @@ router.post('/invites/create', ensureAuthenticated, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [code, clientEmail.toLowerCase(), clientName, clientCompany || null, req.user.id, expiresAt, submissionDeadline || null]);
 
+    console.log('Created invite with ID:', inviteId);
+
     // Link forms to invite
-    formIds.forEach(formId => {
-      run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
-    });
+    for (const formId of formIds) {
+      console.log(`Linking form ${formId} to invite ${inviteId}`);
+      run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, parseInt(formId)]);
+    }
+    
+    // Verify the links were created
+    const linkedForms = all(`SELECT * FROM invite_forms WHERE invite_id = ?`, [inviteId]);
+    console.log('Linked forms:', linkedForms);
 
     // Get form details for email
-    const formDetails = all(`SELECT * FROM forms WHERE id IN (${formIds.join(',')})`);
+    const formDetails = all(`SELECT * FROM forms WHERE id IN (${formIds.map(() => '?').join(',')})`, formIds.map(id => parseInt(id)));
+    console.log('Form details for email:', formDetails.map(f => f.title));
 
     // Send email if requested
     if (sendEmail === 'on') {
-      emailService.initialize();
-      await emailService.sendInvite({
-        to: clientEmail,
-        clientName,
-        inviteCode: code,
-        forms: formDetails,
-        expiresAt,
-        submissionDeadline
-      });
+      try {
+        emailService.initialize();
+        await emailService.sendInvite({
+          to: clientEmail,
+          clientName,
+          inviteCode: code,
+          forms: formDetails,
+          expiresAt,
+          submissionDeadline
+        });
+        console.log('Email sent successfully');
+      } catch (emailError) {
+        console.error('Email error:', emailError);
+        // Don't fail the whole request if email fails
+      }
     }
+
+    // Save database
+    saveDatabase();
 
     req.flash('success', `Invite created successfully! Code: ${code}`);
     res.redirect('/admin/invites');
