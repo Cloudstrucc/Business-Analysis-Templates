@@ -8,6 +8,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const fs = require('fs');
 
 const { initDatabase } = require('./models/database');
 const { passport, initializePassport } = require('./config/passport');
@@ -19,19 +20,149 @@ const emailService = require('./utils/emailService');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Track loaded files to detect new ones
+let loadedTemplates = new Set();
+
+// Scan root directory for .md files and copy to templates
+function scanAndCopyRootTemplates() {
+  const templatesDir = path.join(__dirname, 'templates');
+  const rootDir = __dirname;
+  
+  // Ensure templates directory exists
+  if (!fs.existsSync(templatesDir)) {
+    fs.mkdirSync(templatesDir, { recursive: true });
+  }
+  
+  // Files to ignore
+  const ignoredFiles = [
+    'readme.md', 'readme', 'license.md', 'license',
+    'changelog.md', 'contributing.md', 'build_guide.md',
+    'build-guide.md', 'code_of_conduct.md', 'security.md'
+  ];
+  
+  console.log('\n📂 Scanning root directory for new templates...');
+  
+  let newFilesFound = 0;
+  
+  // Scan root directory
+  fs.readdirSync(rootDir).forEach(filename => {
+    // Only .md files
+    if (!filename.toLowerCase().endsWith('.md')) return;
+    
+    // Skip ignored files
+    if (ignoredFiles.includes(filename.toLowerCase())) return;
+    
+    // Skip if it's a directory
+    const rootPath = path.join(rootDir, filename);
+    if (!fs.statSync(rootPath).isFile()) return;
+    
+    // Check if already in templates
+    const templatePath = path.join(templatesDir, filename);
+    if (!fs.existsSync(templatePath)) {
+      // Copy to templates directory
+      console.log(`   → Found new template: ${filename}`);
+      fs.copyFileSync(rootPath, templatePath);
+      newFilesFound++;
+    }
+  });
+  
+  if (newFilesFound > 0) {
+    console.log(`   ✓ Copied ${newFilesFound} new template(s) to templates/\n`);
+  } else {
+    console.log('   No new templates in root directory\n');
+  }
+  
+  return newFilesFound;
+}
+
+// Get current template files for watching
+function getCurrentTemplateFiles() {
+  const templatesDir = path.join(__dirname, 'templates');
+  const rootDir = __dirname;
+  const files = new Set();
+  
+  const ignoredFiles = [
+    'readme.md', 'readme', 'license.md', 'license',
+    'changelog.md', 'contributing.md', 'build_guide.md',
+    'build-guide.md', 'code_of_conduct.md', 'security.md'
+  ];
+  
+  // Check templates directory
+  if (fs.existsSync(templatesDir)) {
+    fs.readdirSync(templatesDir).forEach(f => {
+      if (f.toLowerCase().endsWith('.md') && !ignoredFiles.includes(f.toLowerCase())) {
+        files.add(path.join(templatesDir, f));
+      }
+    });
+  }
+  
+  // Check root directory
+  fs.readdirSync(rootDir).forEach(f => {
+    if (f.toLowerCase().endsWith('.md') && !ignoredFiles.includes(f.toLowerCase())) {
+      const fullPath = path.join(rootDir, f);
+      if (fs.statSync(fullPath).isFile()) {
+        files.add(fullPath);
+      }
+    }
+  });
+  
+  return files;
+}
+
+// Watch for new template files (runs after initial load)
+function watchForNewTemplates() {
+  // Get initial state
+  loadedTemplates = getCurrentTemplateFiles();
+  
+  // Poll for changes every 5 seconds
+  setInterval(() => {
+    const currentFiles = getCurrentTemplateFiles();
+    
+    // Check for new files
+    for (const file of currentFiles) {
+      if (!loadedTemplates.has(file)) {
+        console.log(`\n📄 New template detected: ${path.basename(file)}`);
+        
+        // Copy to templates if in root
+        const templatesDir = path.join(__dirname, 'templates');
+        const filename = path.basename(file);
+        const templatePath = path.join(templatesDir, filename);
+        
+        if (!file.includes('/templates/') && !fs.existsSync(templatePath)) {
+          fs.copyFileSync(file, templatePath);
+          console.log(`   → Copied to templates/`);
+        }
+        
+        // Reload all forms
+        console.log('   Reloading forms...\n');
+        formLoader.loadAllForms({ verbose: true });
+        loadedTemplates = getCurrentTemplateFiles();
+        break;
+      }
+    }
+  }, 5000);
+  
+  console.log('👁️  Watching for new form templates (polling every 5s)...\n');
+}
+
 // Initialize database and load forms
 async function initialize() {
   try {
     await initDatabase();
-    console.log('Database initialized');
     
-    // Load forms from templates
-    formLoader.loadAllForms();
+    // STEP 1: Scan root directory and copy any new .md files to templates/
+    scanAndCopyRootTemplates();
     
-    // Initialize email service
+    // STEP 2: Load all forms from templates directory into database
+    formLoader.loadAllForms({ verbose: true });
+    
+    // STEP 3: Initialize email service
     emailService.initialize();
     
-    console.log('Application initialized successfully');
+    // STEP 4: Start watching for new templates
+    watchForNewTemplates();
+    
+    console.log('✅ Application initialized successfully\n');
   } catch (error) {
     console.error('Initialization error:', error);
     process.exit(1);
@@ -206,11 +337,10 @@ app.use((err, req, res, next) => {
 // Analytics scheduler (runs every ANALYTICS_INTERVAL_HOURS)
 function scheduleAnalytics() {
   const intervalHours = parseInt(process.env.ANALYTICS_INTERVAL_HOURS || '72');
-  const intervalMs = intervalHours * 60 * 60 * 1000;
 
   setInterval(async () => {
     try {
-      const { all, get } = require('./models/database');
+      const { all, get, run } = require('./models/database');
       
       // Check if we should send analytics
       const lastSent = get(`SELECT sent_at FROM analytics_sent ORDER BY sent_at DESC LIMIT 1`);
@@ -255,10 +385,9 @@ function scheduleAnalytics() {
         });
 
         // Record that we sent analytics
-        const { run } = require('./models/database');
         run(`INSERT INTO analytics_sent (sent_at) VALUES (CURRENT_TIMESTAMP)`);
 
-        console.log('Analytics digest sent');
+        console.log('📊 Analytics digest sent');
       }
     } catch (error) {
       console.error('Failed to send analytics:', error);
@@ -278,6 +407,8 @@ initialize().then(() => {
 ║                                                            ║
 ║   Public Portal:  http://localhost:${PORT}                    ║
 ║   Admin Login:    http://localhost:${PORT}/admin/login        ║
+║                                                            ║
+║   ► Drop .md files in root folder - auto-detected!         ║
 ║                                                            ║
 ╚════════════════════════════════════════════════════════════╝
     `);
