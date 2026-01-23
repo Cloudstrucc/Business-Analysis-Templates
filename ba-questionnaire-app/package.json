@@ -5,8 +5,13 @@
   "main": "app.js",
   "scripts": {
     "start": "node app.js",
-    "dev": "node app.js",
-    "load-forms": "node -e \"require('./utils/formLoader').loadAllForms()\"",
+    "dev": "./scripts/dev.sh",
+    "dev:watch": "./scripts/dev.sh --watch",
+    "reload": "node utils/formLoader.js",
+    "reload:stats": "node utils/formLoader.js --stats",
+    "deploy": "./scripts/deploy.sh",
+    "deploy:setup": "./scripts/deploy.sh --setup",
+    "deploy:rollback": "./scripts/deploy.sh --rollback",
     "test": "echo \"No tests configured yet\""
   },
   "keywords": [

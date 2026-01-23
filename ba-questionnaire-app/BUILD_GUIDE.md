@@ -854,33 +854,107 @@ app.get('/health', (req, res) => {
 
 ### NPM Scripts
 
-Add to `package.json`:
-
-```json
-{
-  "scripts": {
-    "start": "node app.js",
-    "dev": "nodemon app.js",
-    "load-forms": "node -e \"require('./utils/formLoader').loadAllForms()\"",
-    "test": "echo \"No tests yet\""
-  }
-}
-```
-
-### Useful Commands
-
 ```bash
-# Start development server
+# Start production server
+npm start
+
+# Start development server (loads forms automatically)
 npm run dev
 
-# Load/reload all forms
-npm run load-forms
+# Start with file watching (auto-reload on new .md files)
+npm run dev:watch
 
-# Check for security vulnerabilities
-npm audit
+# Reload forms from markdown files
+npm run reload
 
-# Update dependencies
-npm update
+# Show form statistics
+npm run reload:stats
+
+# Deploy to server
+npm run deploy
+
+# First-time server setup
+npm run deploy:setup
+
+# Rollback to previous version
+npm run deploy:rollback
+```
+
+### Adding New Form Templates
+
+Simply drop a new `.md` file in the **root directory** and:
+
+```bash
+# Option 1: Reload forms manually
+npm run reload
+
+# Option 2: Restart the server (auto-detects new files)
+npm run dev
+
+# Option 3: Use watch mode (auto-detects while running)
+npm run dev:watch
+```
+
+The system will:
+1. ✓ Detect the new markdown file
+2. ✓ Validate it looks like a form (has tables, checkboxes)
+3. ✓ Copy it to `templates/` directory
+4. ✓ Load it into the database
+5. ✓ Make it available in the admin panel
+
+**Files that are ignored:**
+- README.md, LICENSE.md, CHANGELOG.md
+- BUILD_GUIDE.md, CONTRIBUTING.md
+- Any file that doesn't look like a form template
+
+### Bash Scripts
+
+Located in `scripts/` directory:
+
+```bash
+# Development server with nice output
+./scripts/dev.sh
+
+# Development with file watching
+./scripts/dev.sh --watch
+
+# Just reload forms
+./scripts/dev.sh --reload
+# or
+./scripts/reload-forms.sh
+
+# Show statistics
+./scripts/dev.sh --stats
+
+# Deploy to nginx server
+./scripts/deploy.sh
+
+# First-time server setup
+./scripts/deploy.sh --setup
+
+# Deploy to specific server
+./scripts/deploy.sh user@myserver.com
+
+# Rollback deployment
+./scripts/deploy.sh --rollback
+
+# Show deploy configuration
+./scripts/deploy.sh --config
+```
+
+### Deploy Configuration
+
+Edit `scripts/deploy.sh` or set environment variables:
+
+```bash
+# Set your server
+export DEPLOY_SERVER="user@forms.cloudstrucc.com"
+export DOMAIN="forms.cloudstrucc.com"
+export REMOTE_APP_DIR="/var/www/ba-forms"
+export PM2_APP_NAME="ba-forms"
+
+# Then deploy
+./scripts/deploy.sh
 ```
 
 ### Support
