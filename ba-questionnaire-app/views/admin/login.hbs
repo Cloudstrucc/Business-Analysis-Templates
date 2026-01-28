@@ -3,211 +3,179 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Login | Cloudstrucc BA Forms</title>
+  <title>Sign In | Cloudstrucc BA Forms</title>
   
-  <!-- Bootstrap 5.3 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --cs-primary: #0077b6;
-      --cs-accent: #00a8e8;
-      --cs-dark: #0a1628;
-      --cs-dark-blue: #0d1b2a;
-      --cs-navy: #1b263b;
-      --cs-gradient-dark: linear-gradient(135deg, #0a1628 0%, #1b263b 50%, #0d1b2a 100%);
-      --cs-gradient-primary: linear-gradient(135deg, #0077b6 0%, #00a8e8 100%);
-    }
-    
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --accent: #06b6d4;
+      --dark: #111827;
+      --gray-900: #1f2937;
+      --gray-700: #4b5563;
+      --gray-600: #6b7280;
+      --gray-500: #9ca3af;
+      --gray-400: #d1d5db;
+      --gray-300: #e5e7eb;
+      --gray-200: #f3f4f6;
+      --gray-100: #f9fafb;
+      --white: #ffffff;
     }
     
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--gray-900);
       min-height: 100vh;
-      background: var(--cs-gradient-dark);
       display: flex;
       flex-direction: column;
     }
     
-    /* Top Navigation */
-    .top-nav {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      padding: 1.5rem 2rem;
+    /* Header */
+    .site-header {
+      padding: 1.25rem 2rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      z-index: 100;
     }
     
-    .top-nav .brand {
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 1.25rem;
+    .site-header .brand {
+      color: var(--white);
       text-decoration: none;
+      font-weight: 600;
+      font-size: 1.125rem;
       display: flex;
       align-items: center;
       gap: 0.5rem;
     }
     
-    .top-nav .brand i {
-      color: var(--cs-accent);
-      font-size: 1.5rem;
+    .site-header .brand i {
+      color: var(--accent);
     }
     
-    .top-nav .nav-links {
+    .site-header .nav-links {
       display: flex;
-      align-items: center;
-      gap: 1.5rem;
+      gap: 2rem;
     }
     
-    .top-nav .nav-links a {
-      color: rgba(255,255,255,0.8);
+    .site-header .nav-links a {
+      color: var(--gray-400);
       text-decoration: none;
+      font-size: 0.9rem;
       font-weight: 500;
-      font-size: 0.95rem;
-      transition: color 0.2s ease;
+      transition: color 0.15s;
     }
     
-    .top-nav .nav-links a:hover {
-      color: #ffffff;
+    .site-header .nav-links a:hover {
+      color: var(--white);
     }
     
-    .top-nav .nav-links a i {
-      margin-right: 0.25rem;
-    }
-    
-    /* Main Content */
-    .login-wrapper {
+    /* Main */
+    .login-main {
       flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 6rem 2rem 2rem;
+      padding: 2rem;
     }
     
     .login-card {
-      background: #ffffff;
-      border-radius: 20px;
-      padding: 3rem;
+      background: var(--white);
+      border-radius: 12px;
+      padding: 2.5rem;
       width: 100%;
-      max-width: 440px;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+      max-width: 400px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.15);
     }
     
-    .login-logo {
+    .login-header {
       text-align: center;
       margin-bottom: 2rem;
     }
     
-    .login-logo .logo-icon {
-      width: 70px;
-      height: 70px;
-      background: var(--cs-gradient-primary);
-      border-radius: 16px;
+    .login-header .icon {
+      width: 56px;
+      height: 56px;
+      background: var(--primary);
+      border-radius: 12px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 1rem;
     }
     
-    .login-logo .logo-icon i {
-      font-size: 2rem;
-      color: #ffffff;
-    }
-    
-    .login-logo h1 {
+    .login-header .icon i {
       font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--cs-dark);
-      margin-bottom: 0.5rem;
+      color: var(--white);
     }
     
-    .login-logo p {
-      color: #64748b;
+    .login-header h1 {
+      font-size: 1.375rem;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 0.25rem;
+    }
+    
+    .login-header p {
+      color: var(--gray-600);
+      font-size: 0.9rem;
       margin: 0;
     }
     
     .form-label {
       font-weight: 500;
-      color: var(--cs-dark);
-      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+      color: var(--gray-700);
+      margin-bottom: 0.375rem;
     }
     
     .form-control {
-      border-radius: 10px;
-      padding: 0.875rem 1rem;
-      border: 2px solid #e2e8f0;
-      font-size: 1rem;
-      transition: all 0.2s ease;
+      border: 1px solid var(--gray-300);
+      border-radius: 8px;
+      padding: 0.625rem 0.875rem;
+      font-size: 0.9rem;
     }
     
     .form-control:focus {
-      border-color: var(--cs-accent);
-      box-shadow: 0 0 0 4px rgba(0,168,232,0.15);
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15);
     }
     
     .input-group-text {
-      background: #f8fafc;
-      border: 2px solid #e2e8f0;
+      background: var(--gray-100);
+      border: 1px solid var(--gray-300);
       border-right: none;
-      border-radius: 10px 0 0 10px;
-      color: #64748b;
+      color: var(--gray-500);
     }
     
     .input-group .form-control {
       border-left: none;
-      border-radius: 0 10px 10px 0;
     }
     
     .input-group:focus-within .input-group-text {
-      border-color: var(--cs-accent);
+      border-color: var(--primary);
     }
     
     .btn-login {
-      background: var(--cs-gradient-primary);
-      border: none;
-      border-radius: 10px;
-      padding: 0.875rem 1.5rem;
-      font-weight: 600;
-      font-size: 1rem;
       width: 100%;
-      color: #ffffff;
-      transition: all 0.2s ease;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      padding: 0.625rem 1rem;
+      font-weight: 500;
+      font-size: 0.9rem;
+      color: var(--white);
+      transition: background 0.15s;
     }
     
     .btn-login:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,119,182,0.35);
-      color: #ffffff;
-    }
-    
-    .alert {
-      border: none;
-      border-radius: 10px;
-      padding: 1rem;
-    }
-    
-    .alert-danger {
-      background: rgba(239,71,111,0.1);
-      color: #be185d;
-    }
-    
-    .alert-success {
-      background: rgba(6,214,160,0.1);
-      color: #047857;
+      background: var(--primary-hover);
+      color: var(--white);
     }
     
     .back-link {
@@ -216,75 +184,89 @@
     }
     
     .back-link a {
-      color: #64748b;
-      text-decoration: none;
+      color: var(--gray-600);
       font-size: 0.875rem;
-      transition: color 0.2s ease;
+      text-decoration: none;
     }
     
     .back-link a:hover {
-      color: var(--cs-primary);
+      color: var(--primary);
+    }
+    
+    .alert {
+      border: none;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      padding: 0.75rem 1rem;
+    }
+    
+    .alert-danger {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+    
+    .alert-success {
+      background: #d1fae5;
+      color: #065f46;
     }
     
     /* Footer */
-    .login-footer {
-      text-align: center;
+    .site-footer {
       padding: 1.5rem 2rem;
-      color: rgba(255,255,255,0.5);
-      font-size: 0.875rem;
+      text-align: center;
     }
     
-    .login-footer a {
-      color: var(--cs-accent);
+    .site-footer p {
+      color: var(--gray-500);
+      font-size: 0.8rem;
+      margin: 0;
+    }
+    
+    .site-footer a {
+      color: var(--accent);
       text-decoration: none;
-    }
-    
-    .login-footer a:hover {
-      text-decoration: underline;
     }
   </style>
 </head>
 <body>
-  <!-- Top Navigation -->
-  {{!-- <nav class="top-nav">
+  <header class="site-header">
     <a href="/" class="brand">
       <i class="bi bi-diagram-3"></i> Cloudstrucc
     </a>
-    <div class="nav-links">
+    <nav class="nav-links">
       <a href="https://cloudstrucc.com">About</a>
       <a href="https://diagrams.cloudstrucc.com">Diagrams</a>
-    </div>
-  </nav> --}}
+    </nav>
+  </header>
   
-  <!-- Login Form -->
-  <div class="login-wrapper">
+  <main class="login-main">
     <div class="login-card">
-      <div class="login-logo">
-        <div class="logo-icon">
+      <div class="login-header">
+        <div class="icon">
           <i class="bi bi-diagram-3"></i>
         </div>
-        <h1>Cloudstrucc BA Forms</h1>
+        <h1>Welcome back</h1>
         <p>Sign in to your admin account</p>
       </div>
       
       {{#if messages.error}}
-      <div class="alert alert-danger mb-4">
+      <div class="alert alert-danger mb-3">
         <i class="bi bi-exclamation-circle me-2"></i>{{messages.error}}
       </div>
       {{/if}}
       
       {{#if messages.success}}
-      <div class="alert alert-success mb-4">
+      <div class="alert alert-success mb-3">
         <i class="bi bi-check-circle me-2"></i>{{messages.success}}
       </div>
       {{/if}}
       
       <form action="/admin/login" method="POST">
         <div class="mb-3">
-          <label for="email" class="form-label">Email Address</label>
+          <label for="email" class="form-label">Email</label>
           <div class="input-group">
             <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-            <input type="email" class="form-control" id="email" name="email" placeholder="admin@cloudstrucc.com" required autofocus>
+            <input type="email" class="form-control" id="email" name="email" placeholder="you@example.com" required autofocus>
           </div>
         </div>
         
@@ -297,21 +279,18 @@
         </div>
         
         <button type="submit" class="btn btn-login">
-          <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+          Sign In
         </button>
       </form>
       
       <div class="back-link">
-        <a href="/"><i class="bi bi-arrow-left me-1"></i>Back to Public Site</a>
+        <a href="/"><i class="bi bi-arrow-left me-1"></i>Back to home</a>
       </div>
     </div>
-  </div>
+  </main>
   
-  <!-- Footer -->
-  <footer class="login-footer">
-    <p>&copy; 2026 <a href="https://cloudstrucc.com">Cloudstrucc Inc.</a> All Rights Reserved.</p>
+  <footer class="site-footer">
+    <p>&copy; 2026 <a href="https://cloudstrucc.com">Cloudstrucc Inc.</a></p>
   </footer>
-  
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
