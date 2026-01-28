@@ -1,118 +1,114 @@
-<!-- Hero Section -->
-<section style="padding: 6rem 0; text-align: center;">
+<!-- Hero Section - 96px vertical padding -->
+<section class="hero-section" style="background: var(--color-bg-page);">
   <div class="container">
-    <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 1.5rem; line-height: 1.2;">
-      Business Analysis<br>
-      <span style="color: #06b6d4;">Questionnaires</span>
-    </h1>
-    <p style="font-size: 1.125rem; color: #94a3b8; max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.7;">
-      Streamline your requirements gathering with interactive, branded questionnaires for Dynamics 365, Power Platform, and enterprise technology implementations.
+    <h1>Business Analysis<br><span style="color: var(--color-primary);">Questionnaires</span></h1>
+    <p class="lead">
+      Streamline your requirements gathering with interactive questionnaires for Dynamics 365, Power Platform, and enterprise technology implementations.
     </p>
-    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-      <a href="#access" style="background: #06b6d4; color: #fff; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.15s;">
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+      <a href="#access" class="btn btn-primary btn-lg">
         <i class="bi bi-key"></i> Enter Access Code
       </a>
-      <a href="#features" style="background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+      <a href="#features" class="btn btn-outline-secondary btn-lg">
         <i class="bi bi-info-circle"></i> Learn More
       </a>
     </div>
-    <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #64748b;">
+    <p class="text-muted text-sm mt-4">
       No account required &nbsp;•&nbsp; Auto-save enabled &nbsp;•&nbsp; Secure access
     </p>
   </div>
 </section>
 
 <!-- Access Code Section -->
-<section id="access" style="padding: 5rem 0; background: #0f172a;">
+<section id="access" class="section section-alt">
   <div class="container">
-    <div style="max-width: 480px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 2.5rem;">
-      <div style="text-align: center; margin-bottom: 2rem;">
-        <div style="width: 48px; height: 48px; background: rgba(6,182,212,0.15); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
-          <i class="bi bi-key" style="font-size: 1.25rem; color: #22d3ee;"></i>
+    <div style="max-width: 480px; margin: 0 auto;">
+      <div class="card" style="padding: var(--space-8);">
+        <div style="text-align: center; margin-bottom: var(--space-6);">
+          <div style="width: 48px; height: 48px; background: var(--indigo-100); border-radius: var(--radius-lg); display: inline-flex; align-items: center; justify-content: center; margin-bottom: var(--space-4);">
+            <i class="bi bi-key" style="font-size: 1.25rem; color: var(--indigo-600);"></i>
+          </div>
+          <h3 style="margin-bottom: var(--space-2);">Have an Access Code?</h3>
+          <p class="text-muted" style="margin: 0;">Enter your 8-character code to access your questionnaire</p>
         </div>
-        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Have an Access Code?</h2>
-        <p style="color: #94a3b8; font-size: 0.9rem;">Enter your 8-character code to access your questionnaire</p>
+        
+        <form action="/access" method="GET">
+          <div class="d-flex gap-3">
+            <input type="text" name="code" class="form-control form-control-lg" placeholder="ABCD1234" maxlength="8" pattern="[A-Za-z0-9]{8}" required style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: 600;">
+            <button type="submit" class="btn btn-primary btn-lg" style="padding-left: var(--space-5); padding-right: var(--space-5);">
+              <i class="bi bi-arrow-right"></i>
+            </button>
+          </div>
+        </form>
       </div>
-      
-      <form action="/access" method="GET">
-        <div style="display: flex; gap: 0.75rem;">
-          <input type="text" name="code" placeholder="ABCD1234" maxlength="8" pattern="[A-Za-z0-9]{8}" required
-            style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 10px; padding: 0.875rem 1rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: 600;">
-          <button type="submit" style="background: #06b6d4; border: none; color: #fff; border-radius: 10px; padding: 0.875rem 1.25rem; cursor: pointer;">
-            <i class="bi bi-arrow-right" style="font-size: 1.25rem;"></i>
-          </button>
-        </div>
-      </form>
     </div>
   </div>
 </section>
 
-<!-- Features Section -->
-<section id="features" style="padding: 5rem 0;">
+<!-- Features Section - 96px vertical spacing -->
+<section id="features" class="section">
   <div class="container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Powerful Features</h2>
-      <p style="color: #94a3b8; font-size: 1rem;">Everything you need to gather requirements effectively</p>
-    </div>
+    <h2 class="section-title">Powerful Features</h2>
+    <p class="section-subtitle">Everything you need to gather requirements effectively</p>
     
     <div class="row g-4">
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-cloud-check" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-cloud-check"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Auto-Save Progress</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Your answers are saved automatically. Pick up where you left off anytime, from any device.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Auto-Save Progress</h4>
+          <p class="text-muted mb-0">Your answers are saved automatically. Pick up where you left off anytime.</p>
         </div>
       </div>
       
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-shield-check" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-shield-check"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Secure & Private</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Access codes ensure only authorized users can view and complete your questionnaires.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Secure & Private</h4>
+          <p class="text-muted mb-0">Access codes ensure only authorized users can view your questionnaires.</p>
         </div>
       </div>
       
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-phone" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-phone"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Mobile Friendly</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Complete questionnaires on desktop, tablet, or mobile with a fully responsive design.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Mobile Friendly</h4>
+          <p class="text-muted mb-0">Complete questionnaires on desktop, tablet, or mobile devices.</p>
         </div>
       </div>
       
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-file-earmark-text" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-file-earmark-text"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Comprehensive Templates</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Pre-built questionnaires covering D365, Power Platform, SAP, governance, and more.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Comprehensive Templates</h4>
+          <p class="text-muted mb-0">Pre-built questionnaires for D365, Power Platform, SAP, and more.</p>
         </div>
       </div>
       
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-graph-up" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-graph-up"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Progress Tracking</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">See your completion percentage and know exactly what's left to answer.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Progress Tracking</h4>
+          <p class="text-muted mb-0">See your completion percentage and know what's left to answer.</p>
         </div>
       </div>
       
       <div class="col-md-6 col-lg-4">
-        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
-          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
-            <i class="bi bi-download" style="font-size: 1.25rem; color: #22d3ee;"></i>
+        <div class="card h-100" style="padding: var(--space-6);">
+          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
+            <i class="bi bi-download"></i>
           </div>
-          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Export Options</h3>
-          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Download completed questionnaires as Word documents or formatted reports.</p>
+          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Export Options</h4>
+          <p class="text-muted mb-0">Download completed questionnaires as Word documents.</p>
         </div>
       </div>
     </div>
@@ -120,36 +116,34 @@
 </section>
 
 <!-- Templates Section -->
-<section style="padding: 5rem 0; background: #020617;">
+<section class="section section-alt">
   <div class="container">
-    <div style="text-align: center; margin-bottom: 3rem;">
-      <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Available Questionnaires</h2>
-      <p style="color: #94a3b8; font-size: 1rem;">Comprehensive templates for enterprise implementations</p>
-    </div>
+    <h2 class="section-title">Available Questionnaires</h2>
+    <p class="section-subtitle">Comprehensive templates for enterprise implementations</p>
     
-    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem;">
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+    <div class="d-flex flex-wrap justify-content-center gap-2">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-microsoft me-1"></i>Dynamics 365 Sales
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-headset me-1"></i>D365 Customer Service
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-chat-dots me-1"></i>D365 Omnichannel
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-grid me-1"></i>Power Apps
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-globe me-1"></i>Power Pages
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-shield-lock me-1"></i>Platform Governance
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-box-seam me-1"></i>SAP S/4HANA
       </span>
-      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
         <i class="bi bi-plus-lg me-1"></i>Custom Templates
       </span>
     </div>
@@ -157,17 +151,13 @@
 </section>
 
 <!-- CTA Section -->
-<section style="padding: 5rem 0; text-align: center;">
+<section class="section" style="text-align: center;">
   <div class="container">
-    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Ready to Get Started?</h2>
-    <p style="color: #94a3b8; font-size: 1.125rem; margin-bottom: 2rem;">Contact us to set up questionnaires for your project</p>
-    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
-      <a href="https://cloudstrucc.com#contact" style="background: #06b6d4; color: #fff; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none;">
-        Contact Us
-      </a>
-      <a href="/admin/login" style="background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none;">
-        Admin Login
-      </a>
+    <h2 class="section-title">Ready to Get Started?</h2>
+    <p class="section-subtitle" style="margin-bottom: var(--space-8);">Contact us to set up questionnaires for your project</p>
+    <div class="d-flex justify-content-center gap-3 flex-wrap">
+      <a href="https://cloudstrucc.com#contact" class="btn btn-primary btn-lg">Contact Us</a>
+      <a href="/admin/login" class="btn btn-outline-secondary btn-lg">Admin Login</a>
     </div>
   </div>
 </section>

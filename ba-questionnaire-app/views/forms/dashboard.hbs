@@ -1,160 +1,186 @@
-<div class="container py-4">
-  <!-- Welcome Header -->
-  <div class="card mb-4" style="background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);">
-    <div class="card-body p-4 text-white">
-      <div class="row align-items-center">
-        <div class="col-md-8">
-          <h2 class="mb-2">Welcome, {{invite.client_name}}!</h2>
-          <p class="mb-0 opacity-75">
-            {{#if invite.client_company}}{{invite.client_company}} | {{/if}}
-            Please complete the questionnaire(s) below
-          </p>
-        </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-          {{#if deadlineFormatted}}
-            <div class="d-inline-block bg-white bg-opacity-10 rounded px-3 py-2">
-              <small class="d-block opacity-75">Deadline</small>
-              <strong>{{deadlineFormatted}}</strong>
-            </div>
-          {{/if}}
-        </div>
+<!-- Stats Row -->
+<div class="row g-4 mb-4">
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon indigo">
+        <i class="bi bi-envelope-paper"></i>
       </div>
+      <div class="stat-value">{{stats.totalInvites}}</div>
+      <div class="stat-label">Total Invites</div>
     </div>
   </div>
   
-  <!-- Progress Overview -->
-  <div class="row g-4 mb-4">
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(0,168,232,0.1); color: var(--cs-accent);">
-          <i class="bi bi-file-text"></i>
-        </div>
-        <div class="stat-number">{{totalForms}}</div>
-        <div class="stat-label">Total Forms</div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon cyan">
+        <i class="bi bi-hourglass-split"></i>
       </div>
-    </div>
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(255,193,7,0.1); color: var(--cs-warning);">
-          <i class="bi bi-hourglass-split"></i>
-        </div>
-        <div class="stat-number">{{inProgressCount}}</div>
-        <div class="stat-label">In Progress</div>
-      </div>
-    </div>
-    <div class="col-md-4">
-      <div class="stat-card">
-        <div class="stat-icon" style="background: rgba(40,167,69,0.1); color: var(--cs-success);">
-          <i class="bi bi-check-circle"></i>
-        </div>
-        <div class="stat-number">{{completedCount}}</div>
-        <div class="stat-label">Completed</div>
-      </div>
+      <div class="stat-value">{{stats.inProgress}}</div>
+      <div class="stat-label">In Progress</div>
     </div>
   </div>
   
-  <!-- Forms List -->
-  <h4 class="mb-3"><i class="bi bi-list-check me-2"></i>Your Questionnaires</h4>
-  
-  <div class="row g-4" id="formsList" data-invite-code="{{inviteCode}}">
-    {{#each forms}}
-      <div class="col-md-6">
-        <div class="card h-100 form-card" data-slug="{{this.slug}}" data-status="{{this.status}}" data-progress="{{this.progress}}">
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-start mb-3">
-              <h5 class="card-title mb-0">{{this.title}}</h5>
-              <span class="badge status-badge"></span>
-            </div>
-            
-            {{#if this.description}}
-              <p class="text-muted small mb-3">{{this.description}}</p>
-            {{/if}}
-            
-            <div class="mb-3">
-              <div class="d-flex justify-content-between mb-1">
-                <small class="text-muted">Progress</small>
-                <small class="text-muted progress-text">0%</small>
-              </div>
-              <div class="progress" style="height: 8px;">
-                <div class="progress-bar" style="width: 0%"></div>
-              </div>
-            </div>
-          </div>
-          <div class="card-footer bg-transparent">
-            <a href="#" class="btn btn-primary w-100 form-link">
-              <i class="bi bi-play me-2"></i>Start Questionnaire
-            </a>
-          </div>
-        </div>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon emerald">
+        <i class="bi bi-check-circle"></i>
       </div>
-    {{/each}}
+      <div class="stat-value">{{stats.completed}}</div>
+      <div class="stat-label">Completed</div>
+    </div>
   </div>
   
-  <!-- Help Section -->
-  <div class="card mt-4 bg-light border-0">
-    <div class="card-body">
-      <div class="row align-items-center">
-        <div class="col-md-8">
-          <h5><i class="bi bi-question-circle me-2"></i>Need Help?</h5>
-          <p class="mb-0 text-muted">
-            Your progress is automatically saved as you work. Use your access code 
-            <code>{{inviteCode}}</code> to return anytime.
-          </p>
+  <div class="col-sm-6 col-xl-3">
+    <div class="stat-card">
+      <div class="stat-icon amber">
+        <i class="bi bi-clock-history"></i>
+      </div>
+      <div class="stat-value">{{stats.expiringSoon}}</div>
+      <div class="stat-label">Expiring Soon</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Recent Activity -->
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Recent Activity</span>
+        <a href="/admin/submissions" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body p-0">
+        {{#if recentActivity.length}}
+        <div class="table-responsive">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Client</th>
+                <th>Form</th>
+                <th>Status</th>
+                <th>Progress</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each recentActivity}}
+              <tr>
+                <td>
+                  <div style="font-weight: 500; color: var(--color-text-primary);">{{this.clientName}}</div>
+                  <div class="text-sm text-muted">{{this.clientEmail}}</div>
+                </td>
+                <td>{{this.formName}}</td>
+                <td>
+                  {{#if (eq this.status 'completed')}}
+                  <span class="badge badge-emerald">Completed</span>
+                  {{else if (eq this.status 'in-progress')}}
+                  <span class="badge badge-indigo">In Progress</span>
+                  {{else}}
+                  <span class="badge badge-slate">Pending</span>
+                  {{/if}}
+                </td>
+                <td style="width: 120px;">
+                  <div class="progress" style="height: 6px;">
+                    <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                  </div>
+                  <div class="text-xs text-muted mt-1">{{this.progress}}%</div>
+                </td>
+                <td class="text-muted text-sm">{{formatDate this.updatedAt}}</td>
+              </tr>
+              {{/each}}
+            </tbody>
+          </table>
         </div>
-        <div class="col-md-4 text-md-end mt-3 mt-md-0">
-          <a href="mailto:contact-us@cloudstrucc.com" class="btn btn-outline-primary">
-            <i class="bi bi-envelope me-2"></i>Contact Support
+        {{else}}
+        <div class="empty-state">
+          <i class="bi bi-inbox"></i>
+          <h5>No recent activity</h5>
+          <p>Activity will appear here once clients start filling out questionnaires.</p>
+          <a href="/admin/invites/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>Create First Invite
           </a>
         </div>
+        {{/if}}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Quick Actions & Expiring Soon -->
+  <div class="col-lg-4">
+    <!-- Quick Actions -->
+    <div class="card mb-4">
+      <div class="card-header">Quick Actions</div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          <a href="/admin/invites/new" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-2"></i>New Invite
+          </a>
+          <a href="/admin/forms" class="btn btn-outline-secondary">
+            <i class="bi bi-file-text me-2"></i>Manage Forms
+          </a>
+          <a href="/admin/submissions" class="btn btn-outline-secondary">
+            <i class="bi bi-inbox me-2"></i>View Submissions
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Expiring Soon -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Expiring Soon</span>
+        <span class="badge badge-amber">{{expiringSoon.length}}</span>
+      </div>
+      <div class="card-body p-0">
+        {{#if expiringSoon.length}}
+        <ul class="list-group list-group-flush">
+          {{#each expiringSoon}}
+          <li class="list-group-item">
+            <div class="d-flex justify-content-between align-items-start">
+              <div>
+                <div style="font-weight: 500; color: var(--color-text-primary);">{{this.clientName}}</div>
+                <div class="text-sm text-muted">{{this.formName}}</div>
+              </div>
+              <span class="badge badge-amber">{{daysUntil this.expiresAt}}d</span>
+            </div>
+          </li>
+          {{/each}}
+        </ul>
+        {{else}}
+        <div class="p-4 text-center text-muted">
+          <i class="bi bi-check-circle d-block mb-2" style="font-size: 1.5rem; color: var(--emerald-500);"></i>
+          <span class="text-sm">No invites expiring soon</span>
+        </div>
+        {{/if}}
       </div>
     </div>
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  const inviteCode = document.getElementById('formsList').dataset.inviteCode;
-  console.log('Invite code:', inviteCode);
-  
-  document.querySelectorAll('.form-card').forEach(function(card) {
-    const slug = card.dataset.slug;
-    const status = card.dataset.status || '';
-    const progress = parseInt(card.dataset.progress) || 0;
-    
-    console.log('Form:', slug, 'Status:', status, 'Progress:', progress);
-    
-    // Set status badge
-    const badge = card.querySelector('.status-badge');
-    if (status === 'submitted') {
-      badge.className = 'badge bg-success';
-      badge.textContent = 'Completed';
-    } else if (status === 'in_progress' || progress > 0) {
-      badge.className = 'badge bg-warning';
-      badge.textContent = 'In Progress';
-    } else {
-      badge.className = 'badge bg-secondary';
-      badge.textContent = 'Not Started';
-    }
-    
-    // Set progress
-    card.querySelector('.progress-text').textContent = progress + '%';
-    card.querySelector('.progress-bar').style.width = progress + '%';
-    
-    // Set link
-    const link = card.querySelector('.form-link');
-    if (status === 'submitted') {
-      link.className = 'btn btn-success w-100 disabled';
-      link.innerHTML = '<i class="bi bi-check-circle me-2"></i>Completed';
-    } else {
-      const formUrl = '/form/' + inviteCode + '/' + slug;
-      console.log('Form URL:', formUrl);
-      link.href = formUrl;
-      if (progress > 0) {
-        link.innerHTML = '<i class="bi bi-pencil me-2"></i>Continue';
-      } else {
-        link.innerHTML = '<i class="bi bi-play me-2"></i>Start Questionnaire';
-      }
-    }
-  });
-});
-</script>
+<!-- Getting Started Guide (show if no invites) -->
+{{#unless stats.totalInvites}}
+<div class="card mt-4" style="border-color: var(--indigo-200); background: var(--indigo-50);">
+  <div class="card-body">
+    <div class="d-flex gap-4">
+      <div style="width: 48px; height: 48px; background: var(--indigo-100); border-radius: var(--radius-lg); display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+        <i class="bi bi-lightbulb" style="font-size: 1.25rem; color: var(--indigo-600);"></i>
+      </div>
+      <div>
+        <h5 style="color: var(--indigo-900); margin-bottom: var(--space-2);">Getting Started</h5>
+        <p style="color: var(--indigo-700); margin-bottom: var(--space-4);">
+          Welcome to Cloudstrucc BA Forms! Here's how to get started:
+        </p>
+        <ol style="color: var(--indigo-700); margin-bottom: var(--space-4); padding-left: 1.25rem;">
+          <li class="mb-2">Go to <strong>Forms</strong> to upload your questionnaire templates (Markdown format)</li>
+          <li class="mb-2">Create an <strong>Invite</strong> with client details and select a form</li>
+          <li class="mb-2">Share the access code or link with your client</li>
+          <li>Track progress and download submissions when complete</li>
+        </ol>
+        <a href="/admin/invites/new" class="btn btn-primary">
+          <i class="bi bi-plus-lg me-2"></i>Create Your First Invite
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{{/unless}}
