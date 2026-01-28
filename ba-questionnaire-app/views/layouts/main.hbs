@@ -13,56 +13,466 @@
   
   <style>
     :root {
-      --primary: #3b82f6;
-      --primary-hover: #2563eb;
-      --accent: #06b6d4;
-      --dark: #111827;
-      --gray-900: #1f2937;
-      --gray-800: #374151;
-      --gray-700: #4b5563;
-      --gray-600: #6b7280;
-      --gray-500: #9ca3af;
-      --gray-400: #d1d5db;
-      --gray-300: #e5e7eb;
-      --gray-200: #f3f4f6;
-      --gray-100: #f9fafb;
+      /* Exact diagrams.cloudstrucc.com colors */
+      --slate-950: #020617;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-400: #94a3b8;
+      --slate-300: #cbd5e1;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
       --white: #ffffff;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
+      --cyan-400: #22d3ee;
+      --cyan-500: #06b6d4;
+      --cyan-600: #0891b2;
+      --blue-500: #3b82f6;
+      --blue-600: #2563eb;
+      --emerald-500: #10b981;
+      --amber-500: #f59e0b;
+      --red-500: #ef4444;
     }
+    
+    * { box-sizing: border-box; }
     
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--gray-100);
-      color: var(--dark);
+      background: var(--slate-900);
+      color: var(--white);
+      margin: 0;
       min-height: 100vh;
     }
     
-    /* Admin Layout */
-    .admin-wrapper {
+    a { text-decoration: none; }
+    
+    /* ============ ADMIN LAYOUT ============ */
+    .admin-layout {
       display: flex;
       min-height: 100vh;
     }
     
-    /* Sidebar - Clean Dark */
+    /* Sidebar */
     .sidebar {
-      width: 250px;
-      background: var(--gray-900);
+      width: 260px;
+      background: var(--slate-950);
+      border-right: 1px solid var(--slate-800);
       position: fixed;
       height: 100vh;
-      overflow-y: auto;
-      z-index: 1000;
+      display: flex;
+      flex-direction: column;
     }
     
-    .sidebar-brand {
-      padding: 1.25rem 1.5rem;
-      border-bottom: 1px solid var(--gray-800);
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--slate-800);
     }
     
-    .sidebar-brand a {
+    .sidebar-header a {
       color: var(--white);
-      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.125rem;
+      display: flex;
+      align-items: center;
+      gap: 0.625rem;
+    }
+    
+    .sidebar-header i {
+      color: var(--cyan-400);
+      font-size: 1.25rem;
+    }
+    
+    .sidebar-nav {
+      flex: 1;
+      padding: 1.5rem 0;
+      overflow-y: auto;
+    }
+    
+    .nav-group-label {
+      padding: 0.5rem 1.5rem;
+      font-size: 0.6875rem;
+      font-weight: 600;
+      color: var(--slate-500);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    
+    .nav-item {
+      display: block;
+      padding: 0.75rem 1.5rem;
+      color: var(--slate-400);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+      border-left: 2px solid transparent;
+    }
+    
+    .nav-item:hover {
+      color: var(--white);
+      background: var(--slate-800);
+    }
+    
+    .nav-item.active {
+      color: var(--white);
+      background: var(--slate-800);
+      border-left-color: var(--cyan-400);
+    }
+    
+    .nav-item i {
+      margin-right: 0.75rem;
+      width: 18px;
+      display: inline-block;
+    }
+    
+    .sidebar-footer {
+      padding: 1rem 1.5rem;
+      border-top: 1px solid var(--slate-800);
+    }
+    
+    .user-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      background: var(--cyan-500);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 0.875rem;
+    }
+    
+    .user-name {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .user-role {
+      font-size: 0.75rem;
+      color: var(--slate-500);
+    }
+    
+    /* Main Content */
+    .main-wrap {
+      flex: 1;
+      margin-left: 260px;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    
+    .topbar {
+      padding: 1rem 2rem;
+      border-bottom: 1px solid var(--slate-800);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--slate-900);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+    
+    .topbar h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .topbar-actions .btn {
+      background: transparent;
+      border: 1px solid var(--slate-700);
+      color: var(--slate-300);
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    
+    .topbar-actions .btn:hover {
+      border-color: var(--cyan-400);
+      color: var(--cyan-400);
+    }
+    
+    .page-content {
+      flex: 1;
+      padding: 2rem;
+    }
+    
+    /* Cards */
+    .card {
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: 12px;
+    }
+    
+    .card-header {
+      padding: 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--slate-700);
+      background: transparent;
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+    
+    .card-body {
+      padding: 1.5rem;
+    }
+    
+    /* Stat Cards */
+    .stat-card {
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: 12px;
+      padding: 1.5rem;
+    }
+    
+    .stat-card .stat-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.25rem;
+      margin-bottom: 1rem;
+    }
+    
+    .stat-card .stat-icon.cyan { background: rgba(6,182,212,0.15); color: var(--cyan-400); }
+    .stat-card .stat-icon.blue { background: rgba(59,130,246,0.15); color: var(--blue-500); }
+    .stat-card .stat-icon.emerald { background: rgba(16,185,129,0.15); color: var(--emerald-500); }
+    .stat-card .stat-icon.amber { background: rgba(245,158,11,0.15); color: var(--amber-500); }
+    
+    .stat-card .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 0.25rem;
+    }
+    
+    .stat-card .stat-label {
+      font-size: 0.875rem;
+      color: var(--slate-400);
+    }
+    
+    /* Buttons */
+    .btn-primary {
+      background: var(--cyan-500);
+      border: none;
+      color: var(--white);
+      padding: 0.625rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 500;
+      font-size: 0.875rem;
+      transition: all 0.15s;
+    }
+    
+    .btn-primary:hover {
+      background: var(--cyan-600);
+      color: var(--white);
+    }
+    
+    .btn-secondary {
+      background: var(--slate-700);
+      border: none;
+      color: var(--white);
+      padding: 0.625rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    
+    .btn-secondary:hover {
+      background: var(--slate-600);
+      color: var(--white);
+    }
+    
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--slate-600);
+      color: var(--slate-300);
+      padding: 0.625rem 1.25rem;
+      border-radius: 8px;
+      font-weight: 500;
+    }
+    
+    .btn-outline:hover {
+      border-color: var(--slate-500);
+      color: var(--white);
+    }
+    
+    /* Tables */
+    .table {
+      color: var(--slate-300);
+      margin: 0;
+    }
+    
+    .table thead th {
+      background: var(--slate-900);
+      color: var(--slate-400);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--slate-700);
+      border-top: none;
+    }
+    
+    .table tbody td {
+      padding: 1rem 1.25rem;
+      border-color: var(--slate-700);
+      vertical-align: middle;
+    }
+    
+    .table tbody tr:hover {
+      background: var(--slate-800);
+    }
+    
+    /* Badges */
+    .badge {
+      padding: 0.375rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+    
+    .badge-cyan { background: rgba(6,182,212,0.15); color: var(--cyan-400); }
+    .badge-emerald { background: rgba(16,185,129,0.15); color: var(--emerald-500); }
+    .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber-500); }
+    .badge-red { background: rgba(239,68,68,0.15); color: var(--red-500); }
+    .badge-slate { background: var(--slate-700); color: var(--slate-300); }
+    
+    /* Forms */
+    .form-label {
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--slate-300);
+      margin-bottom: 0.5rem;
+    }
+    
+    .form-control, .form-select {
+      background: var(--slate-900);
+      border: 1px solid var(--slate-700);
+      color: var(--white);
+      border-radius: 8px;
+      padding: 0.625rem 1rem;
+      font-size: 0.875rem;
+    }
+    
+    .form-control:focus, .form-select:focus {
+      background: var(--slate-900);
+      border-color: var(--cyan-500);
+      color: var(--white);
+      box-shadow: 0 0 0 3px rgba(6,182,212,0.15);
+    }
+    
+    .form-control::placeholder {
+      color: var(--slate-500);
+    }
+    
+    /* Alerts */
+    .alert {
+      border: none;
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-size: 0.875rem;
+    }
+    
+    .alert-success {
+      background: rgba(16,185,129,0.15);
+      color: var(--emerald-500);
+    }
+    
+    .alert-danger {
+      background: rgba(239,68,68,0.15);
+      color: var(--red-500);
+    }
+    
+    .alert-info {
+      background: rgba(6,182,212,0.15);
+      color: var(--cyan-400);
+    }
+    
+    /* Progress */
+    .progress {
+      height: 6px;
+      background: var(--slate-700);
+      border-radius: 3px;
+    }
+    
+    .progress-bar {
+      background: var(--cyan-500);
+    }
+    
+    /* Modals */
+    .modal-content {
+      background: var(--slate-800);
+      border: 1px solid var(--slate-700);
+      border-radius: 16px;
+    }
+    
+    .modal-header {
+      border-bottom: 1px solid var(--slate-700);
+      padding: 1.25rem 1.5rem;
+    }
+    
+    .modal-header .btn-close {
+      filter: invert(1);
+    }
+    
+    .modal-body {
+      padding: 1.5rem;
+    }
+    
+    .modal-footer {
+      border-top: 1px solid var(--slate-700);
+      padding: 1rem 1.5rem;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+      color: var(--slate-500);
+    }
+    
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      color: var(--slate-600);
+    }
+    
+    .empty-state h5 {
+      color: var(--slate-300);
+      margin-bottom: 0.5rem;
+    }
+    
+    /* ============ PUBLIC LAYOUT ============ */
+    .public-layout {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .public-header {
+      padding: 1.25rem 0;
+      border-bottom: 1px solid var(--slate-800);
+    }
+    
+    .public-header .container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .public-header .brand {
+      color: var(--white);
       font-weight: 600;
       font-size: 1.125rem;
       display: flex;
@@ -70,336 +480,65 @@
       gap: 0.5rem;
     }
     
-    .sidebar-brand i {
-      color: var(--accent);
+    .public-header .brand i {
+      color: var(--cyan-400);
     }
     
-    .sidebar-nav {
-      padding: 1rem 0;
-    }
-    
-    .nav-section {
-      padding: 0.5rem 1.5rem;
-      font-size: 0.7rem;
-      font-weight: 600;
-      color: var(--gray-500);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-top: 0.5rem;
-    }
-    
-    .sidebar-nav .nav-link {
-      color: var(--gray-400);
-      padding: 0.75rem 1.5rem;
+    .public-header .nav-links {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 2rem;
+    }
+    
+    .public-header .nav-links a {
+      color: var(--slate-400);
       font-size: 0.9rem;
       font-weight: 500;
-      transition: all 0.15s ease;
-      border-left: 2px solid transparent;
+      transition: color 0.15s;
     }
     
-    .sidebar-nav .nav-link:hover {
+    .public-header .nav-links a:hover {
       color: var(--white);
-      background: var(--gray-800);
     }
     
-    .sidebar-nav .nav-link.active {
+    .public-header .nav-links .btn {
+      background: var(--cyan-500);
       color: var(--white);
-      background: var(--gray-800);
-      border-left-color: var(--primary);
-    }
-    
-    .sidebar-nav .nav-link i {
-      font-size: 1rem;
-      width: 20px;
-    }
-    
-    .sidebar-footer {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      padding: 1rem 1.5rem;
-      border-top: 1px solid var(--gray-800);
-      background: var(--gray-900);
-    }
-    
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-    }
-    
-    .user-avatar {
-      width: 32px;
-      height: 32px;
-      background: var(--primary);
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--white);
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    
-    .user-info .user-name {
-      color: var(--white);
-      font-size: 0.875rem;
-      font-weight: 500;
-    }
-    
-    .user-info .user-role {
-      color: var(--gray-500);
-      font-size: 0.75rem;
-    }
-    
-    /* Main Content */
-    .main-content {
-      flex: 1;
-      margin-left: 250px;
-    }
-    
-    .top-bar {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-300);
-      padding: 1rem 1.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    
-    .top-bar h1 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      margin: 0;
-      color: var(--dark);
-    }
-    
-    .content-area {
-      padding: 1.5rem;
-    }
-    
-    /* Cards */
-    .card {
-      background: var(--white);
-      border: 1px solid var(--gray-300);
-      border-radius: 8px;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-    }
-    
-    .card-header {
-      background: var(--white);
-      border-bottom: 1px solid var(--gray-300);
-      padding: 1rem 1.25rem;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-    
-    /* Stat Cards */
-    .stat-card {
-      background: var(--white);
-      border: 1px solid var(--gray-300);
-      border-radius: 8px;
-      padding: 1.25rem;
-    }
-    
-    .stat-card .stat-label {
-      font-size: 0.8rem;
-      color: var(--gray-600);
-      font-weight: 500;
-      margin-bottom: 0.5rem;
-    }
-    
-    .stat-card .stat-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: var(--dark);
-    }
-    
-    .stat-card .stat-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.25rem;
-    }
-    
-    .stat-card .stat-icon.blue { background: #dbeafe; color: #2563eb; }
-    .stat-card .stat-icon.cyan { background: #cffafe; color: #0891b2; }
-    .stat-card .stat-icon.green { background: #d1fae5; color: #059669; }
-    .stat-card .stat-icon.amber { background: #fef3c7; color: #d97706; }
-    
-    /* Buttons */
-    .btn-primary {
-      background: var(--primary);
-      border: none;
-      font-weight: 500;
       padding: 0.5rem 1rem;
-      border-radius: 6px;
-    }
-    
-    .btn-primary:hover {
-      background: var(--primary-hover);
-    }
-    
-    .btn-outline-primary {
-      color: var(--primary);
-      border-color: var(--gray-300);
-    }
-    
-    .btn-outline-primary:hover {
-      background: var(--primary);
-      border-color: var(--primary);
-    }
-    
-    /* Tables */
-    .table thead th {
-      background: var(--gray-100);
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--gray-600);
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      padding: 0.75rem 1rem;
-      border-bottom: 1px solid var(--gray-300);
-    }
-    
-    .table tbody td {
-      padding: 0.875rem 1rem;
-      vertical-align: middle;
-      border-color: var(--gray-200);
-      font-size: 0.9rem;
-    }
-    
-    /* Badges */
-    .badge {
+      border-radius: 8px;
       font-weight: 500;
-      font-size: 0.75rem;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
     }
     
-    .badge.bg-success { background: #d1fae5 !important; color: #065f46 !important; }
-    .badge.bg-warning { background: #fef3c7 !important; color: #92400e !important; }
-    .badge.bg-info { background: #dbeafe !important; color: #1e40af !important; }
-    .badge.bg-danger { background: #fee2e2 !important; color: #991b1b !important; }
-    
-    /* Forms */
-    .form-control, .form-select {
-      border: 1px solid var(--gray-300);
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
-      font-size: 0.9rem;
+    .public-header .nav-links .btn:hover {
+      background: var(--cyan-600);
     }
     
-    .form-control:focus, .form-select:focus {
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+    .public-main {
+      flex: 1;
     }
     
-    .form-label {
-      font-weight: 500;
-      font-size: 0.875rem;
-      color: var(--gray-700);
-      margin-bottom: 0.375rem;
-    }
-    
-    /* Alerts */
-    .alert {
-      border: none;
-      border-radius: 6px;
-      font-size: 0.9rem;
-    }
-    
-    .alert-success { background: #d1fae5; color: #065f46; }
-    .alert-danger { background: #fee2e2; color: #991b1b; }
-    .alert-info { background: #dbeafe; color: #1e40af; }
-    
-    /* Progress */
-    .progress {
-      height: 6px;
-      background: var(--gray-200);
-      border-radius: 3px;
-    }
-    
-    .progress-bar {
-      background: var(--primary);
-    }
-    
-    /* Modals */
-    .modal-content {
-      border: none;
-      border-radius: 12px;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.15);
-    }
-    
-    .modal-header {
-      border-bottom: 1px solid var(--gray-200);
-      padding: 1rem 1.25rem;
-    }
-    
-    .modal-footer {
-      border-top: 1px solid var(--gray-200);
-      padding: 0.75rem 1.25rem;
-    }
-    
-    /* Empty State */
-    .empty-state {
+    .public-footer {
+      border-top: 1px solid var(--slate-800);
+      padding: 2rem 0;
       text-align: center;
-      padding: 3rem;
-      color: var(--gray-500);
     }
     
-    .empty-state i {
-      font-size: 3rem;
-      color: var(--gray-400);
-      margin-bottom: 1rem;
+    .public-footer p {
+      color: var(--slate-500);
+      font-size: 0.875rem;
+      margin: 0;
     }
     
-    /* Public Header */
-    .public-header {
-      background: var(--gray-900);
-      padding: 1rem 0;
-    }
-    
-    .public-header .navbar-brand {
-      color: var(--white);
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .public-header .navbar-brand i {
-      color: var(--accent);
-    }
-    
-    .public-header .nav-link {
-      color: var(--gray-400) !important;
-      font-weight: 500;
-      font-size: 0.9rem;
-    }
-    
-    .public-header .nav-link:hover {
-      color: var(--white) !important;
+    .public-footer a {
+      color: var(--cyan-400);
     }
     
     /* Responsive */
-    @media (max-width: 991.98px) {
-      .sidebar {
-        transform: translateX(-100%);
-        transition: transform 0.2s ease;
-      }
+    @media (max-width: 991px) {
+      .sidebar { transform: translateX(-100%); transition: transform 0.2s; position: fixed; z-index: 1000; }
       .sidebar.show { transform: translateX(0); }
-      .main-content { margin-left: 0; }
-      .mobile-toggle { display: block !important; }
+      .main-wrap { margin-left: 0; }
+      .mobile-toggle { display: inline-flex !important; }
     }
     
     .mobile-toggle { display: none; }
@@ -407,109 +546,105 @@
 </head>
 <body>
   {{#if isAdmin}}
-  <div class="admin-wrapper">
-    <nav class="sidebar" id="sidebar">
-      <div class="sidebar-brand">
+  <div class="admin-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
         <a href="/admin/dashboard">
           <i class="bi bi-diagram-3"></i> Cloudstrucc
         </a>
       </div>
       
-      <div class="sidebar-nav">
-        <div class="nav-section">Main</div>
-        <a href="/admin/dashboard" class="nav-link {{#if isDashboard}}active{{/if}}">
-          <i class="bi bi-grid-1x2"></i> Dashboard
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Main</div>
+        <a href="/admin/dashboard" class="nav-item {{#if isDashboard}}active{{/if}}">
+          <i class="bi bi-grid-1x2"></i>Dashboard
         </a>
         
-        <div class="nav-section">Manage</div>
-        <a href="/admin/invites" class="nav-link {{#if isInvites}}active{{/if}}">
-          <i class="bi bi-envelope"></i> Invites
+        <div class="nav-group-label">Management</div>
+        <a href="/admin/invites" class="nav-item {{#if isInvites}}active{{/if}}">
+          <i class="bi bi-envelope"></i>Invites
         </a>
-        <a href="/admin/submissions" class="nav-link {{#if isSubmissions}}active{{/if}}">
-          <i class="bi bi-inbox"></i> Submissions
+        <a href="/admin/submissions" class="nav-item {{#if isSubmissions}}active{{/if}}">
+          <i class="bi bi-inbox"></i>Submissions
         </a>
-        <a href="/admin/forms" class="nav-link {{#if isForms}}active{{/if}}">
-          <i class="bi bi-file-text"></i> Forms
+        <a href="/admin/forms" class="nav-item {{#if isForms}}active{{/if}}">
+          <i class="bi bi-file-text"></i>Forms
         </a>
         
-        <div class="nav-section">Account</div>
-        <a href="/admin/logout" class="nav-link">
-          <i class="bi bi-box-arrow-left"></i> Sign Out
+        <div class="nav-group-label">Account</div>
+        <a href="/admin/logout" class="nav-item">
+          <i class="bi bi-box-arrow-left"></i>Sign Out
         </a>
-      </div>
+      </nav>
       
       <div class="sidebar-footer">
-        <div class="user-info">
-          <div class="user-avatar">
-            {{#if admin}}{{substring admin.email 0 1}}{{else}}A{{/if}}
-          </div>
+        <div class="user-badge">
+          <div class="user-avatar">{{#if admin}}{{substring admin.email 0 1}}{{else}}A{{/if}}</div>
           <div>
             <div class="user-name">{{#if admin}}{{admin.email}}{{else}}Admin{{/if}}</div>
             <div class="user-role">Administrator</div>
           </div>
         </div>
       </div>
-    </nav>
+    </aside>
     
-    <main class="main-content">
-      <header class="top-bar">
+    <div class="main-wrap">
+      <header class="topbar">
         <div class="d-flex align-items-center gap-3">
-          <button class="btn btn-link mobile-toggle d-lg-none p-0" onclick="document.getElementById('sidebar').classList.toggle('show')">
-            <i class="bi bi-list fs-4"></i>
+          <button class="btn mobile-toggle d-lg-none" onclick="document.getElementById('sidebar').classList.toggle('show')">
+            <i class="bi bi-list"></i>
           </button>
           <h1>{{title}}</h1>
         </div>
-        <a href="/" class="btn btn-outline-primary btn-sm" target="_blank">
-          <i class="bi bi-box-arrow-up-right me-1"></i> Public Site
-        </a>
+        <div class="topbar-actions">
+          <a href="/" class="btn" target="_blank">
+            <i class="bi bi-box-arrow-up-right me-2"></i>View Site
+          </a>
+        </div>
       </header>
       
-      <div class="content-area">
+      <main class="page-content">
         {{#if messages.success}}
-        <div class="alert alert-success mb-3">
+        <div class="alert alert-success mb-4">
           <i class="bi bi-check-circle me-2"></i>{{messages.success}}
         </div>
         {{/if}}
         
         {{#if messages.error}}
-        <div class="alert alert-danger mb-3">
+        <div class="alert alert-danger mb-4">
           <i class="bi bi-exclamation-circle me-2"></i>{{messages.error}}
         </div>
         {{/if}}
         
         {{{body}}}
-      </div>
-    </main>
+      </main>
+    </div>
   </div>
   {{else}}
-  <header class="public-header">
-    <div class="container">
-      <nav class="navbar navbar-expand-lg navbar-dark p-0">
-        <a class="navbar-brand" href="/">
+  <div class="public-layout">
+    <header class="public-header">
+      <div class="container">
+        <a href="/" class="brand">
           <i class="bi bi-diagram-3"></i> Cloudstrucc
         </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item"><a class="nav-link" href="https://cloudstrucc.com">About</a></li>
-            <li class="nav-item"><a class="nav-link" href="https://diagrams.cloudstrucc.com">Diagrams</a></li>
-            <li class="nav-item"><a class="nav-link" href="/admin/login"><i class="bi bi-person me-1"></i>Admin</a></li>
-          </ul>
-        </div>
-      </nav>
-    </div>
-  </header>
-  
-  <main>{{{body}}}</main>
-  
-  <footer class="py-4 mt-auto" style="background: var(--gray-900); color: var(--gray-400);">
-    <div class="container text-center">
-      <p class="mb-1" style="font-size: 0.875rem;">&copy; {{currentYear}} Cloudstrucc Inc. All Rights Reserved.</p>
-      <p class="mb-0" style="font-size: 0.8rem; color: var(--gray-500);">Built with ❤️ in Ottawa, Canada</p>
-    </div>
-  </footer>
+        <nav class="nav-links">
+          <a href="https://cloudstrucc.com">About</a>
+          <a href="https://diagrams.cloudstrucc.com">Diagrams</a>
+          <a href="/admin/login" class="btn">Sign In</a>
+        </nav>
+      </div>
+    </header>
+    
+    <main class="public-main">
+      {{{body}}}
+    </main>
+    
+    <footer class="public-footer">
+      <div class="container">
+        <p>&copy; {{currentYear}} <a href="https://cloudstrucc.com">Cloudstrucc Inc.</a> All Rights Reserved.</p>
+      </div>
+    </footer>
+  </div>
   {{/if}}
   
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>

@@ -1,557 +1,173 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Business Analysis Questionnaires | Cloudstrucc</title>
-  
-  <!-- Bootstrap 5.3 CSS -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  
-  <style>
-    :root {
-      --cs-primary: #0077b6;
-      --cs-primary-dark: #005f92;
-      --cs-accent: #00a8e8;
-      --cs-accent-light: #90e0ef;
-      --cs-dark: #0a1628;
-      --cs-dark-blue: #0d1b2a;
-      --cs-navy: #1b263b;
-      --cs-gray: #415a77;
-      --cs-success: #06d6a0;
-      --cs-gradient-dark: linear-gradient(135deg, #0a1628 0%, #1b263b 50%, #0d1b2a 100%);
-      --cs-gradient-primary: linear-gradient(135deg, #0077b6 0%, #00a8e8 100%);
-    }
-    
-    body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #ffffff;
-    }
-    
-    /* Header */
-    .site-header {
-      background: var(--cs-gradient-dark);
-      padding: 1rem 0;
-    }
-    
-    .navbar-brand {
-      color: #ffffff !important;
-      font-weight: 700;
-      font-size: 1.25rem;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .navbar-brand i {
-      color: var(--cs-accent);
-      font-size: 1.5rem;
-    }
-    
-    .nav-link {
-      color: rgba(255,255,255,0.8) !important;
-      font-weight: 500;
-    }
-    
-    .nav-link:hover {
-      color: #ffffff !important;
-    }
-    
-    /* Hero Section */
-    .hero-section {
-      background: var(--cs-gradient-dark);
-      padding: 6rem 0;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    
-    .hero-section::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: radial-gradient(circle at 30% 70%, rgba(0,168,232,0.1) 0%, transparent 50%),
-                  radial-gradient(circle at 70% 30%, rgba(0,119,182,0.1) 0%, transparent 50%);
-    }
-    
-    .hero-content {
-      position: relative;
-      z-index: 1;
-    }
-    
-    .hero-section h1 {
-      color: #ffffff;
-      font-size: 3rem;
-      font-weight: 700;
-      margin-bottom: 1.5rem;
-      line-height: 1.2;
-    }
-    
-    .hero-section h1 span {
-      background: var(--cs-gradient-primary);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    
-    .hero-section .lead {
-      color: rgba(255,255,255,0.8);
-      font-size: 1.25rem;
-      max-width: 700px;
-      margin: 0 auto 2rem;
-    }
-    
-    .btn-hero {
-      background: var(--cs-gradient-primary);
-      border: none;
-      color: #ffffff;
-      padding: 1rem 2rem;
-      font-weight: 600;
-      font-size: 1.1rem;
-      border-radius: 10px;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-hero:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 30px rgba(0,168,232,0.3);
-      color: #ffffff;
-    }
-    
-    .btn-hero-outline {
-      background: transparent;
-      border: 2px solid rgba(255,255,255,0.3);
-      color: #ffffff;
-      padding: 1rem 2rem;
-      font-weight: 600;
-      font-size: 1.1rem;
-      border-radius: 10px;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-hero-outline:hover {
-      background: rgba(255,255,255,0.1);
-      border-color: rgba(255,255,255,0.5);
-      color: #ffffff;
-    }
-    
-    /* Access Code Section */
-    .access-section {
-      padding: 5rem 0;
-      background: #f8fafc;
-    }
-    
-    .access-card {
-      background: #ffffff;
-      border-radius: 20px;
-      padding: 3rem;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
-      max-width: 500px;
-      margin: 0 auto;
-    }
-    
-    .access-card h2 {
-      font-size: 1.75rem;
-      font-weight: 700;
-      margin-bottom: 0.5rem;
-      color: var(--cs-dark);
-    }
-    
-    .access-card p {
-      color: var(--cs-gray);
-      margin-bottom: 2rem;
-    }
-    
-    .access-input {
-      display: flex;
-      gap: 1rem;
-    }
-    
-    .access-input input {
-      flex: 1;
-      border: 2px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 1rem 1.25rem;
-      font-size: 1.1rem;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      text-align: center;
-      font-weight: 600;
-    }
-    
-    .access-input input:focus {
-      outline: none;
-      border-color: var(--cs-accent);
-      box-shadow: 0 0 0 4px rgba(0,168,232,0.15);
-    }
-    
-    .access-input button {
-      background: var(--cs-gradient-primary);
-      border: none;
-      border-radius: 10px;
-      padding: 1rem 1.5rem;
-      color: #ffffff;
-      font-weight: 600;
-    }
-    
-    /* Features Section */
-    .features-section {
-      padding: 5rem 0;
-    }
-    
-    .section-title {
-      text-align: center;
-      margin-bottom: 3rem;
-    }
-    
-    .section-title h2 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--cs-dark);
-      margin-bottom: 1rem;
-    }
-    
-    .section-title p {
-      color: var(--cs-gray);
-      font-size: 1.1rem;
-    }
-    
-    .feature-card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 2rem;
-      height: 100%;
-      border: 1px solid #e2e8f0;
-      transition: all 0.3s ease;
-    }
-    
-    .feature-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 40px rgba(0,0,0,0.1);
-      border-color: var(--cs-accent);
-    }
-    
-    .feature-icon {
-      width: 56px;
-      height: 56px;
-      background: rgba(0,168,232,0.1);
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 1.25rem;
-    }
-    
-    .feature-icon i {
-      font-size: 1.5rem;
-      color: var(--cs-primary);
-    }
-    
-    .feature-card h5 {
-      font-weight: 600;
-      color: var(--cs-dark);
-      margin-bottom: 0.75rem;
-    }
-    
-    .feature-card p {
-      color: var(--cs-gray);
-      margin: 0;
-      font-size: 0.95rem;
-    }
-    
-    /* Templates Section */
-    .templates-section {
-      padding: 5rem 0;
-      background: var(--cs-gradient-dark);
-    }
-    
-    .templates-section .section-title h2 {
-      color: #ffffff;
-    }
-    
-    .templates-section .section-title p {
-      color: rgba(255,255,255,0.7);
-    }
-    
-    .template-badge {
-      display: inline-block;
-      background: rgba(0,168,232,0.15);
-      color: var(--cs-accent);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-size: 0.875rem;
-      font-weight: 500;
-      margin: 0.25rem;
-    }
-    
-    /* Footer */
-    .site-footer {
-      background: var(--cs-dark);
-      color: rgba(255,255,255,0.7);
-      padding: 3rem 0 2rem;
-    }
-    
-    .site-footer h5 {
-      color: #ffffff;
-      font-weight: 600;
-      margin-bottom: 1rem;
-    }
-    
-    .site-footer a {
-      color: rgba(255,255,255,0.7);
-      text-decoration: none;
-      transition: color 0.2s ease;
-    }
-    
-    .site-footer a:hover {
-      color: var(--cs-accent);
-    }
-    
-    .footer-brand {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      color: #ffffff;
-      font-weight: 700;
-      font-size: 1.25rem;
-      margin-bottom: 1rem;
-    }
-    
-    .footer-brand i {
-      color: var(--cs-accent);
-    }
-    
-    .footer-bottom {
-      border-top: 1px solid rgba(255,255,255,0.1);
-      padding-top: 2rem;
-      margin-top: 2rem;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <!-- Header -->
-  {{!-- <header class="site-header">
-    <div class="container">
-      <nav class="navbar navbar-expand-lg navbar-dark p-0">
-        <a class="navbar-brand" href="/">
-          <i class="bi bi-diagram-3"></i> Cloudstrucc
-        </a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-          <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="collapse navbar-collapse" id="navbarNav">
-          <ul class="navbar-nav ms-auto">
-            <li class="nav-item">
-              <a class="nav-link" href="https://cloudstrucc.com">About</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="https://diagrams.cloudstrucc.com">Diagrams</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/admin/login">
-                <i class="bi bi-person me-1"></i>Admin
-              </a>
-            </li>
-          </ul>
+<!-- Hero Section -->
+<section style="padding: 6rem 0; text-align: center;">
+  <div class="container">
+    <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 1.5rem; line-height: 1.2;">
+      Business Analysis<br>
+      <span style="color: #06b6d4;">Questionnaires</span>
+    </h1>
+    <p style="font-size: 1.125rem; color: #94a3b8; max-width: 600px; margin: 0 auto 2.5rem; line-height: 1.7;">
+      Streamline your requirements gathering with interactive, branded questionnaires for Dynamics 365, Power Platform, and enterprise technology implementations.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="#access" style="background: #06b6d4; color: #fff; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; transition: background 0.15s;">
+        <i class="bi bi-key"></i> Enter Access Code
+      </a>
+      <a href="#features" style="background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem;">
+        <i class="bi bi-info-circle"></i> Learn More
+      </a>
+    </div>
+    <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #64748b;">
+      No account required &nbsp;•&nbsp; Auto-save enabled &nbsp;•&nbsp; Secure access
+    </p>
+  </div>
+</section>
+
+<!-- Access Code Section -->
+<section id="access" style="padding: 5rem 0; background: #0f172a;">
+  <div class="container">
+    <div style="max-width: 480px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 2.5rem;">
+      <div style="text-align: center; margin-bottom: 2rem;">
+        <div style="width: 48px; height: 48px; background: rgba(6,182,212,0.15); border-radius: 12px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 1rem;">
+          <i class="bi bi-key" style="font-size: 1.25rem; color: #22d3ee;"></i>
         </div>
-      </nav>
-    </div>
-  </header> --}}
-  
-  <!-- Hero Section -->
-  <section class="hero-section">
-    <div class="container hero-content">
-      <h1>Business Analysis<br><span>Questionnaires</span></h1>
-      <p class="lead">
-        Streamline your requirements gathering with interactive, branded questionnaires for Dynamics 365, Power Platform, and enterprise technology implementations.
-      </p>
-      <div class="d-flex justify-content-center gap-3 flex-wrap">
-        <a href="#access" class="btn btn-hero">
-          <i class="bi bi-key me-2"></i>Enter Access Code
-        </a>
-        <a href="#features" class="btn btn-hero-outline">
-          <i class="bi bi-info-circle me-2"></i>Learn More
-        </a>
+        <h2 style="font-size: 1.5rem; font-weight: 600; margin-bottom: 0.5rem;">Have an Access Code?</h2>
+        <p style="color: #94a3b8; font-size: 0.9rem;">Enter your 8-character code to access your questionnaire</p>
       </div>
-    </div>
-  </section>
-  
-  <!-- Access Code Section -->
-  <section class="access-section" id="access">
-    <div class="container">
-      <div class="access-card">
-        <h2><i class="bi bi-key me-2 text-primary"></i>Have an Access Code?</h2>
-        <p>Enter your 8-character code to access your questionnaire</p>
-        <form action="/access" method="GET" class="access-input">
-          <input type="text" name="code" placeholder="ABCD1234" maxlength="8" pattern="[A-Za-z0-9]{8}" required>
-          <button type="submit">
-            <i class="bi bi-arrow-right"></i>
+      
+      <form action="/access" method="GET">
+        <div style="display: flex; gap: 0.75rem;">
+          <input type="text" name="code" placeholder="ABCD1234" maxlength="8" pattern="[A-Za-z0-9]{8}" required
+            style="flex: 1; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 10px; padding: 0.875rem 1rem; font-size: 1rem; text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: 600;">
+          <button type="submit" style="background: #06b6d4; border: none; color: #fff; border-radius: 10px; padding: 0.875rem 1.25rem; cursor: pointer;">
+            <i class="bi bi-arrow-right" style="font-size: 1.25rem;"></i>
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
-  </section>
-  
-  <!-- Features Section -->
-  <section class="features-section" id="features">
-    <div class="container">
-      <div class="section-title">
-        <h2>Why Use Our Questionnaires?</h2>
-        <p>Professional requirements gathering made simple</p>
-      </div>
-      
-      <div class="row g-4">
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-cloud-check"></i>
-            </div>
-            <h5>Auto-Save Progress</h5>
-            <p>Your answers are saved automatically. Pick up where you left off anytime, from any device.</p>
-          </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-shield-check"></i>
-            </div>
-            <h5>Secure & Private</h5>
-            <p>Access codes ensure only authorized users can view and complete your questionnaires.</p>
-          </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-phone"></i>
-            </div>
-            <h5>Mobile Friendly</h5>
-            <p>Complete questionnaires on desktop, tablet, or mobile with a responsive design.</p>
-          </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-file-earmark-text"></i>
-            </div>
-            <h5>Comprehensive Templates</h5>
-            <p>Pre-built questionnaires covering D365, Power Platform, governance, and more.</p>
-          </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-graph-up"></i>
-            </div>
-            <h5>Progress Tracking</h5>
-            <p>See your completion percentage and know exactly what's left to answer.</p>
-          </div>
-        </div>
-        
-        <div class="col-md-6 col-lg-4">
-          <div class="feature-card">
-            <div class="feature-icon">
-              <i class="bi bi-chat-square-text"></i>
-            </div>
-            <h5>Clear Language</h5>
-            <p>Business-friendly explanations help you understand each requirement clearly.</p>
-          </div>
-        </div>
-      </div>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section id="features" style="padding: 5rem 0;">
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Powerful Features</h2>
+      <p style="color: #94a3b8; font-size: 1rem;">Everything you need to gather requirements effectively</p>
     </div>
-  </section>
-  
-  <!-- Templates Section -->
-  <section class="templates-section">
-    <div class="container">
-      <div class="section-title">
-        <h2>Available Questionnaires</h2>
-        <p>Comprehensive templates for enterprise technology implementations</p>
-      </div>
-      
-      <div class="text-center">
-        <span class="template-badge"><i class="bi bi-microsoft me-1"></i>Dynamics 365 Sales</span>
-        <span class="template-badge"><i class="bi bi-headset me-1"></i>D365 Customer Service</span>
-        <span class="template-badge"><i class="bi bi-chat-dots me-1"></i>D365 Omnichannel</span>
-        <span class="template-badge"><i class="bi bi-grid me-1"></i>Power Apps</span>
-        <span class="template-badge"><i class="bi bi-globe me-1"></i>Power Pages</span>
-        <span class="template-badge"><i class="bi bi-shield-lock me-1"></i>Platform Governance</span>
-        <span class="template-badge"><i class="bi bi-cart me-1"></i>E-Commerce</span>
-        <span class="template-badge"><i class="bi bi-plus-lg me-1"></i>Custom Templates</span>
-      </div>
-    </div>
-  </section>
-  
-  <!-- Footer -->
-  <footer class="site-footer">
-    <div class="container">
-      <div class="row">
-        <div class="col-lg-4 mb-4 mb-lg-0">
-          <div class="footer-brand">
-            <i class="bi bi-diagram-3"></i> Cloudstrucc
+    
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-cloud-check" style="font-size: 1.25rem; color: #22d3ee;"></i>
           </div>
-          <p class="mb-3">
-            Cloud migration, Power Platform consulting, and cybersecurity services for government and enterprise clients.
-          </p>
-          <div class="d-flex gap-3">
-            <a href="https://linkedin.com/company/cloudstrucc"><i class="bi bi-linkedin fs-5"></i></a>
-            <a href="https://github.com/Cloudstrucc"><i class="bi bi-github fs-5"></i></a>
-          </div>
-        </div>
-        
-        <div class="col-6 col-lg-2">
-          <h5>Products</h5>
-          <ul class="list-unstyled">
-            <li class="mb-2"><a href="https://diagrams.cloudstrucc.com">AI Diagrams</a></li>
-            <li class="mb-2"><a href="/">BA Forms</a></li>
-          </ul>
-        </div>
-        
-        <div class="col-6 col-lg-2">
-          <h5>Company</h5>
-          <ul class="list-unstyled">
-            <li class="mb-2"><a href="https://cloudstrucc.com">About</a></li>
-            <li class="mb-2"><a href="https://cloudstrucc.com#contact">Contact</a></li>
-          </ul>
-        </div>
-        
-        <div class="col-6 col-lg-2">
-          <h5>Resources</h5>
-          <ul class="list-unstyled">
-            <li class="mb-2"><a href="https://github.com/Cloudstrucc/Business-Analysis-Templates">GitHub</a></li>
-            <li class="mb-2"><a href="/admin/login">Admin Login</a></li>
-          </ul>
-        </div>
-        
-        <div class="col-6 col-lg-2">
-          <h5>Legal</h5>
-          <ul class="list-unstyled">
-            <li class="mb-2"><a href="/privacy">Privacy</a></li>
-            <li class="mb-2"><a href="/terms">Terms</a></li>
-          </ul>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Auto-Save Progress</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Your answers are saved automatically. Pick up where you left off anytime, from any device.</p>
         </div>
       </div>
       
-      <div class="footer-bottom">
-        <p class="mb-1">© 2026 Cloudstrucc Inc. All Rights Reserved.</p>
-        <p class="small mb-0">Built with ❤️ in Ottawa, Canada</p>
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-shield-check" style="font-size: 1.25rem; color: #22d3ee;"></i>
+          </div>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Secure & Private</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Access codes ensure only authorized users can view and complete your questionnaires.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-phone" style="font-size: 1.25rem; color: #22d3ee;"></i>
+          </div>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Mobile Friendly</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Complete questionnaires on desktop, tablet, or mobile with a fully responsive design.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-file-earmark-text" style="font-size: 1.25rem; color: #22d3ee;"></i>
+          </div>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Comprehensive Templates</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Pre-built questionnaires covering D365, Power Platform, SAP, governance, and more.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-graph-up" style="font-size: 1.25rem; color: #22d3ee;"></i>
+          </div>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Progress Tracking</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">See your completion percentage and know exactly what's left to answer.</p>
+        </div>
+      </div>
+      
+      <div class="col-md-6 col-lg-4">
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 1.75rem; height: 100%;">
+          <div style="width: 44px; height: 44px; background: rgba(6,182,212,0.15); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem;">
+            <i class="bi bi-download" style="font-size: 1.25rem; color: #22d3ee;"></i>
+          </div>
+          <h3 style="font-size: 1.125rem; font-weight: 600; margin-bottom: 0.75rem;">Export Options</h3>
+          <p style="color: #94a3b8; font-size: 0.9rem; margin: 0; line-height: 1.6;">Download completed questionnaires as Word documents or formatted reports.</p>
+        </div>
       </div>
     </div>
-  </footer>
-  
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-</body>
-</html>
+  </div>
+</section>
+
+<!-- Templates Section -->
+<section style="padding: 5rem 0; background: #020617;">
+  <div class="container">
+    <div style="text-align: center; margin-bottom: 3rem;">
+      <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Available Questionnaires</h2>
+      <p style="color: #94a3b8; font-size: 1rem;">Comprehensive templates for enterprise implementations</p>
+    </div>
+    
+    <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem;">
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-microsoft me-1"></i>Dynamics 365 Sales
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-headset me-1"></i>D365 Customer Service
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-chat-dots me-1"></i>D365 Omnichannel
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-grid me-1"></i>Power Apps
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-globe me-1"></i>Power Pages
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-shield-lock me-1"></i>Platform Governance
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-box-seam me-1"></i>SAP S/4HANA
+      </span>
+      <span style="background: rgba(6,182,212,0.1); color: #22d3ee; padding: 0.625rem 1rem; border-radius: 8px; font-size: 0.875rem; font-weight: 500;">
+        <i class="bi bi-plus-lg me-1"></i>Custom Templates
+      </span>
+    </div>
+  </div>
+</section>
+
+<!-- CTA Section -->
+<section style="padding: 5rem 0; text-align: center;">
+  <div class="container">
+    <h2 style="font-size: 2rem; font-weight: 700; margin-bottom: 1rem;">Ready to Get Started?</h2>
+    <p style="color: #94a3b8; font-size: 1.125rem; margin-bottom: 2rem;">Contact us to set up questionnaires for your project</p>
+    <div style="display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap;">
+      <a href="https://cloudstrucc.com#contact" style="background: #06b6d4; color: #fff; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none;">
+        Contact Us
+      </a>
+      <a href="/admin/login" style="background: transparent; border: 1px solid #334155; color: #cbd5e1; padding: 0.875rem 1.75rem; border-radius: 10px; font-weight: 500; text-decoration: none;">
+        Admin Login
+      </a>
+    </div>
+  </div>
+</section>
