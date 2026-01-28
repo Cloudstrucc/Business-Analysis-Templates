@@ -23,10 +23,11 @@ const PORT = process.env.PORT || 3000;
 // Track loaded files to detect new ones
 let loadedTemplates = new Set();
 
-// Scan root directory for .md files and copy to templates
+// Scan for .md files and copy to templates
 function scanAndCopyRootTemplates() {
   const templatesDir = path.join(__dirname, 'templates');
   const rootDir = __dirname;
+  const questionnairesDir = path.join(__dirname, '..', 'Questionnaires'); // Parent folder's Questionnaires dir
   
   // Ensure templates directory exists
   if (!fs.existsSync(templatesDir)) {
@@ -40,36 +41,51 @@ function scanAndCopyRootTemplates() {
     'build-guide.md', 'code_of_conduct.md', 'security.md'
   ];
   
-  console.log('\n📂 Scanning root directory for new templates...');
-  
   let newFilesFound = 0;
   
-  // Scan root directory
-  fs.readdirSync(rootDir).forEach(filename => {
-    // Only .md files
-    if (!filename.toLowerCase().endsWith('.md')) return;
-    
-    // Skip ignored files
-    if (ignoredFiles.includes(filename.toLowerCase())) return;
-    
-    // Skip if it's a directory
-    const rootPath = path.join(rootDir, filename);
-    if (!fs.statSync(rootPath).isFile()) return;
-    
-    // Check if already in templates
-    const templatePath = path.join(templatesDir, filename);
-    if (!fs.existsSync(templatePath)) {
-      // Copy to templates directory
-      console.log(`   → Found new template: ${filename}`);
-      fs.copyFileSync(rootPath, templatePath);
-      newFilesFound++;
+  // Function to scan a directory for MD files
+  const scanDir = (dir, dirName) => {
+    if (!fs.existsSync(dir)) {
+      return 0;
     }
-  });
+    
+    console.log(`\n📂 Scanning ${dirName} for templates...`);
+    let found = 0;
+    
+    fs.readdirSync(dir).forEach(filename => {
+      // Only .md files
+      if (!filename.toLowerCase().endsWith('.md')) return;
+      
+      // Skip ignored files
+      if (ignoredFiles.includes(filename.toLowerCase())) return;
+      
+      // Skip if it's a directory
+      const filePath = path.join(dir, filename);
+      if (!fs.statSync(filePath).isFile()) return;
+      
+      // Check if already in templates
+      const templatePath = path.join(templatesDir, filename);
+      if (!fs.existsSync(templatePath)) {
+        // Copy to templates directory
+        console.log(`   → Found new template: ${filename}`);
+        fs.copyFileSync(filePath, templatePath);
+        found++;
+      }
+    });
+    
+    return found;
+  };
+  
+  // Scan Questionnaires folder first (preferred location)
+  newFilesFound += scanDir(questionnairesDir, 'Questionnaires folder');
+  
+  // Also scan root directory for backwards compatibility
+  newFilesFound += scanDir(rootDir, 'root directory');
   
   if (newFilesFound > 0) {
-    console.log(`   ✓ Copied ${newFilesFound} new template(s) to templates/\n`);
+    console.log(`\n   ✓ Copied ${newFilesFound} new template(s) to templates/\n`);
   } else {
-    console.log('   No new templates in root directory\n');
+    console.log('\n   No new templates found\n');
   }
   
   return newFilesFound;
@@ -79,6 +95,7 @@ function scanAndCopyRootTemplates() {
 function getCurrentTemplateFiles() {
   const templatesDir = path.join(__dirname, 'templates');
   const rootDir = __dirname;
+  const questionnairesDir = path.join(__dirname, '..', 'Questionnaires');
   const files = new Set();
   
   const ignoredFiles = [
@@ -92,6 +109,18 @@ function getCurrentTemplateFiles() {
     fs.readdirSync(templatesDir).forEach(f => {
       if (f.toLowerCase().endsWith('.md') && !ignoredFiles.includes(f.toLowerCase())) {
         files.add(path.join(templatesDir, f));
+      }
+    });
+  }
+  
+  // Check Questionnaires directory
+  if (fs.existsSync(questionnairesDir)) {
+    fs.readdirSync(questionnairesDir).forEach(f => {
+      if (f.toLowerCase().endsWith('.md') && !ignoredFiles.includes(f.toLowerCase())) {
+        const fullPath = path.join(questionnairesDir, f);
+        if (fs.statSync(fullPath).isFile()) {
+          files.add(fullPath);
+        }
       }
     });
   }
@@ -196,6 +225,16 @@ app.engine('hbs', engine({
     json: function(obj) {
       return JSON.stringify(obj);
     },
+    // Substring helper
+    substring: function(str, start, end) {
+      if (!str) return '';
+      return str.toString().substring(start, end);
+    },
+    // Uppercase helper
+    uppercase: function(str) {
+      if (!str) return '';
+      return str.toString().toUpperCase();
+    },
     // Format date helper
     formatDate: function(date, format) {
       if (!date) return '';
@@ -269,15 +308,19 @@ app.use(cookieParser());
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Trust proxy (required for Azure App Service behind load balancer)
+app.set('trust proxy', 1);
+
 // Session configuration
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // Works with trust proxy
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax' // Helps with redirects
   }
 }));
 

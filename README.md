@@ -1,10 +1,11 @@
 # Business Analysis Templates & Questionnaire Portal
 
-A collection of comprehensive, business-friendly templates designed to streamline requirements gathering, implementation planning, and client sign-off for technology projects — plus a **Node.js web application** for sending interactive questionnaires to clients.
+A collection of comprehensive, business-friendly questionnaire templates designed to streamline requirements gathering, implementation planning, and client sign-off for technology projects — plus a **Node.js web application** for sending interactive questionnaires to clients.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-18+-green?logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/Node.js-20+-green?logo=node.js" alt="Node.js">
   <img src="https://img.shields.io/badge/Bootstrap-5.3-purple?logo=bootstrap" alt="Bootstrap">
+  <img src="https://img.shields.io/badge/Azure-App%20Service-blue?logo=microsoft-azure" alt="Azure">
   <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License">
   <img src="https://img.shields.io/badge/Maintained%20by-Cloudstrucc-00a8e8" alt="Cloudstrucc">
 </p>
@@ -14,12 +15,13 @@ A collection of comprehensive, business-friendly templates designed to streamlin
 ## 📋 Table of Contents
 
 - [Overview](#overview)
-- [Templates (Markdown)](#templates-markdown)
-- [Questionnaire Portal (Web App)](#questionnaire-portal-web-app)
-- [Quick Start](#quick-start)
-- [Technology Areas Covered](#technology-areas-covered)
-- [How to Use](#how-to-use)
-- [Deployment](#deployment)
+- [Repository Structure](#repository-structure)
+- [Available Questionnaires](#available-questionnaires)
+- [Quick Start - Local Development](#quick-start---local-development)
+- [Deploy to Azure App Service](#deploy-to-azure-app-service)
+- [Deployment Commands Reference](#deployment-commands-reference)
+- [Adding New Questionnaires](#adding-new-questionnaires)
+- [Environment Variables](#environment-variables)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -27,7 +29,7 @@ A collection of comprehensive, business-friendly templates designed to streamlin
 
 ## Overview
 
-Technology implementations often fail not because of technical challenges, but because of unclear requirements, missed stakeholder expectations, and poor communication between technical teams and business users. 
+Technology implementations often fail not because of technical challenges, but because of unclear requirements, missed stakeholder expectations, and poor communication between technical teams and business users.
 
 This repository provides **two ways** to capture business requirements:
 
@@ -36,312 +38,412 @@ This repository provides **two ways** to capture business requirements:
 | **📄 Markdown Templates** | Internal use, documentation | Download and edit locally, convert to Word/PDF |
 | **🌐 Web Portal** | Client-facing engagements | Send branded questionnaires via email, track progress |
 
-Both options share the same comprehensive questionnaire content, covering Dynamics 365, Power Platform, and more.
-
----
-
-## Templates (Markdown)
-
-### What's Included
-
-Each markdown template provides:
-
-- ✅ **Feature explanations in plain language** — No jargon, no assumptions about technical knowledge
-- ✅ **Decision checkboxes** — Simple OOB (Out of Box) / N/A / Customize response options
-- ✅ **Consideration questions** — Prompts to uncover requirements clients may not think to mention
-- ✅ **Official documentation links** — Direct references to Microsoft Learn for deeper exploration
-- ✅ **Sign-off sections** — Formal approval areas for project governance
-- ✅ **Glossaries** — Definitions of key terms for reference
-
-### Available Templates
-
-| Template | File | Description |
-|----------|------|-------------|
-| **D365 Customer Service** | `D365-Customer-Services.md` | Cases, queues, SLAs, knowledge management |
-| **D365 Omnichannel** | `D365-Omni.md` | Voice, chat, SMS, unified routing, contact center |
-| **D365 Sales Professional** | `D365-Sales-Pro.md` | Leads, opportunities, pipeline, email integration |
-| **Power Platform Governance** | `Power-Platform-Governance-Checklist.md` | Environments, DLP, CoE toolkit, ALM |
-| **Power Apps Model-Driven** | `PowerApps-MDA-Plain.md` | Tables, forms, views, business rules, security |
-| **Power Pages** | `PowerPages-Implementation-Requirements-Checklist.md` | Portals, authentication, web roles, accessibility |
-
-### Using Markdown Templates
-
-1. **Select the appropriate template** for your project type
-2. **Customize the header** with client name, dates, and project details
-3. **Work through each section** with stakeholders
-4. **Convert to deliverable format:**
-   ```bash
-   # Convert to Word
-   pandoc D365-Customer-Services.md -o D365-Requirements.docx
-   
-   # Convert to PDF
-   pandoc D365-Customer-Services.md -o D365-Requirements.pdf
-   ```
-5. **Obtain formal sign-off** before proceeding with implementation
-
----
-
-## Questionnaire Portal (Web App)
-
-For client-facing engagements, use the **Cloudstrucc BA Questionnaire Portal** — a Node.js application that converts the markdown templates into interactive web forms.
-
-### Features
+### Web Portal Features
 
 | Feature | Description |
 |---------|-------------|
-| 🎨 **Branded Experience** | Bootstrap 5 UI matching Cloudstrucc website |
-| 📧 **Email Invites** | Send invite links via Office 365 / Exchange Online |
+| 🎨 **Branded Experience** | Bootstrap 5 UI with Cloudstrucc branding |
+| 📧 **Email Invites** | Send invite links via Office 365 / SMTP |
 | 🔑 **Access Codes** | Unique 8-character codes for each client |
 | 💾 **Auto-Save** | Progress saved automatically on every change |
 | ⏱️ **Expiration** | Invite links and submissions have configurable deadlines |
-| 📊 **Admin Dashboard** | Track progress, view submissions, export to PDF |
-| 📈 **Analytics** | Automated digest emails every 2-3 days |
-| 📱 **Responsive** | Works on desktop, tablet, and mobile |
+| 📊 **Admin Dashboard** | Track progress, view submissions, manage clients |
+| 🔄 **Auto-Discovery** | Drop new `.md` files in Questionnaires folder - auto-detected |
 
-### Screenshots
+---
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Client Portal                                              │
-│  ┌─────────────────────────────────────────────────────────│
-│  │  Welcome, John Smith!                                   │
-│  │  Acme Corporation                                       │
-│  │                                                         │
-│  │  ┌──────────────────┐  ┌──────────────────┐           │
-│  │  │ D365 Sales Pro   │  │ Power Platform   │           │
-│  │  │ ██████████░ 75%  │  │ ░░░░░░░░░░ 0%   │           │
-│  │  │ [Continue]       │  │ [Start]          │           │
-│  │  └──────────────────┘  └──────────────────┘           │
-│  └─────────────────────────────────────────────────────────│
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Architecture
+## Repository Structure
 
 ```
-┌─────────────┐     ┌─────────────────┐     ┌─────────────┐
-│   Client    │────▶│  Express.js     │────▶│   SQLite    │
-│   Browser   │◀────│  + Handlebars   │◀────│   Database  │
-└─────────────┘     └────────┬────────┘     └─────────────┘
-                             │
-                    ┌────────▼────────┐
-                    │  Office 365     │
-                    │  SMTP (Email)   │
-                    └─────────────────┘
+Business-Analysis-Templates/
+│
+├── 📁 Deployment/
+│   └── deploy.sh                 # Azure deployment script (run from here)
+│
+├── 📁 Questionnaires/            # ← ADD YOUR .MD TEMPLATES HERE
+│   ├── D365-Customer-Services.md
+│   ├── D365-Omni.md
+│   ├── D365-Sales-Pro.md
+│   ├── ECommerce-Canadian-Clothing-Checklist.md
+│   ├── Power-Platform-Governance-Checklist.md
+│   ├── PowerApps-MDA-Plain.md
+│   └── PowerPages-Implementation-Requirements-Checklist.md
+│
+├── 📁 ba-questionnaire-app/      # Node.js Web Application
+│   ├── app.js                    # Main application entry point
+│   ├── package.json              # Dependencies
+│   ├── startup.sh                # Azure startup script
+│   ├── .env.example              # Environment template
+│   │
+│   ├── 📁 models/
+│   │   └── database.js           # SQLite database layer
+│   │
+│   ├── 📁 routes/
+│   │   ├── admin.js              # Admin dashboard routes
+│   │   └── public.js             # Public form routes
+│   │
+│   ├── 📁 utils/
+│   │   ├── formLoader.js         # Template auto-discovery
+│   │   ├── markdownParser.js     # MD to HTML conversion
+│   │   └── emailService.js       # Email notifications
+│   │
+│   ├── 📁 views/
+│   │   ├── 📁 layouts/           # Handlebars layouts
+│   │   ├── 📁 admin/             # Admin views
+│   │   ├── 📁 forms/             # Form views
+│   │   └── 📁 partials/          # Reusable components
+│   │
+│   ├── 📁 public/                # Static assets (CSS, JS, images)
+│   ├── 📁 templates/             # Auto-synced from Questionnaires/
+│   └── 📁 data/                  # SQLite database (auto-created)
+│
+└── README.md
 ```
 
 ---
 
-## Quick Start
+## Available Questionnaires
 
-### Option 1: Use Markdown Templates Only
+| Template | Description |
+|----------|-------------|
+| **D365 Customer Service** | Cases, queues, SLAs, knowledge management, entitlements |
+| **D365 Omnichannel** | Voice, chat, SMS, unified routing, contact center |
+| **D365 Sales Professional** | Leads, opportunities, pipeline, email integration |
+| **Power Platform Governance** | Environments, DLP policies, CoE toolkit, ALM |
+| **Power Apps Model-Driven** | Tables, forms, views, business rules, security roles |
+| **Power Pages** | Portals, authentication, web roles, accessibility |
+| **E-Commerce (Canadian)** | Tech stack, inventory, payments, fulfillment, shipping |
+
+### Using Templates as Standalone Files
 
 ```bash
-# Clone the repository
-git clone https://github.com/Cloudstrucc/Business-Analysis-Templates.git
-cd Business-Analysis-Templates
+# Convert to Word document
+pandoc Questionnaires/D365-Customer-Services.md -o Requirements.docx
 
-# Open any template in your editor
-code D365-Customer-Services.md
+# Convert to PDF
+pandoc Questionnaires/D365-Customer-Services.md -o Requirements.pdf
 ```
 
-### Option 2: Run the Web Portal
+---
+
+## Quick Start - Local Development
+
+### Prerequisites
+
+- Node.js 18+ installed
+- npm or yarn
+
+### 1. Clone and Install
 
 ```bash
-# Clone the repository
 git clone https://github.com/Cloudstrucc/Business-Analysis-Templates.git
-cd Business-Analysis-Templates/webapp
+cd Business-Analysis-Templates/ba-questionnaire-app
 
-# Install dependencies
 npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your SMTP credentials
-
-# Start the server
-npm start
-
-# Access the portal
-# Public:  http://localhost:3000
-# Admin:   http://localhost:3000/admin/login
 ```
+
+### 2. Configure Environment
+
+```bash
+cp .env.example .env
+# Edit .env with your settings
+```
+
+### 3. Start the Server
+
+```bash
+node app.js
+```
+
+### 4. Access the Application
+
+| URL | Purpose |
+|-----|---------|
+| http://localhost:3000 | Public landing page |
+| http://localhost:3000/admin/login | Admin dashboard |
 
 **Default Admin Credentials:**
-- Email: `admin@cloudstrucc.com`
-- Password: `ChangeThisPassword123!`
-
-> ⚠️ **Important:** Change default credentials immediately in production!
+- **Email:** `admin@cloudstrucc.com`
+- **Password:** `ChangeThisPassword123!`
 
 ---
 
-## Technology Areas Covered
+## Deploy to Azure App Service
 
-This repository includes templates for:
+### Prerequisites
 
-### Microsoft Dynamics 365
-- Sales (Professional & Enterprise)
-- Customer Service
-- Omnichannel / Contact Center
-- Field Service *(coming soon)*
-- Marketing *(coming soon)*
+1. [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
+2. Azure account with active subscription
+3. Logged in: `az login`
 
-### Microsoft Power Platform
-- Power Apps (Model-Driven & Canvas)
-- Power Automate
-- Power BI
-- Power Pages (Portals)
-- Copilot Studio
-- Governance & Center of Excellence
+### One-Command Deployment
 
-### Microsoft 365 *(coming soon)*
-- SharePoint
-- Teams
-- Exchange
-- Security & Compliance
-
-### Azure Services *(coming soon)*
-- Infrastructure
-- Identity
-- Integration
-
----
-
-## How to Use
-
-### For Business Analysts & Consultants
-
-1. **Before client workshops**: Select relevant templates
-2. **During discovery**: Walk through each section, capturing decisions
-3. **After workshops**: Send questionnaire link for additional details
-4. **At sign-off**: Generate PDF from submissions for formal approval
-
-### For Project Managers
-
-1. **Kickoff**: Send invite links to stakeholders
-2. **Track progress**: Monitor completion via admin dashboard
-3. **Follow up**: Use analytics to identify stalled questionnaires
-4. **Baseline**: Export submitted requirements as project baseline
-
-### For IT Teams
-
-1. **Self-service**: Use templates internally for standardization
-2. **Onboarding**: New team members follow established patterns
-3. **Documentation**: Archive completed questionnaires with projects
-
----
-
-## Deployment
-
-### Web Portal Deployment Options
-
-| Platform | Complexity | Notes |
-|----------|------------|-------|
-| **Local/Dev** | ⭐ | `npm start` |
-| **Azure App Service** | ⭐⭐ | Node.js 18 LTS, configure env vars |
-| **Docker** | ⭐⭐ | Dockerfile included |
-| **VPS (PM2 + Nginx)** | ⭐⭐⭐ | Full control, SSL via Let's Encrypt |
-
-### Environment Variables
-
-```env
-# Required
-PORT=3000
-SESSION_SECRET=your-random-secret-key
-ADMIN_EMAIL=admin@yourcompany.com
-ADMIN_PASSWORD=your-secure-password
-
-# Email (Office 365)
-SMTP_HOST=smtp.office365.com
-SMTP_PORT=587
-SMTP_USER=no-reply@yourcompany.com
-SMTP_PASS=your-app-password
-RESPONSE_EMAIL=responses@yourcompany.com
-
-# Application
-BASE_URL=https://forms.yourcompany.com
-ANALYTICS_INTERVAL_HOURS=72
+```bash
+cd Deployment
+./deploy.sh
 ```
 
-See `BUILD_GUIDE.md` in the webapp directory for complete deployment instructions.
+That's it! The script will:
+
+1. ✅ Create Resource Group (`cloudstrucc-rg`)
+2. ✅ Create App Service Plan (Linux, Basic B1)
+3. ✅ Create Web App (Node.js 20)
+4. ✅ Configure environment variables
+5. ✅ Set startup command
+6. ✅ Enable logging
+7. ✅ Sync questionnaires from `Questionnaires/` → `templates/`
+8. ✅ Package and deploy code
+9. ✅ Restart and verify health
+
+### After Deployment
+
+| URL | Purpose |
+|-----|---------|
+| https://cloudstrucc-ba-forms.azurewebsites.net | Public portal |
+| https://cloudstrucc-ba-forms.azurewebsites.net/admin/login | Admin login |
+
+**Default Credentials:**
+- **Email:** `admin@cloudstrucc.com`
+- **Password:** `ChangeThisPassword123!`
+
+### Configuration
+
+Edit variables at the top of `Deployment/deploy.sh`:
+
+```bash
+# Azure Resources
+RESOURCE_GROUP="cloudstrucc-rg"
+APP_SERVICE_PLAN="cloudstrucc-plan"
+APP_NAME="cloudstrucc-ba-forms"        # Must be globally unique!
+LOCATION="canadacentral"
+APP_SERVICE_SKU="B1"                   # B1=~$13/mo, S1=~$70/mo
+
+# Admin Credentials
+ADMIN_EMAIL="admin@cloudstrucc.com"
+ADMIN_PASSWORD="ChangeThisPassword123!"
+
+# SMTP (Optional - for email invites)
+SMTP_HOST="smtp.office365.com"
+SMTP_PORT="587"
+SMTP_USER=""
+SMTP_PASS=""
+```
+
+### Cost Estimate
+
+| Resource | SKU | Monthly Cost (CAD) |
+|----------|-----|-------------------|
+| App Service Plan | B1 (Basic) | ~$13 |
+| **Total** | | **~$13/month** |
 
 ---
 
-## Contributing
+## Deployment Commands Reference
 
-Contributions are welcome! Whether it's new templates, bug fixes, or feature enhancements.
+Run all commands from the `Deployment/` folder:
 
-### Adding New Templates
+```bash
+cd Deployment
+```
 
-1. Fork this repository
-2. Create your template following the existing format:
-   - Use clear, non-technical language
-   - Include decision checkboxes (☐ OOB ☐ N/A ☐ Customize)
-   - Add links to official documentation
-   - Include a glossary and sign-off section
-3. Submit a Pull Request
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh` | Full deployment (create resources + deploy code) |
+| `./deploy.sh --deploy` | Deploy code only (resources must exist) |
+| `./deploy.sh --setup` | Create Azure resources only |
+| `./deploy.sh --sync` | Sync questionnaires to templates folder only |
+| `./deploy.sh --logs` | Stream live application logs |
+| `./deploy.sh --ssh` | SSH into the container |
+| `./deploy.sh --restart` | Restart the web app |
+| `./deploy.sh --status` | Check app health status |
+| `./deploy.sh --delete` | Delete all Azure resources |
+| `./deploy.sh --help` | Show help message |
 
-### Template Structure
+### Common Workflows
+
+**Deploy code changes:**
+```bash
+./deploy.sh --deploy
+```
+
+**Add a new questionnaire:**
+```bash
+# 1. Add .md file to Questionnaires/ folder
+# 2. Deploy
+./deploy.sh --deploy
+```
+
+**View logs when troubleshooting:**
+```bash
+./deploy.sh --logs
+```
+
+**Restart after config changes:**
+```bash
+./deploy.sh --restart
+```
+
+---
+
+## Adding New Questionnaires
+
+### Step 1: Create Markdown File
+
+Add your `.md` file to the `Questionnaires/` folder. Use this structure:
 
 ```markdown
 # [Technology] Implementation Checklist
 
 **Client Name:** _______________________________________________
 **Implementation Partner:** Cloudstrucc Inc.
-**Project Start Date:** _______________________________________________
-
----
-
-## How to Use This Document
-[Instructions and response legend]
 
 ---
 
 ## 1. Section Name
 
-### What Is It?
+### What Is This Section About?
 [Plain language explanation]
 
-### Key Features
+### Requirements
 
 | Feature | Description | Your Decision | Notes |
 |---------|-------------|---------------|-------|
-| **Feature Name** | What it does | ☐ OOB ☐ CUSTOMIZE | |
-
-### Considerations
-
-| Question | Your Answer | Notes |
-|----------|-------------|-------|
-| Your question here? | | |
+| **Feature Name** | What it does | ☐ YES ☐ NO | |
 
 ---
 
 ## Sign-Off & Approval
-[Signature blocks]
+
+| Role | Name | Signature | Date |
+|------|------|-----------|------|
+| **Client** | | | |
 
 ---
 
 ## Glossary
-[Term definitions]
+
+| Term | Definition |
+|------|------------|
+| **Term** | What it means |
+```
+
+### Step 2: Deploy
+
+```bash
+cd Deployment
+./deploy.sh --deploy
+```
+
+The deployment script automatically:
+- Copies all `.md` files from `Questionnaires/` to `ba-questionnaire-app/templates/`
+- Deploys the updated code
+- The app discovers and loads new templates on startup
+
+### Template Requirements
+
+For auto-detection to work, your `.md` file must have:
+- At least one `# Title` heading
+- At least one markdown table with `|---|`
+- NOT be named `README.md`, `LICENSE.md`, etc.
+
+---
+
+## Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | `3000` (local) / `8080` (Azure) | Server port |
+| `NODE_ENV` | No | `development` | Environment mode |
+| `SESSION_SECRET` | Yes | - | Session encryption key (auto-generated on Azure) |
+| `ADMIN_EMAIL` | No | `admin@cloudstrucc.com` | Admin login email |
+| `ADMIN_PASSWORD` | No | `ChangeThisPassword123!` | Admin login password |
+| `SMTP_HOST` | No | - | SMTP server for emails |
+| `SMTP_PORT` | No | `587` | SMTP port |
+| `SMTP_USER` | No | - | SMTP username |
+| `SMTP_PASS` | No | - | SMTP password |
+| `BASE_URL` | No | `http://localhost:3000` | App URL (for email links) |
+| `ANALYTICS_INTERVAL_HOURS` | No | `72` | Analytics digest frequency |
+
+---
+
+## Troubleshooting
+
+### App won't start on Azure
+
+```bash
+# Check logs
+./deploy.sh --logs
+
+# SSH in and run manually
+./deploy.sh --ssh
+# Then: cd /home/site/wwwroot && node app.js
+```
+
+### Login doesn't work (redirects back to login)
+
+This is usually a session/cookie issue. Make sure `app.js` has:
+```javascript
+app.set('trust proxy', 1);
+```
+
+### Templates not showing
+
+```bash
+# Check templates were synced
+ls ba-questionnaire-app/templates/
+
+# Re-sync and deploy
+./deploy.sh --deploy
+```
+
+### Permission denied on Mac
+
+```bash
+chmod +x Deployment/deploy.sh
+chmod +x ba-questionnaire-app/startup.sh
 ```
 
 ---
 
-## Who Is This For?
+## Architecture
 
-- **Business Analysts** conducting requirements workshops
-- **Solution Architects** scoping implementation efforts
-- **Project Managers** ensuring nothing falls through the cracks
-- **Consultants** delivering professional, repeatable client engagements
-- **Internal IT Teams** rolling out new platforms to business units
+```
+┌─────────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│   Client        │────▶│  Azure App Service  │────▶│   SQLite     │
+│   Browser       │◀────│  (Node.js/Express)  │◀────│   Database   │
+└─────────────────┘     └──────────┬──────────┘     └──────────────┘
+                                   │
+                          ┌────────▼────────┐
+                          │  SMTP Server    │
+                          │  (Office 365)   │
+                          └─────────────────┘
+```
+
+---
+
+## Contributing
+
+Contributions welcome! Whether it's new templates, bug fixes, or feature enhancements.
+
+1. Fork this repository
+2. Create your feature branch (`git checkout -b feature/new-template`)
+3. Commit your changes (`git commit -m 'Add new template'`)
+4. Push to the branch (`git push origin feature/new-template`)
+5. Open a Pull Request
+
+### Template Guidelines
+
+- Use clear, non-technical language where possible
+- Include decision checkboxes (☐ YES ☐ NO ☐ N/A)
+- Add links to official documentation
+- Include a glossary section for technical terms
+- Add sign-off section at the end
 
 ---
 
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
-You are free to use, modify, and distribute these templates and the web application for personal, commercial, and client projects without restriction.
 
 ---
 
@@ -361,5 +463,5 @@ You are free to use, modify, and distribute these templates and the web applicat
 ---
 
 <p align="center">
-  <em>If you find this helpful, consider giving the repository a ⭐ to help others discover it!</em>
+  <em>If you find this helpful, consider giving the repository a ⭐!</em>
 </p>

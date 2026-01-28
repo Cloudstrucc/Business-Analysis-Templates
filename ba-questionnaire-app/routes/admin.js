@@ -4,6 +4,45 @@ const { v4: uuidv4 } = require('uuid');
 const { passport, ensureAuthenticated, ensureNotAuthenticated } = require('../config/passport');
 const { run, all, get, saveDatabase } = require('../models/database');
 const emailService = require('../utils/emailService');
+const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const templatesDir = path.join(__dirname, '..', 'templates');
+    if (!fs.existsSync(templatesDir)) {
+      fs.mkdirSync(templatesDir, { recursive: true });
+    }
+    cb(null, templatesDir);
+  },
+  filename: function (req, file, cb) {
+    // Sanitize filename
+    let filename = file.originalname.replace(/[^a-zA-Z0-9-_.]/g, '-');
+    if (!filename.toLowerCase().endsWith('.md')) {
+      filename += '.md';
+    }
+    cb(null, filename);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    // Accept only markdown files
+    if (file.mimetype === 'text/markdown' || 
+        file.originalname.toLowerCase().endsWith('.md') ||
+        file.originalname.toLowerCase().endsWith('.markdown')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only markdown files (.md) are allowed'));
+    }
+  },
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  }
+});
 
 // Login page
 router.get('/login', ensureNotAuthenticated, (req, res) => {
@@ -132,8 +171,6 @@ router.get('/invites', ensureAuthenticated, (req, res) => {
 router.get('/invites/new', ensureAuthenticated, (req, res) => {
   const forms = all(`SELECT * FROM forms WHERE is_active = 1 ORDER BY title`);
   
-  console.log('Available forms for invite:', forms.map(f => ({ id: f.id, title: f.title })));
-  
   res.render('admin/invite-new', {
     title: 'Create Invite',
     isAdmin: true,
@@ -149,30 +186,17 @@ router.get('/invites/new', ensureAuthenticated, (req, res) => {
 // Create invite
 router.post('/invites/create', ensureAuthenticated, async (req, res) => {
   try {
-    console.log('=== CREATE INVITE ===');
-    console.log('Request body:', req.body);
-    
     const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
     
-    console.log('Forms from request:', forms);
-    
-    if (!clientName || !clientEmail || !expiresAt) {
+    if (!clientName || !clientEmail || !forms || !expiresAt) {
       req.flash('error', 'Please fill in all required fields');
       return res.redirect('/admin/invites/new');
     }
 
-    if (!forms) {
-      req.flash('error', 'Please select at least one form');
-      return res.redirect('/admin/invites/new');
-    }
-
-    // Handle forms - could be string or array
     const formIds = Array.isArray(forms) ? forms : [forms];
-    console.log('Form IDs to link:', formIds);
     
     // Generate unique code
     const code = uuidv4().substring(0, 8).toUpperCase();
-    console.log('Generated code:', code);
     
     // Create invite
     const inviteId = run(`
@@ -180,43 +204,26 @@ router.post('/invites/create', ensureAuthenticated, async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [code, clientEmail.toLowerCase(), clientName, clientCompany || null, req.user.id, expiresAt, submissionDeadline || null]);
 
-    console.log('Created invite with ID:', inviteId);
-
     // Link forms to invite
-    for (const formId of formIds) {
-      console.log(`Linking form ${formId} to invite ${inviteId}`);
-      run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, parseInt(formId)]);
-    }
-    
-    // Verify the links were created
-    const linkedForms = all(`SELECT * FROM invite_forms WHERE invite_id = ?`, [inviteId]);
-    console.log('Linked forms:', linkedForms);
+    formIds.forEach(formId => {
+      run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
+    });
 
     // Get form details for email
-    const formDetails = all(`SELECT * FROM forms WHERE id IN (${formIds.map(() => '?').join(',')})`, formIds.map(id => parseInt(id)));
-    console.log('Form details for email:', formDetails.map(f => f.title));
+    const formDetails = all(`SELECT * FROM forms WHERE id IN (${formIds.join(',')})`);
 
     // Send email if requested
     if (sendEmail === 'on') {
-      try {
-        emailService.initialize();
-        await emailService.sendInvite({
-          to: clientEmail,
-          clientName,
-          inviteCode: code,
-          forms: formDetails,
-          expiresAt,
-          submissionDeadline
-        });
-        console.log('Email sent successfully');
-      } catch (emailError) {
-        console.error('Email error:', emailError);
-        // Don't fail the whole request if email fails
-      }
+      emailService.initialize();
+      await emailService.sendInvite({
+        to: clientEmail,
+        clientName,
+        inviteCode: code,
+        forms: formDetails,
+        expiresAt,
+        submissionDeadline
+      });
     }
-
-    // Save database
-    saveDatabase();
 
     req.flash('success', `Invite created successfully! Code: ${code}`);
     res.redirect('/admin/invites');
@@ -446,11 +453,131 @@ router.post('/forms/reload', ensureAuthenticated, (req, res) => {
   res.redirect('/admin/forms');
 });
 
+// Upload new form template
+router.post('/forms/upload', ensureAuthenticated, upload.single('formFile'), (req, res) => {
+  try {
+    const formLoader = require('../utils/formLoader');
+    let filename;
+    let content;
+    
+    if (req.file) {
+      // File upload method
+      filename = req.file.filename;
+      content = fs.readFileSync(req.file.path, 'utf8');
+    } else if (req.body.formName && req.body.markdownContent) {
+      // Paste content method
+      const formName = req.body.formName.trim();
+      content = req.body.markdownContent;
+      
+      // Create filename from form name
+      filename = formName
+        .replace(/[^a-zA-Z0-9\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
+      
+      if (!filename.toLowerCase().endsWith('.md')) {
+        filename += '.md';
+      }
+      
+      // Save to templates directory
+      const templatesDir = path.join(__dirname, '..', 'templates');
+      if (!fs.existsSync(templatesDir)) {
+        fs.mkdirSync(templatesDir, { recursive: true });
+      }
+      
+      const filePath = path.join(templatesDir, filename);
+      fs.writeFileSync(filePath, content, 'utf8');
+    } else {
+      req.flash('error', 'Please upload a file or paste markdown content');
+      return res.redirect('/admin/forms');
+    }
+    
+    // Validate the content
+    if (!content.includes('# ')) {
+      // Remove the file if validation fails
+      const filePath = path.join(__dirname, '..', 'templates', filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      req.flash('error', 'Invalid template: Must include a # title heading');
+      return res.redirect('/admin/forms');
+    }
+    
+    if (!content.includes('|---')) {
+      const filePath = path.join(__dirname, '..', 'templates', filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+      req.flash('error', 'Invalid template: Must include at least one markdown table');
+      return res.redirect('/admin/forms');
+    }
+    
+    // Reload forms to pick up the new file
+    formLoader.loadAllForms();
+    
+    req.flash('success', `Form template "${filename}" uploaded and published successfully`);
+    res.redirect('/admin/forms');
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    req.flash('error', 'Failed to upload form: ' + error.message);
+    res.redirect('/admin/forms');
+  }
+});
+
 // Toggle form active status
 router.post('/forms/:id/toggle', ensureAuthenticated, (req, res) => {
   const { active } = req.body;
   run(`UPDATE forms SET is_active = ? WHERE id = ?`, [active ? 1 : 0, req.params.id]);
   res.json({ success: true });
+});
+
+// Download form template
+router.get('/forms/:id/download', ensureAuthenticated, (req, res) => {
+  const form = get(`SELECT * FROM forms WHERE id = ?`, [req.params.id]);
+  
+  if (!form) {
+    req.flash('error', 'Form not found');
+    return res.redirect('/admin/forms');
+  }
+  
+  const filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
+  
+  if (!fs.existsSync(filePath)) {
+    req.flash('error', 'Form template file not found');
+    return res.redirect('/admin/forms');
+  }
+  
+  res.download(filePath, form.markdown_file);
+});
+
+// Delete form template
+router.post('/forms/:id/delete', ensureAuthenticated, (req, res) => {
+  const form = get(`SELECT * FROM forms WHERE id = ?`, [req.params.id]);
+  
+  if (!form) {
+    req.flash('error', 'Form not found');
+    return res.redirect('/admin/forms');
+  }
+  
+  try {
+    // Delete from database
+    run(`DELETE FROM invite_forms WHERE form_id = ?`, [req.params.id]);
+    run(`DELETE FROM forms WHERE id = ?`, [req.params.id]);
+    
+    // Optionally delete the file (uncomment to also remove file)
+    // const filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
+    // if (fs.existsSync(filePath)) {
+    //   fs.unlinkSync(filePath);
+    // }
+    
+    req.flash('success', `Form "${form.title}" deleted successfully`);
+  } catch (error) {
+    console.error('Delete error:', error);
+    req.flash('error', 'Failed to delete form: ' + error.message);
+  }
+  
+  res.redirect('/admin/forms');
 });
 
 // Preview form
@@ -464,8 +591,6 @@ router.get('/forms/:id/preview', ensureAuthenticated, (req, res) => {
 
   const MarkdownFormParser = require('../utils/markdownParser');
   const parser = new MarkdownFormParser();
-  const fs = require('fs');
-  const path = require('path');
   
   const filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
   

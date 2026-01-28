@@ -1,42 +1,317 @@
-<div class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-md-5">
-      <div class="card shadow-lg">
-        <div class="card-header text-center py-4">
-          <i class="bi bi-shield-lock fs-1 mb-2 d-block" style="color: var(--cs-accent);"></i>
-          <h4 class="mb-0">Administrator Login</h4>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login | Cloudstrucc BA Forms</title>
+  
+  <!-- Bootstrap 5.3 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --cs-primary: #0077b6;
+      --cs-accent: #00a8e8;
+      --cs-dark: #0a1628;
+      --cs-dark-blue: #0d1b2a;
+      --cs-navy: #1b263b;
+      --cs-gradient-dark: linear-gradient(135deg, #0a1628 0%, #1b263b 50%, #0d1b2a 100%);
+      --cs-gradient-primary: linear-gradient(135deg, #0077b6 0%, #00a8e8 100%);
+    }
+    
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      background: var(--cs-gradient-dark);
+      display: flex;
+      flex-direction: column;
+    }
+    
+    /* Top Navigation */
+    .top-nav {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 1.5rem 2rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 100;
+    }
+    
+    .top-nav .brand {
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 1.25rem;
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .top-nav .brand i {
+      color: var(--cs-accent);
+      font-size: 1.5rem;
+    }
+    
+    .top-nav .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+    
+    .top-nav .nav-links a {
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: color 0.2s ease;
+    }
+    
+    .top-nav .nav-links a:hover {
+      color: #ffffff;
+    }
+    
+    .top-nav .nav-links a i {
+      margin-right: 0.25rem;
+    }
+    
+    /* Main Content */
+    .login-wrapper {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 2rem 2rem;
+    }
+    
+    .login-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 3rem;
+      width: 100%;
+      max-width: 440px;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+    }
+    
+    .login-logo {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    
+    .login-logo .logo-icon {
+      width: 70px;
+      height: 70px;
+      background: var(--cs-gradient-primary);
+      border-radius: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+    }
+    
+    .login-logo .logo-icon i {
+      font-size: 2rem;
+      color: #ffffff;
+    }
+    
+    .login-logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--cs-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .login-logo p {
+      color: #64748b;
+      margin: 0;
+    }
+    
+    .form-label {
+      font-weight: 500;
+      color: var(--cs-dark);
+      margin-bottom: 0.5rem;
+    }
+    
+    .form-control {
+      border-radius: 10px;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+    
+    .form-control:focus {
+      border-color: var(--cs-accent);
+      box-shadow: 0 0 0 4px rgba(0,168,232,0.15);
+    }
+    
+    .input-group-text {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-right: none;
+      border-radius: 10px 0 0 10px;
+      color: #64748b;
+    }
+    
+    .input-group .form-control {
+      border-left: none;
+      border-radius: 0 10px 10px 0;
+    }
+    
+    .input-group:focus-within .input-group-text {
+      border-color: var(--cs-accent);
+    }
+    
+    .btn-login {
+      background: var(--cs-gradient-primary);
+      border: none;
+      border-radius: 10px;
+      padding: 0.875rem 1.5rem;
+      font-weight: 600;
+      font-size: 1rem;
+      width: 100%;
+      color: #ffffff;
+      transition: all 0.2s ease;
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(0,119,182,0.35);
+      color: #ffffff;
+    }
+    
+    .alert {
+      border: none;
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    
+    .alert-danger {
+      background: rgba(239,71,111,0.1);
+      color: #be185d;
+    }
+    
+    .alert-success {
+      background: rgba(6,214,160,0.1);
+      color: #047857;
+    }
+    
+    .back-link {
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+    
+    .back-link a {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.875rem;
+      transition: color 0.2s ease;
+    }
+    
+    .back-link a:hover {
+      color: var(--cs-primary);
+    }
+    
+    /* Footer */
+    .login-footer {
+      text-align: center;
+      padding: 1.5rem 2rem;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.875rem;
+    }
+    
+    .login-footer a {
+      color: var(--cs-accent);
+      text-decoration: none;
+    }
+    
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top Navigation -->
+  {{!-- <nav class="top-nav">
+    <a href="/" class="brand">
+      <i class="bi bi-diagram-3"></i> Cloudstrucc
+    </a>
+    <div class="nav-links">
+      <a href="https://cloudstrucc.com">About</a>
+      <a href="https://diagrams.cloudstrucc.com">Diagrams</a>
+    </div>
+  </nav> --}}
+  
+  <!-- Login Form -->
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="logo-icon">
+          <i class="bi bi-diagram-3"></i>
         </div>
-        <div class="card-body p-4">
-          <form action="/admin/login" method="POST">
-            <div class="mb-3">
-              <label for="email" class="form-label">Email Address</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
-                <input type="email" class="form-control" id="email" name="email" 
-                  placeholder="admin@cloudstrucc.com" required autofocus>
-              </div>
-            </div>
-            
-            <div class="mb-4">
-              <label for="password" class="form-label">Password</label>
-              <div class="input-group">
-                <span class="input-group-text"><i class="bi bi-key"></i></span>
-                <input type="password" class="form-control" id="password" name="password" 
-                  placeholder="••••••••" required>
-              </div>
-            </div>
-            
-            <button type="submit" class="btn btn-primary w-100 py-2">
-              <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
-            </button>
-          </form>
+        <h1>Cloudstrucc BA Forms</h1>
+        <p>Sign in to your admin account</p>
+      </div>
+      
+      {{#if messages.error}}
+      <div class="alert alert-danger mb-4">
+        <i class="bi bi-exclamation-circle me-2"></i>{{messages.error}}
+      </div>
+      {{/if}}
+      
+      {{#if messages.success}}
+      <div class="alert alert-success mb-4">
+        <i class="bi bi-check-circle me-2"></i>{{messages.success}}
+      </div>
+      {{/if}}
+      
+      <form action="/admin/login" method="POST">
+        <div class="mb-3">
+          <label for="email" class="form-label">Email Address</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+            <input type="email" class="form-control" id="email" name="email" placeholder="admin@cloudstrucc.com" required autofocus>
+          </div>
         </div>
-        <div class="card-footer text-center py-3 bg-light">
-          <a href="/" class="text-muted small">
-            <i class="bi bi-arrow-left me-1"></i>Back to Home
-          </a>
+        
+        <div class="mb-4">
+          <label for="password" class="form-label">Password</label>
+          <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-lock"></i></span>
+            <input type="password" class="form-control" id="password" name="password" placeholder="••••••••" required>
+          </div>
         </div>
+        
+        <button type="submit" class="btn btn-login">
+          <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+        </button>
+      </form>
+      
+      <div class="back-link">
+        <a href="/"><i class="bi bi-arrow-left me-1"></i>Back to Public Site</a>
       </div>
     </div>
   </div>
-</div>
+  
+  <!-- Footer -->
+  <footer class="login-footer">
+    <p>&copy; 2026 <a href="https://cloudstrucc.com">Cloudstrucc Inc.</a> All Rights Reserved.</p>
+  </footer>
+  
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
