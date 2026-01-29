@@ -105,8 +105,10 @@ function isFormTemplate(content) {
   const hasCheckboxes = content.includes('☐') || content.includes('[ ]');
   const hasDecisionColumn = content.toLowerCase().includes('your decision') ||
                             content.toLowerCase().includes('your answer') ||
-                            content.toLowerCase().includes('your choice');
-  const hasTables = content.includes('|---|');
+                            content.toLowerCase().includes('your choice') ||
+                            content.toLowerCase().includes('your response');
+  // More flexible table detection - look for pipe characters with dashes
+  const hasTables = /\|[-:]+\|/.test(content) || content.includes('|---|');
   
   return hasTables && (hasCheckboxes || hasDecisionColumn);
 }
@@ -150,7 +152,8 @@ function scanDirectory(dir, isRoot = false) {
         files.push({
           filename: entry.name,
           filepath: filePath,
-          relativePath: isRoot ? entry.name : `templates/${entry.name}`
+          // Store just the filename for templates dir, full relative path for root
+          relativePath: isRoot ? entry.name : entry.name
         });
       }
     }

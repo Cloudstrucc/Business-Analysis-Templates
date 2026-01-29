@@ -138,21 +138,35 @@ router.get('/form/:code/:slug', (req, res) => {
   `, [invite.id, formAssignment.id]);
 
   if (!submission) {
-    const submissionId = run(`
+    run(`
       INSERT INTO submissions (invite_id, form_id, data, progress, status)
       VALUES (?, ?, '{}', 0, 'in_progress')
     `, [invite.id, formAssignment.id]);
-    submission = get(`SELECT * FROM submissions WHERE id = ?`, [submissionId]);
+    // Fetch the newly created submission by invite_id and form_id
+    submission = get(`SELECT * FROM submissions WHERE invite_id = ? AND form_id = ?`, [invite.id, formAssignment.id]);
   }
 
-  // Check if already submitted
-  if (submission.status === 'submitted') {
+  // Check if submission exists and is already submitted
+  if (submission && submission.status === 'submitted') {
     return res.redirect('/form/' + code);
   }
+  
+  // If still no submission, something went wrong
+  if (!submission) {
+    req.flash('error', 'Failed to create submission');
+    return res.redirect('/form/' + code);
+  }
+  
 
   // Parse form template
   const parser = new MarkdownFormParser();
-  const filePath = path.join(__dirname, '..', 'templates', formAssignment.markdown_file);
+  // Handle both "filename.md" and "templates/filename.md" formats
+  let filePath;
+  if (formAssignment.markdown_file.startsWith('templates/')) {
+    filePath = path.join(__dirname, '..', formAssignment.markdown_file);
+  } else {
+    filePath = path.join(__dirname, '..', 'templates', formAssignment.markdown_file);
+  }
   
   if (!fs.existsSync(filePath)) {
     req.flash('error', 'Form template not found');

@@ -149,29 +149,56 @@ router.post('/invites/create', ensureAuthenticated, async (req, res) => {
   try {
     const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
     
+    console.log('=== CREATE INVITE DEBUG ===');
+    console.log('forms from request:', forms);
+    console.log('forms type:', typeof forms);
+    console.log('req.body:', JSON.stringify(req.body, null, 2));
+    
     if (!clientName || !clientEmail || !forms || !expiresAt) {
+      console.log('Validation failed - missing fields');
       req.flash('error', 'Please fill in all required fields');
       return res.redirect('/admin/invites/new');
     }
 
     const formIds = Array.isArray(forms) ? forms : [forms];
+    console.log('formIds array:', formIds);
     
     // Generate unique code
     const code = uuidv4().substring(0, 8).toUpperCase();
     
     // Create invite
-    const inviteId = run(`
+    run(`
       INSERT INTO invites (code, client_email, client_name, client_company, created_by, expires_at, submission_deadline)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `, [code, clientEmail.toLowerCase(), clientName, clientCompany || null, req.user.id, expiresAt, submissionDeadline || null]);
+    
+    // Get the invite ID by querying for the code we just inserted
+    const newInvite = get(`SELECT id FROM invites WHERE code = ?`, [code]);
+    const inviteId = newInvite ? newInvite.id : 0;
+    
+    console.log('Created invite with ID:', inviteId, '(from code lookup)');
 
-    // Link forms to invite
-    formIds.forEach(formId => {
-      run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
-    });
+    // Link forms to invite (deduplicate first)
+    const uniqueFormIds = [...new Set(formIds.map(id => parseInt(id)))];
+    console.log('uniqueFormIds:', uniqueFormIds);
+    
+    for (const formId of uniqueFormIds) {
+      console.log('Linking form', formId, 'to invite', inviteId);
+      // Check if already exists
+      const existing = get(`SELECT id FROM invite_forms WHERE invite_id = ? AND form_id = ?`, [inviteId, formId]);
+      console.log('Existing link:', existing);
+      if (!existing) {
+        run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
+        console.log('Inserted invite_forms link');
+      }
+    }
+    
+    // Verify the links were created
+    const linkedForms = all(`SELECT * FROM invite_forms WHERE invite_id = ?`, [inviteId]);
+    console.log('Linked forms after insert:', linkedForms);
 
     // Get form details for email
-    const formDetails = all(`SELECT * FROM forms WHERE id IN (${formIds.join(',')})`);
+    const formDetails = uniqueFormIds.length > 0 ? all(`SELECT * FROM forms WHERE id IN (${uniqueFormIds.join(',')})`) : [];
 
     // Send email if requested
     if (sendEmail === 'on') {
@@ -435,10 +462,19 @@ router.get('/forms/:id/preview', ensureAuthenticated, (req, res) => {
   const fs = require('fs');
   const path = require('path');
   
-  const filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
+  // Handle both "filename.md" and "templates/filename.md" formats
+  let filePath;
+  if (form.markdown_file.startsWith('templates/')) {
+    filePath = path.join(__dirname, '..', form.markdown_file);
+  } else {
+    filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
+  }
+  
+  console.log('Preview form - looking for file:', filePath);
   
   if (!fs.existsSync(filePath)) {
-    req.flash('error', 'Form template file not found');
+    console.log('File not found:', filePath);
+    req.flash('error', 'Form template file not found: ' + form.markdown_file);
     return res.redirect('/admin/forms');
   }
 

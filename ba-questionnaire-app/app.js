@@ -45,20 +45,34 @@ app.engine('hbs', engine({
   layoutsDir: path.join(__dirname, 'views/layouts'),
   partialsDir: path.join(__dirname, 'views/partials'),
   helpers: {
-    // Equality helper
-    eq: function(a, b) {
+    // Equality helper - works as both inline and block helper
+    eq: function(a, b, options) {
+      if (options && options.fn) {
+        // Block helper usage: {{#eq a b}}...{{else}}...{{/eq}}
+        return a === b ? options.fn(this) : options.inverse(this);
+      }
+      // Inline usage: {{eq a b}}
       return a === b;
     },
     // Not equal helper
-    neq: function(a, b) {
+    neq: function(a, b, options) {
+      if (options && options.fn) {
+        return a !== b ? options.fn(this) : options.inverse(this);
+      }
       return a !== b;
     },
     // Greater than helper
-    gt: function(a, b) {
+    gt: function(a, b, options) {
+      if (options && options.fn) {
+        return a > b ? options.fn(this) : options.inverse(this);
+      }
       return a > b;
     },
     // Less than helper
-    lt: function(a, b) {
+    lt: function(a, b, options) {
+      if (options && options.fn) {
+        return a < b ? options.fn(this) : options.inverse(this);
+      }
       return a < b;
     },
     // JSON stringify helper
@@ -138,9 +152,10 @@ app.use(cookieParser());
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Session configuration
 // Trust proxy for Azure App Service (required for secure cookies)
 app.set('trust proxy', 1);
-// Session configuration
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
   resave: false,
