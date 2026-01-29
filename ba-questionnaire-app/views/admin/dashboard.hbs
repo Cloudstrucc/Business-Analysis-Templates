@@ -1,200 +1,174 @@
-<!-- Stats Row -->
-<div class="row g-4 mb-4">
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card">
-      <div class="stat-icon primary">
-        <i class="bi bi-envelope-paper"></i>
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Dashboard</h1>
+      <p class="text-muted mb-0">Welcome back, {{admin.name}}</p>
+    </div>
+    <a href="/admin/invites/new" class="btn btn-primary">
+      <i class="bi bi-plus-lg me-2"></i>Create New Invite
+    </a>
+  </div>
+  
+  <!-- Stats Cards -->
+  <div class="row g-4 mb-4">
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(0,168,232,0.1); color: var(--cs-accent);">
+          <i class="bi bi-envelope-paper"></i>
+        </div>
+        <div class="stat-number">{{stats.totalInvites}}</div>
+        <div class="stat-label">Active Invites</div>
       </div>
-      <div class="stat-value">{{stats.totalInvites}}</div>
-      <div class="stat-label">Active Invites</div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(255,193,7,0.1); color: var(--cs-warning);">
+          <i class="bi bi-hourglass-split"></i>
+        </div>
+        <div class="stat-number">{{stats.inProgress}}</div>
+        <div class="stat-label">In Progress</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(40,167,69,0.1); color: var(--cs-success);">
+          <i class="bi bi-check-circle"></i>
+        </div>
+        <div class="stat-number">{{stats.completed}}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+    </div>
+    <div class="col-md-3 col-6">
+      <div class="stat-card">
+        <div class="stat-icon" style="background: rgba(220,53,69,0.1); color: var(--cs-danger);">
+          <i class="bi bi-clock-history"></i>
+        </div>
+        <div class="stat-number">{{stats.expiringSoon}}</div>
+        <div class="stat-label">Expiring Soon</div>
+      </div>
     </div>
   </div>
   
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card accent">
-      <div class="stat-icon accent">
-        <i class="bi bi-hourglass-split"></i>
-      </div>
-      <div class="stat-value">{{stats.inProgress}}</div>
-      <div class="stat-label">In Progress</div>
-    </div>
-  </div>
-  
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card success">
-      <div class="stat-icon success">
-        <i class="bi bi-check-circle"></i>
-      </div>
-      <div class="stat-value">{{stats.completed}}</div>
-      <div class="stat-label">Completed</div>
-    </div>
-  </div>
-  
-  <div class="col-sm-6 col-xl-3">
-    <div class="stat-card warning">
-      <div class="stat-icon warning">
-        <i class="bi bi-clock-history"></i>
-      </div>
-      <div class="stat-value">{{stats.expiringSoon}}</div>
-      <div class="stat-label">Expiring Soon</div>
-    </div>
-  </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="row g-4 mb-4">
-  <div class="col-12">
-    <div class="card">
-      <div class="card-body d-flex flex-wrap gap-3 py-3">
-        <a href="/admin/invites/new" class="btn btn-primary">
-          <i class="bi bi-plus-lg me-2"></i>Create New Invite
-        </a>
-        <a href="/admin/forms" class="btn btn-outline-primary">
-          <i class="bi bi-file-earmark-text me-2"></i>Manage Forms
-        </a>
-        <a href="/admin/submissions" class="btn btn-outline-primary">
-          <i class="bi bi-inbox me-2"></i>View Submissions
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-4">
-  <!-- Recent Activity -->
-  <div class="col-lg-8">
-    <div class="card h-100">
-      <div class="card-header d-flex justify-content-between align-items-center">
-        <span><i class="bi bi-activity me-2"></i>Recent Activity</span>
-        <a href="/admin/submissions" class="btn btn-sm btn-outline-primary">View All</a>
-      </div>
-      <div class="card-body p-0">
-        {{#if recentActivity.length}}
-          <div class="table-responsive">
-            <table class="table table-hover mb-0">
-              <thead>
-                <tr>
-                  <th>Client</th>
-                  <th>Form</th>
-                  <th>Progress</th>
-                  <th>Status</th>
-                  <th>Updated</th>
-                </tr>
-              </thead>
-              <tbody>
-                {{#each recentActivity}}
+  <div class="row g-4">
+    <!-- Recent Activity -->
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center bg-light">
+          <span><i class="bi bi-activity me-2"></i>Recent Activity</span>
+          <a href="/admin/submissions" class="btn btn-sm btn-outline-primary">View All</a>
+        </div>
+        <div class="card-body p-0">
+          {{#if recentActivity.length}}
+            <div class="table-responsive">
+              <table class="table table-hover mb-0">
+                <thead>
                   <tr>
-                    <td>
-                      <div class="fw-medium">{{this.client_name}}</div>
-                      {{#if this.client_company}}
-                        <small class="text-muted">{{this.client_company}}</small>
-                      {{/if}}
-                    </td>
-                    <td>{{this.form_title}}</td>
-                    <td style="min-width: 120px;">
-                      <div class="progress" style="height: 6px;">
-                        <div class="progress-bar" style="width: {{this.progress}}%;"></div>
-                      </div>
-                      <small class="text-muted">{{this.progress}}%</small>
-                    </td>
-                    <td>
-                      {{#if (eq this.status 'submitted')}}
-                        <span class="badge bg-success">Submitted</span>
-                      {{else if (eq this.status 'in_progress')}}
-                        <span class="badge bg-info">In Progress</span>
-                      {{else}}
-                        <span class="badge bg-secondary">{{this.status}}</span>
-                      {{/if}}
-                    </td>
-                    <td>
-                      <small class="text-muted">{{this.updated_at}}</small>
-                    </td>
+                    <th>Client</th>
+                    <th>Form</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Last Updated</th>
+                    <th></th>
                   </tr>
-                {{/each}}
-              </tbody>
-            </table>
-          </div>
-        {{else}}
-          <div class="empty-state py-5">
-            <i class="bi bi-inbox"></i>
-            <h5>No activity yet</h5>
-            <p class="mb-0">Submissions will appear here once clients start filling out forms.</p>
-          </div>
-        {{/if}}
+                </thead>
+                <tbody>
+                  {{#each recentActivity}}
+                    <tr>
+                      <td>
+                        <strong>{{this.client_name}}</strong>
+                        {{#if this.client_company}}
+                          <br><small class="text-muted">{{this.client_company}}</small>
+                        {{/if}}
+                      </td>
+                      <td>{{this.form_title}}</td>
+                      <td>
+                        {{#eq this.status "submitted"}}
+                          <span class="badge bg-success">Submitted</span>
+                        {{else}}
+                          {{#eq this.status "in_progress"}}
+                            <span class="badge bg-warning">In Progress</span>
+                          {{else}}
+                            <span class="badge bg-secondary">Not Started</span>
+                          {{/eq}}
+                        {{/eq}}
+                      </td>
+                      <td>
+                        <div class="progress" style="width: 100px; height: 6px;">
+                          <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                        </div>
+                        <small class="text-muted">{{this.progress}}%</small>
+                      </td>
+                      <td><small class="text-muted">{{this.updated_at}}</small></td>
+                      <td>
+                        <a href="/admin/submissions/{{this.id}}" class="btn btn-sm btn-outline-primary">
+                          <i class="bi bi-eye"></i>
+                        </a>
+                      </td>
+                    </tr>
+                  {{/each}}
+                </tbody>
+              </table>
+            </div>
+          {{else}}
+            <div class="text-center py-5">
+              <i class="bi bi-inbox fs-1 text-muted"></i>
+              <p class="text-muted mt-2">No recent activity</p>
+            </div>
+          {{/if}}
+        </div>
       </div>
     </div>
-  </div>
-  
-  <!-- Expiring Soon -->
-  <div class="col-lg-4">
-    <div class="card h-100">
-      <div class="card-header">
-        <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Expiring Soon
+    
+    <!-- Quick Actions & Recent Invites -->
+    <div class="col-lg-4">
+      <!-- Quick Actions -->
+      <div class="card mb-4">
+        <div class="card-header bg-light">
+          <i class="bi bi-lightning-charge me-2"></i>Quick Actions
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="/admin/invites/new" class="btn btn-primary">
+              <i class="bi bi-envelope-plus me-2"></i>Create New Invite
+            </a>
+            <a href="/admin/submissions?status=submitted" class="btn btn-outline-success">
+              <i class="bi bi-file-earmark-check me-2"></i>View Submissions
+            </a>
+            <a href="/admin/forms" class="btn btn-outline-secondary">
+              <i class="bi bi-file-text me-2"></i>Manage Forms
+            </a>
+          </div>
+        </div>
       </div>
-      <div class="card-body">
-        {{#if expiringSoon.length}}
-          <div class="list-group list-group-flush">
-            {{#each expiringSoon}}
-              <a href="/admin/invites/{{this.id}}" class="list-group-item list-group-item-action border-0 px-0">
-                <div class="d-flex justify-content-between align-items-start">
+      
+      <!-- Expiring Soon -->
+      <div class="card">
+        <div class="card-header bg-light">
+          <i class="bi bi-exclamation-triangle me-2 text-warning"></i>Expiring Soon
+        </div>
+        <div class="card-body p-0">
+          {{#if expiringSoon.length}}
+            <ul class="list-group list-group-flush">
+              {{#each expiringSoon}}
+                <li class="list-group-item d-flex justify-content-between align-items-center">
                   <div>
-                    <div class="fw-medium">{{this.client_name}}</div>
-                    <small class="text-muted">{{this.client_email}}</small>
+                    <strong>{{this.client_name}}</strong>
+                    <br><small class="text-muted">Expires: {{this.expires_at}}</small>
                   </div>
-                  <span class="badge bg-warning">{{this.expires_at}}</span>
-                </div>
-              </a>
-            {{/each}}
-          </div>
-        {{else}}
-          <div class="text-center py-4">
-            <i class="bi bi-check-circle text-success fs-2 mb-2 d-block"></i>
-            <p class="text-muted mb-0">No invites expiring soon</p>
-          </div>
-        {{/if}}
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- Getting Started Guide (show if no activity) -->
-{{#unless recentActivity.length}}
-<div class="row mt-4">
-  <div class="col-12">
-    <div class="card border-0" style="background: linear-gradient(135deg, rgba(0,119,182,0.05) 0%, rgba(0,168,232,0.05) 100%);">
-      <div class="card-body p-4">
-        <h5 class="mb-3"><i class="bi bi-rocket-takeoff me-2 text-primary"></i>Getting Started</h5>
-        <div class="row g-4">
-          <div class="col-md-4">
-            <div class="d-flex align-items-start gap-3">
-              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">1</div>
-              <div>
-                <h6 class="mb-1">Upload Forms</h6>
-                <p class="text-muted small mb-0">Go to <strong>Forms</strong> and upload your markdown questionnaires or use the pre-loaded templates.</p>
-              </div>
+                  <a href="/admin/invites/{{this.id}}" class="btn btn-sm btn-outline-warning">
+                    <i class="bi bi-pencil"></i>
+                  </a>
+                </li>
+              {{/each}}
+            </ul>
+          {{else}}
+            <div class="text-center py-4">
+              <i class="bi bi-check-circle text-success fs-3"></i>
+              <p class="text-muted mb-0 mt-2 small">No invites expiring soon</p>
             </div>
-          </div>
-          <div class="col-md-4">
-            <div class="d-flex align-items-start gap-3">
-              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">2</div>
-              <div>
-                <h6 class="mb-1">Create Invites</h6>
-                <p class="text-muted small mb-0">Click <strong>Create New Invite</strong> to generate a unique link for your client.</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="d-flex align-items-start gap-3">
-              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; flex-shrink: 0;">3</div>
-              <div>
-                <h6 class="mb-1">Track Progress</h6>
-                <p class="text-muted small mb-0">Monitor submissions in real-time and export completed questionnaires.</p>
-              </div>
-            </div>
-          </div>
+          {{/if}}
         </div>
       </div>
     </div>
   </div>
 </div>
-{{/unless}}

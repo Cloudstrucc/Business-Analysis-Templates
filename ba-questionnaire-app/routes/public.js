@@ -14,6 +14,18 @@ router.get('/', (req, res) => {
   });
 });
 
+// Access form via code (GET - from homepage form)
+router.get('/access', (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    req.flash('error', 'Please enter an access code');
+    return res.redirect('/');
+  }
+
+  res.redirect('/form/' + code.toUpperCase().trim());
+});
+
 // Access form via code (POST)
 router.post('/form/access', (req, res) => {
   const { code } = req.body;

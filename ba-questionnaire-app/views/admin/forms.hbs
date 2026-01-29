@@ -4,14 +4,9 @@
       <h1 class="h3 mb-1">Manage Forms</h1>
       <p class="text-muted mb-0">View and manage available questionnaire templates</p>
     </div>
-    <div class="btn-group">
-      <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#uploadFormModal">
-        <i class="bi bi-upload me-2"></i>Upload New Form
-      </button>
-      <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#reloadFormsModal">
-        <i class="bi bi-arrow-clockwise me-2"></i>Reload Forms
-      </button>
-    </div>
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reloadFormsModal">
+      <i class="bi bi-arrow-clockwise me-2"></i>Reload Forms
+    </button>
   </div>
   
   <div class="row g-4">
@@ -58,9 +53,6 @@
               <a href="/admin/forms/{{this.id}}/preview" class="btn btn-outline-primary" target="_blank">
                 <i class="bi bi-eye me-1"></i>Preview
               </a>
-              <a href="/admin/forms/{{this.id}}/download" class="btn btn-outline-secondary">
-                <i class="bi bi-download me-1"></i>Download
-              </a>
               {{#if this.is_active}}
                 <button type="button" class="btn btn-outline-warning" onclick="toggleForm({{this.id}}, false)">
                   <i class="bi bi-pause me-1"></i>Deactivate
@@ -70,9 +62,6 @@
                   <i class="bi bi-play me-1"></i>Activate
                 </button>
               {{/if}}
-              <button type="button" class="btn btn-outline-danger" onclick="deleteForm({{this.id}}, '{{this.title}}')">
-                <i class="bi bi-trash me-1"></i>Delete
-              </button>
             </div>
           </div>
         </div>
@@ -83,9 +72,6 @@
           <div class="card-body text-center py-5">
             <i class="bi bi-file-text fs-1 text-muted"></i>
             <p class="text-muted mt-3">No forms loaded yet</p>
-            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#uploadFormModal">
-              <i class="bi bi-upload me-2"></i>Upload New Form
-            </button>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#reloadFormsModal">
               <i class="bi bi-arrow-clockwise me-2"></i>Load Forms
             </button>
@@ -93,96 +79,6 @@
         </div>
       </div>
     {{/each}}
-  </div>
-</div>
-
-<!-- Upload Form Modal -->
-<div class="modal fade" id="uploadFormModal" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title"><i class="bi bi-upload me-2"></i>Upload New Form Template</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <form action="/admin/forms/upload" method="POST" enctype="multipart/form-data" id="uploadForm">
-        <div class="modal-body">
-          <!-- Upload Method Tabs -->
-          <ul class="nav nav-tabs mb-3" id="uploadTabs" role="tablist">
-            <li class="nav-item" role="presentation">
-              <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-upload" type="button" role="tab">
-                <i class="bi bi-file-earmark-arrow-up me-1"></i>Upload File
-              </button>
-            </li>
-            <li class="nav-item" role="presentation">
-              <button class="nav-link" id="paste-tab" data-bs-toggle="tab" data-bs-target="#paste-content" type="button" role="tab">
-                <i class="bi bi-clipboard me-1"></i>Paste Content
-              </button>
-            </li>
-          </ul>
-          
-          <div class="tab-content" id="uploadTabsContent">
-            <!-- File Upload Tab -->
-            <div class="tab-pane fade show active" id="file-upload" role="tabpanel">
-              <div class="mb-3">
-                <label for="formFile" class="form-label">Select Markdown File</label>
-                <input type="file" class="form-control" id="formFile" name="formFile" accept=".md,.markdown,text/markdown">
-                <div class="form-text">Upload a .md file containing the questionnaire template</div>
-              </div>
-              
-              <!-- File Preview Area -->
-              <div id="filePreview" class="d-none">
-                <div class="alert alert-info">
-                  <i class="bi bi-file-text me-2"></i>
-                  <strong id="fileName"></strong>
-                  <span class="text-muted ms-2">(<span id="fileSize"></span>)</span>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Paste Content Tab -->
-            <div class="tab-pane fade" id="paste-content" role="tabpanel">
-              <div class="mb-3">
-                <label for="formName" class="form-label">Form Name <span class="text-danger">*</span></label>
-                <input type="text" class="form-control" id="formName" name="formName" placeholder="e.g., CRM Implementation Checklist">
-                <div class="form-text">This will be used as the filename (spaces will be converted to hyphens)</div>
-              </div>
-              <div class="mb-3">
-                <label for="markdownContent" class="form-label">Markdown Content <span class="text-danger">*</span></label>
-                <textarea class="form-control font-monospace" id="markdownContent" name="markdownContent" rows="12" placeholder="# Your Form Title
-
-**Client Name:** _______________________________________________
-
----
-
-## 1. Section Name
-
-| Feature | Description | Your Decision | Notes |
-|---------|-------------|---------------|-------|
-| **Feature** | Description | ☐ YES ☐ NO | |"></textarea>
-                <div class="form-text">Paste your markdown content here. Must include a # title and at least one table.</div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Template Requirements Info -->
-          <div class="alert alert-light border mt-3">
-            <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Template Requirements</h6>
-            <ul class="mb-0 small">
-              <li>Must have a <code># Title</code> heading at the beginning</li>
-              <li>Must contain at least one markdown table with <code>|---|</code></li>
-              <li>Use <code>☐</code> for checkboxes (copy: ☐ YES ☐ NO)</li>
-              <li>Avoid using reserved names like README.md</li>
-            </ul>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-success" id="uploadBtn">
-            <i class="bi bi-upload me-2"></i>Upload & Publish
-          </button>
-        </div>
-      </form>
-    </div>
   </div>
 </div>
 
@@ -210,32 +106,7 @@
   </div>
 </div>
 
-<!-- Delete Confirmation Modal -->
-<div class="modal fade" id="deleteFormModal" tabindex="-1">
-  <div class="modal-dialog">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Delete Form</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to delete <strong id="deleteFormName"></strong>?</p>
-        <p class="text-danger small">This will remove the form template. Existing submissions will not be deleted but the form will no longer be available for new invites.</p>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-        <form id="deleteFormForm" method="POST" style="display: inline;">
-          <button type="submit" class="btn btn-danger">
-            <i class="bi bi-trash me-2"></i>Delete Form
-          </button>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
-
 <script>
-// Toggle form active status
 function toggleForm(id, active) {
   fetch('/admin/forms/' + id + '/toggle', {
     method: 'POST',
@@ -243,69 +114,4 @@ function toggleForm(id, active) {
     body: JSON.stringify({ active })
   }).then(() => window.location.reload());
 }
-
-// Delete form
-function deleteForm(id, title) {
-  document.getElementById('deleteFormName').textContent = title;
-  document.getElementById('deleteFormForm').action = '/admin/forms/' + id + '/delete';
-  new bootstrap.Modal(document.getElementById('deleteFormModal')).show();
-}
-
-// File preview
-document.getElementById('formFile').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  const preview = document.getElementById('filePreview');
-  
-  if (file) {
-    document.getElementById('fileName').textContent = file.name;
-    document.getElementById('fileSize').textContent = formatFileSize(file.size);
-    preview.classList.remove('d-none');
-  } else {
-    preview.classList.add('d-none');
-  }
-});
-
-function formatFileSize(bytes) {
-  if (bytes < 1024) return bytes + ' bytes';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-// Form validation
-document.getElementById('uploadForm').addEventListener('submit', function(e) {
-  const activeTab = document.querySelector('#uploadTabs .nav-link.active').id;
-  
-  if (activeTab === 'file-tab') {
-    const file = document.getElementById('formFile').files[0];
-    if (!file) {
-      e.preventDefault();
-      alert('Please select a file to upload');
-      return;
-    }
-  } else {
-    const name = document.getElementById('formName').value.trim();
-    const content = document.getElementById('markdownContent').value.trim();
-    
-    if (!name || !content) {
-      e.preventDefault();
-      alert('Please fill in both the form name and markdown content');
-      return;
-    }
-    
-    if (!content.includes('# ')) {
-      e.preventDefault();
-      alert('Markdown content must include a # title heading');
-      return;
-    }
-    
-    if (!content.includes('|---')) {
-      e.preventDefault();
-      alert('Markdown content must include at least one table');
-      return;
-    }
-  }
-  
-  document.getElementById('uploadBtn').disabled = true;
-  document.getElementById('uploadBtn').innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Uploading...';
-});
 </script>

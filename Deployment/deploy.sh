@@ -1,38 +1,3 @@
-#!/bin/bash
-
-#
-# deploy.sh - Deploy BA Questionnaire Portal to Azure App Service
-#
-# This script should be placed in: /Deployment/deploy.sh
-# Run from the Deployment folder: ./deploy.sh
-#
-# Expected repo structure:
-#   Business-Analysis-Templates/
-#   ├── Deployment/
-#   │   └── deploy.sh          ← Run from here
-#   ├── ba-questionnaire-app/
-#   │   ├── app.js
-#   │   ├── package.json
-#   │   └── templates/         ← MD files copied here on deploy
-#   ├── Questionnaires/        ← Source MD files live here
-#   │   ├── D365-Customer-Services.md
-#   │   ├── D365-Omni.md
-#   │   ├── ECommerce-Canadian-Clothing-Checklist.md
-#   │   └── ...
-#   └── README.md
-#
-# Usage:
-#   ./deploy.sh              Full deployment (setup + deploy)
-#   ./deploy.sh --deploy     Deploy code only (resources must exist)
-#   ./deploy.sh --setup      Create Azure resources only
-#   ./deploy.sh --sync       Sync questionnaires to templates folder only
-#   ./deploy.sh --logs       View live logs
-#   ./deploy.sh --ssh        SSH into container
-#   ./deploy.sh --restart    Restart the app
-#   ./deploy.sh --status     Check app status
-#   ./deploy.sh --delete     Delete all Azure resources
-#
-
 set -e
 
 # ============================================================

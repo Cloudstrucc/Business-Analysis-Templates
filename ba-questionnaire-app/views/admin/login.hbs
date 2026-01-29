@@ -1,192 +1,42 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign In | Cloudstrucc BA Forms</title>
-  
-  <!-- Bootstrap 5.3 -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-  <!-- Bootstrap Icons -->
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
-  <!-- Google Fonts - Inter -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <!-- CloudStrucc Design System -->
-  <link href="/css/cloudstrucc.css" rel="stylesheet">
-  
-  <style>
-    body {
-      background: var(--color-bg-page);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .login-main {
-      flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: var(--space-8) var(--space-4);
-    }
-    
-    /* Form container: max-width 480px, centered, 32px padding, shadow-lg */
-    .login-card {
-      background: var(--color-bg-card);
-      border: 1px solid var(--color-border);
-      border-radius: var(--radius-lg);
-      padding: var(--space-8);
-      width: 100%;
-      max-width: 480px;
-      box-shadow: var(--shadow-lg);
-    }
-    
-    .login-header {
-      text-align: center;
-      margin-bottom: var(--space-8);
-    }
-    
-    .login-header .icon {
-      width: 56px;
-      height: 56px;
-      background: var(--color-primary);
-      border-radius: var(--radius-lg);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: var(--space-5);
-    }
-    
-    .login-header .icon i {
-      font-size: 1.5rem;
-      color: white;
-    }
-    
-    .login-header h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      margin-bottom: var(--space-2);
-      color: var(--color-text-primary);
-    }
-    
-    .login-header p {
-      color: var(--color-text-muted);
-      font-size: 0.9375rem;
-      margin: 0;
-    }
-    
-    /* Field spacing: 20px between fields */
-    .form-group {
-      margin-bottom: var(--space-5);
-    }
-    
-    .input-icon-wrap {
-      position: relative;
-    }
-    
-    .input-icon-wrap i {
-      position: absolute;
-      left: var(--space-4);
-      top: 50%;
-      transform: translateY(-50%);
-      color: var(--slate-400);
-      font-size: 1rem;
-    }
-    
-    .input-icon-wrap .form-control {
-      padding-left: 2.75rem;
-    }
-    
-    .btn-login {
-      width: 100%;
-      background: var(--color-primary);
-      border: none;
-      color: white;
-      border-radius: var(--radius-md);
-      padding: var(--space-3) var(--space-6);
-      font-size: 1rem;
-      font-weight: 500;
-      min-height: 44px;
-      margin-top: var(--space-2);
-      transition: background var(--duration-micro) var(--ease-out);
-    }
-    
-    .btn-login:hover {
-      background: var(--color-primary-hover);
-      color: white;
-    }
-    
-    .back-link {
-      text-align: center;
-      margin-top: var(--space-6);
-    }
-    
-    .back-link a {
-      color: var(--color-text-muted);
-      font-size: 0.875rem;
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-1);
-    }
-    
-    .back-link a:hover {
-      color: var(--color-primary);
-    }
-  </style>
-</head>
-<body>
-  
-  <main class="login-main">
-    <div class="login-card">
-      <div class="login-header">
-        <div class="icon">
-          <i class="bi bi-diagram-3"></i>
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-md-5">
+      <div class="card shadow-lg">
+        <div class="card-header text-center py-4">
+          <i class="bi bi-shield-lock fs-1 mb-2 d-block" style="color: var(--cs-accent);"></i>
+          <h4 class="mb-0">Administrator Login</h4>
         </div>
-        <h1>Welcome back</h1>
-        <p>Sign in to your admin account</p>
-      </div>
-      
-      {{#if messages.error}}
-      <div class="alert alert-danger mb-4">
-        <i class="bi bi-exclamation-circle"></i>
-        <span>{{messages.error}}</span>
-      </div>
-      {{/if}}
-      
-      {{#if messages.success}}
-      <div class="alert alert-success mb-4">
-        <i class="bi bi-check-circle"></i>
-        <span>{{messages.success}}</span>
-      </div>
-      {{/if}}
-      
-      <form action="/admin/login" method="POST">
-        <div class="form-group">
-          <label class="form-label">Email</label>
-          <div class="input-icon-wrap">
-            <i class="bi bi-envelope"></i>
-            <input type="email" class="form-control" name="email" placeholder="you@example.com" required autofocus>
-          </div>
+        <div class="card-body p-4">
+          <form action="/admin/login" method="POST">
+            <div class="mb-3">
+              <label for="email" class="form-label">Email Address</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" class="form-control" id="email" name="email" 
+                  placeholder="admin@cloudstrucc.com" required autofocus>
+              </div>
+            </div>
+            
+            <div class="mb-4">
+              <label for="password" class="form-label">Password</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-key"></i></span>
+                <input type="password" class="form-control" id="password" name="password" 
+                  placeholder="••••••••" required>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary w-100 py-2">
+              <i class="bi bi-box-arrow-in-right me-2"></i>Sign In
+            </button>
+          </form>
         </div>
-        
-        <div class="form-group">
-          <label class="form-label">Password</label>
-          <div class="input-icon-wrap">
-            <i class="bi bi-lock"></i>
-            <input type="password" class="form-control" name="password" placeholder="••••••••" required>
-          </div>
+        <div class="card-footer text-center py-3 bg-light">
+          <a href="/" class="text-muted small">
+            <i class="bi bi-arrow-left me-1"></i>Back to Home
+          </a>
         </div>
-        
-        <button type="submit" class="btn btn-login">Sign In</button>
-      </form>
-      
-      <div class="back-link">
-        <a href="/"><i class="bi bi-arrow-left"></i> Back to home</a>
       </div>
     </div>
-  </main>
-  
-</body>
-</html>
+  </div>
+</div>

@@ -1,163 +1,146 @@
-<!-- Hero Section - 96px vertical padding -->
-<section class="hero-section" style="background: var(--color-bg-page);">
-  <div class="container">
-    <h1>Business Analysis<br><span style="color: var(--color-primary);">Questionnaires</span></h1>
-    <p class="lead">
-      Streamline your requirements gathering with interactive questionnaires for Dynamics 365, Power Platform, and enterprise technology implementations.
-    </p>
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-      <a href="#access" class="btn btn-primary btn-lg">
-        <i class="bi bi-key"></i> Enter Access Code
-      </a>
-      <a href="#features" class="btn btn-outline-secondary btn-lg">
-        <i class="bi bi-info-circle"></i> Learn More
-      </a>
-    </div>
-    <p class="text-muted text-sm mt-4">
-      No account required &nbsp;•&nbsp; Auto-save enabled &nbsp;•&nbsp; Secure access
-    </p>
-  </div>
-</section>
-
-<!-- Access Code Section -->
-<section id="access" class="section section-alt">
-  <div class="container">
-    <div style="max-width: 480px; margin: 0 auto;">
-      <div class="card" style="padding: var(--space-8);">
-        <div style="text-align: center; margin-bottom: var(--space-6);">
-          <div style="width: 48px; height: 48px; background: var(--indigo-100); border-radius: var(--radius-lg); display: inline-flex; align-items: center; justify-content: center; margin-bottom: var(--space-4);">
-            <i class="bi bi-key" style="font-size: 1.25rem; color: var(--indigo-600);"></i>
-          </div>
-          <h3 style="margin-bottom: var(--space-2);">Have an Access Code?</h3>
-          <p class="text-muted" style="margin: 0;">Enter your 8-character code to access your questionnaire</p>
-        </div>
-        
-        <form action="/access" method="GET">
-          <div class="d-flex gap-3">
-            <input type="text" name="code" class="form-control form-control-lg" placeholder="ABCD1234" maxlength="8" pattern="[A-Za-z0-9]{8}" required style="text-transform: uppercase; letter-spacing: 2px; text-align: center; font-weight: 600;">
-            <button type="submit" class="btn btn-primary btn-lg" style="padding-left: var(--space-5); padding-right: var(--space-5);">
-              <i class="bi bi-arrow-right"></i>
+<div class="container py-5">
+  <!-- Hero Section -->
+  <div class="row align-items-center mb-5">
+    <div class="col-lg-6">
+      <h1 class="display-4 fw-bold mb-4" style="color: var(--cs-primary);">
+        Business Analysis Requirements Portal
+      </h1>
+      <p class="lead text-muted mb-4">
+        Welcome to Cloudstrucc's Business Analysis questionnaire portal. If you've received an 
+        invitation, enter your access code below to complete your requirements questionnaire.
+      </p>
+      
+      <!-- Access Code Form -->
+      <div class="card">
+        <div class="card-body p-4">
+          <h5 class="card-title mb-3">
+            <i class="bi bi-key-fill text-primary me-2"></i>
+            Enter Your Access Code
+          </h5>
+          <form action="/form/access" method="POST">
+            <div class="mb-3">
+              <label for="inviteCode" class="form-label">Access Code</label>
+              <input type="text" class="form-control form-control-lg" id="inviteCode" name="code" 
+                placeholder="Enter your code..." required 
+                style="text-transform: uppercase; letter-spacing: 2px; font-family: monospace;">
+            </div>
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              <i class="bi bi-arrow-right-circle me-2"></i>
+              Access Questionnaire
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
-  </div>
-</section>
-
-<!-- Features Section - 96px vertical spacing -->
-<section id="features" class="section">
-  <div class="container">
-    <h2 class="section-title">Powerful Features</h2>
-    <p class="section-subtitle">Everything you need to gather requirements effectively</p>
     
-    <div class="row g-4">
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-cloud-check"></i>
+    <div class="col-lg-6 mt-4 mt-lg-0">
+      <div class="card bg-light border-0">
+        <div class="card-body p-4">
+          <h5 class="fw-bold mb-4">
+            <i class="bi bi-info-circle text-primary me-2"></i>
+            How It Works
+          </h5>
+          
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                style="width: 36px; height: 36px;">1</div>
+            </div>
+            <div class="ms-3">
+              <h6 class="fw-semibold mb-1">Receive Your Invitation</h6>
+              <p class="text-muted mb-0 small">Check your email for an invitation from Cloudstrucc with your unique access code.</p>
+            </div>
           </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Auto-Save Progress</h4>
-          <p class="text-muted mb-0">Your answers are saved automatically. Pick up where you left off anytime.</p>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-shield-check"></i>
+          
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                style="width: 36px; height: 36px;">2</div>
+            </div>
+            <div class="ms-3">
+              <h6 class="fw-semibold mb-1">Complete the Questionnaire</h6>
+              <p class="text-muted mb-0 small">Work through the requirements at your own pace. Progress is saved automatically.</p>
+            </div>
           </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Secure & Private</h4>
-          <p class="text-muted mb-0">Access codes ensure only authorized users can view your questionnaires.</p>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-phone"></i>
+          
+          <div class="d-flex mb-3">
+            <div class="flex-shrink-0">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" 
+                style="width: 36px; height: 36px;">3</div>
+            </div>
+            <div class="ms-3">
+              <h6 class="fw-semibold mb-1">Submit Your Responses</h6>
+              <p class="text-muted mb-0 small">Once complete, submit your questionnaire and we'll be in touch soon!</p>
+            </div>
           </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Mobile Friendly</h4>
-          <p class="text-muted mb-0">Complete questionnaires on desktop, tablet, or mobile devices.</p>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-file-earmark-text"></i>
+          
+          <hr class="my-4">
+          
+          <div class="d-flex align-items-center">
+            <i class="bi bi-shield-check text-success fs-4 me-3"></i>
+            <div>
+              <h6 class="fw-semibold mb-0">Secure & Confidential</h6>
+              <small class="text-muted">Your responses are encrypted and stored securely.</small>
+            </div>
           </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Comprehensive Templates</h4>
-          <p class="text-muted mb-0">Pre-built questionnaires for D365, Power Platform, SAP, and more.</p>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-graph-up"></i>
-          </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Progress Tracking</h4>
-          <p class="text-muted mb-0">See your completion percentage and know what's left to answer.</p>
-        </div>
-      </div>
-      
-      <div class="col-md-6 col-lg-4">
-        <div class="card h-100" style="padding: var(--space-6);">
-          <div class="stat-icon indigo" style="width: 44px; height: 44px; margin-bottom: var(--space-4);">
-            <i class="bi bi-download"></i>
-          </div>
-          <h4 style="font-size: 1.125rem; margin-bottom: var(--space-2);">Export Options</h4>
-          <p class="text-muted mb-0">Download completed questionnaires as Word documents.</p>
         </div>
       </div>
     </div>
   </div>
-</section>
-
-<!-- Templates Section -->
-<section class="section section-alt">
-  <div class="container">
-    <h2 class="section-title">Available Questionnaires</h2>
-    <p class="section-subtitle">Comprehensive templates for enterprise implementations</p>
+  
+  <!-- Services Section -->
+  <div class="row mt-5 pt-5 border-top">
+    <div class="col-12 text-center mb-4">
+      <h2 class="fw-bold" style="color: var(--cs-primary);">Our Expertise</h2>
+      <p class="text-muted">Professional implementation services for Microsoft cloud solutions</p>
+    </div>
     
-    <div class="d-flex flex-wrap justify-content-center gap-2">
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-microsoft me-1"></i>Dynamics 365 Sales
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-headset me-1"></i>D365 Customer Service
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-chat-dots me-1"></i>D365 Omnichannel
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-grid me-1"></i>Power Apps
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-globe me-1"></i>Power Pages
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-shield-lock me-1"></i>Platform Governance
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-box-seam me-1"></i>SAP S/4HANA
-      </span>
-      <span class="badge badge-indigo" style="font-size: 0.8125rem; padding: var(--space-2) var(--space-4);">
-        <i class="bi bi-plus-lg me-1"></i>Custom Templates
-      </span>
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 text-center p-4">
+        <div class="mb-3">
+          <i class="bi bi-gear-wide-connected fs-1 text-primary"></i>
+        </div>
+        <h5 class="fw-bold">Dynamics 365</h5>
+        <p class="text-muted mb-0">Sales, Customer Service, and Marketing implementations tailored to your business needs.</p>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 text-center p-4">
+        <div class="mb-3">
+          <i class="bi bi-lightning-charge fs-1 text-primary"></i>
+        </div>
+        <h5 class="fw-bold">Power Platform</h5>
+        <p class="text-muted mb-0">Power Apps, Power Automate, Power BI, and Power Pages solutions for digital transformation.</p>
+      </div>
+    </div>
+    
+    <div class="col-md-4 mb-4">
+      <div class="card h-100 text-center p-4">
+        <div class="mb-3">
+          <i class="bi bi-shield-lock fs-1 text-primary"></i>
+        </div>
+        <h5 class="fw-bold">Security & Governance</h5>
+        <p class="text-muted mb-0">Microsoft 365 security, compliance, and governance strategies for enterprise clients.</p>
+      </div>
     </div>
   </div>
-</section>
-
-<!-- CTA Section -->
-<section class="section" style="text-align: center;">
-  <div class="container">
-    <h2 class="section-title">Ready to Get Started?</h2>
-    <p class="section-subtitle" style="margin-bottom: var(--space-8);">Contact us to set up questionnaires for your project</p>
-    <div class="d-flex justify-content-center gap-3 flex-wrap">
-      <a href="https://cloudstrucc.com#contact" class="btn btn-primary btn-lg">Contact Us</a>
-      <a href="/admin/login" class="btn btn-outline-secondary btn-lg">Admin Login</a>
+  
+  <!-- Contact Section -->
+  <div class="row mt-5 pt-4">
+    <div class="col-12">
+      <div class="card text-center p-5" style="background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);">
+        <h3 class="text-white fw-bold mb-3">Need Help?</h3>
+        <p class="text-white-50 mb-4">If you have questions or need assistance, don't hesitate to reach out.</p>
+        <div>
+          <a href="mailto:contact-us@cloudstrucc.com" class="btn btn-light btn-lg me-2">
+            <i class="bi bi-envelope me-2"></i>Contact Us
+          </a>
+          <a href="https://www.cloudstrucc.com" target="_blank" class="btn btn-outline-light btn-lg">
+            <i class="bi bi-globe me-2"></i>Visit Website
+          </a>
+        </div>
+      </div>
     </div>
   </div>
-</section>
+</div>

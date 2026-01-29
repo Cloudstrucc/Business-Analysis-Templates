@@ -22,6 +22,7 @@ A collection of comprehensive, business-friendly questionnaire templates designe
 - [Deployment Commands Reference](#deployment-commands-reference)
 - [Adding New Questionnaires](#adding-new-questionnaires)
 - [Environment Variables](#environment-variables)
+- [Troubleshooting](#troubleshooting)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -130,8 +131,9 @@ pandoc Questionnaires/D365-Customer-Services.md -o Requirements.pdf
 
 ### Prerequisites
 
-- Node.js 18+ installed
+- Node.js 18+ installed (Node.js 20+ recommended)
 - npm or yarn
+- PM2 (optional, for process management)
 
 ### 1. Clone and Install
 
@@ -151,8 +153,24 @@ cp .env.example .env
 
 ### 3. Start the Server
 
+**Option A: Direct (for development)**
 ```bash
 node app.js
+```
+
+**Option B: With PM2 (recommended for local testing)**
+```bash
+# Install PM2 globally if not installed
+npm install -g pm2
+
+# Start the app
+pm2 start app.js --name ba-forms
+
+# View logs
+pm2 logs ba-forms
+
+# Check status
+pm2 status
 ```
 
 ### 4. Access the Application
@@ -166,6 +184,13 @@ node app.js
 - **Email:** `admin@cloudstrucc.com`
 - **Password:** `ChangeThisPassword123!`
 
+### 5. Test the Access Code Flow
+
+1. Go to http://localhost:3000
+2. Enter any code (e.g., `TEST1234`)
+3. You should see "Invalid Access Code" error page
+4. To test with a real code, log into admin and create an invite
+
 ---
 
 ## Deploy to Azure App Service
@@ -175,6 +200,23 @@ node app.js
 1. [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli) installed
 2. Azure account with active subscription
 3. Logged in: `az login`
+
+### First-Time Setup (Important!)
+
+Before your first deployment, fix file permissions:
+
+```bash
+# Navigate to the repository root
+cd ~/repos/Business-Analysis-Templates
+
+# Fix permissions on templates folder
+sudo chmod -R 755 ba-questionnaire-app/templates
+sudo chown -R $(whoami) ba-questionnaire-app/templates
+
+# Make deploy script executable
+chmod +x Deployment/deploy.sh
+chmod +x ba-questionnaire-app/startup.sh
+```
 
 ### One-Command Deployment
 
@@ -368,6 +410,46 @@ For auto-detection to work, your `.md` file must have:
 
 ## Troubleshooting
 
+### Permission denied during deployment (Mac)
+
+**Error:** `cp: .../templates/xxx.md: Permission denied`
+
+**Fix:**
+```bash
+cd ~/repos/Business-Analysis-Templates
+sudo chmod -R 755 ba-questionnaire-app/templates
+sudo chown -R $(whoami) ba-questionnaire-app/templates
+./Deployment/deploy.sh --deploy
+```
+
+### 404 Error when entering access code on homepage
+
+**Cause:** Missing `/access` route in `routes/public.js`
+
+**Fix:** Ensure this route exists in `ba-questionnaire-app/routes/public.js` (after the home page route):
+
+```javascript
+// Access form via code (GET - from homepage form)
+router.get('/access', (req, res) => {
+  const { code } = req.query;
+  
+  if (!code) {
+    req.flash('error', 'Please enter an access code');
+    return res.redirect('/');
+  }
+
+  res.redirect('/form/' + code.toUpperCase().trim());
+});
+```
+
+Then redeploy: `./deploy.sh --deploy`
+
+### Access code shows admin dashboard instead of error page
+
+**Cause:** Same as above - the `/access` route is missing, causing incorrect routing.
+
+**Fix:** Add the `/access` route as shown above and redeploy.
+
 ### App won't start on Azure
 
 ```bash
@@ -386,7 +468,7 @@ This is usually a session/cookie issue. Make sure `app.js` has:
 app.set('trust proxy', 1);
 ```
 
-### Templates not showing
+### Templates not showing in admin panel
 
 ```bash
 # Check templates were synced
@@ -396,11 +478,63 @@ ls ba-questionnaire-app/templates/
 ./deploy.sh --deploy
 ```
 
-### Permission denied on Mac
+### "Cannot find module" errors
 
 ```bash
-chmod +x Deployment/deploy.sh
-chmod +x ba-questionnaire-app/startup.sh
+# Locally
+cd ba-questionnaire-app
+npm install
+pm2 restart ba-forms
+
+# On Azure
+./deploy.sh --deploy
+```
+
+### Database errors
+
+**Fix (local):**
+```bash
+cd ba-questionnaire-app
+cp data/questionnaire.db data/questionnaire.db.backup
+rm data/questionnaire.db
+node app.js  # or pm2 restart ba-forms
+```
+
+**Fix (Azure):**
+```bash
+./deploy.sh --ssh
+cd /home/site/wwwroot
+rm -f data/questionnaire.db
+exit
+./deploy.sh --restart
+```
+
+### PM2 Commands (Local Development)
+
+```bash
+# Start application
+pm2 start app.js --name ba-forms
+
+# Restart application
+pm2 restart ba-forms
+
+# Stop application
+pm2 stop ba-forms
+
+# View logs
+pm2 logs ba-forms
+
+# View status
+pm2 status
+
+# Monitor resources
+pm2 monit
+
+# Save process list (persist across reboots)
+pm2 save
+
+# Setup startup script
+pm2 startup
 ```
 
 ---
@@ -418,6 +552,21 @@ chmod +x ba-questionnaire-app/startup.sh
                           │  (Office 365)   │
                           └─────────────────┘
 ```
+
+### Key Routes
+
+| Route | Method | Description |
+|-------|--------|-------------|
+| `/` | GET | Public homepage with access code form |
+| `/access` | GET | Handles access code submission, redirects to `/form/:code` |
+| `/form/:code` | GET | Client questionnaire dashboard |
+| `/form/:code/:slug` | GET | Specific questionnaire form |
+| `/admin/login` | GET/POST | Admin authentication |
+| `/admin/dashboard` | GET | Admin dashboard |
+| `/admin/invites` | GET | Manage invites |
+| `/admin/invites/new` | GET/POST | Create new invite |
+| `/admin/submissions` | GET | View all submissions |
+| `/admin/forms` | GET | Manage form templates |
 
 ---
 
