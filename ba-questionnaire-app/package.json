@@ -41,6 +41,8 @@
     "nodemailer": "^7.0.12",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
+    "pdfkit": "^0.17.2",
+    "puppeteer": "^24.36.1",
     "sql.js": "^1.13.0",
     "uuid": "^13.0.0",
     "validator": "^13.15.26"
