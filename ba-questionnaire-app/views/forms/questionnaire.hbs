@@ -1,143 +1,388 @@
-<div class="container py-4">
-  <!-- Back Navigation -->
-  <div class="mb-3">
-    <a href="/form/{{inviteCode}}" class="btn btn-outline-secondary btn-sm">
-      <i class="bi bi-arrow-left me-1"></i>Back to All Forms
-    </a>
-  </div>
-  
-  <!-- Form Header -->
-  <div class="card mb-4" style="background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);">
-    <div class="card-body p-4 text-white">
-      <h2 class="mb-2">{{form.title}}</h2>
-      <p class="mb-0 opacity-75">{{invite.client_name}} {{#if invite.client_company}}| {{invite.client_company}}{{/if}}</p>
-    </div>
-  </div>
-  
-  <!-- Progress Sticky Bar -->
-  <div class="progress-sticky">
-    <div class="d-flex justify-content-between align-items-center mb-2">
-      <span class="fw-semibold">Overall Progress</span>
-      <span id="progressPercent">{{progress}}%</span>
-    </div>
-    <div class="progress">
-      <div class="progress-bar" id="progressBar" style="width: {{progress}}%"></div>
-    </div>
-    <div class="d-flex justify-content-between mt-2">
-      <small class="text-muted">
-        <i class="bi bi-clock me-1"></i>Auto-saves every change
-      </small>
-      <small class="text-muted" id="lastSaved">
-        {{#if lastSaved}}Last saved: {{lastSaved}}{{/if}}
-      </small>
-    </div>
-  </div>
-  
-  <!-- Questionnaire Form -->
-  <form id="questionnaireForm" action="/form/{{inviteCode}}/{{form.slug}}/submit" method="POST">
-    
-    <!-- Header Fields -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2 class="section-title">
-          <span class="section-number"><i class="bi bi-building"></i></span>
-          Project Information
-        </h2>
+<div class="container-fluid py-4">
+  <div class="row">
+    <!-- Main Content Area -->
+    <div class="col-lg-9">
+      <!-- Back Navigation -->
+      <div class="mb-3">
+        <a href="/form/{{inviteCode}}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-arrow-left me-1"></i>Back to All Forms
+        </a>
+        <button class="btn btn-outline-primary btn-sm ms-2 d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSectionNav">
+          <i class="bi bi-list me-1"></i>Jump to Section
+        </button>
       </div>
-      <div class="section-content">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="header_client_name">Client Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="header_client_name" name="header_client_name" 
-              value="{{invite.client_name}}" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="header_company">Company</label>
-            <input type="text" class="form-control" id="header_company" name="header_company" 
-              value="{{invite.client_company}}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="header_project_start_date">Project Start Date</label>
-            <input type="date" class="form-control" id="header_project_start_date" name="header_project_start_date" 
-              value="{{savedData.header_project_start_date}}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="header_target_go_live_date">Target Go-Live Date</label>
-            <input type="date" class="form-control" id="header_target_go_live_date" name="header_target_go_live_date"
-              value="{{savedData.header_target_go_live_date}}">
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="header_prepared_by">Prepared By <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="header_prepared_by" name="header_prepared_by" 
-              value="{{savedData.header_prepared_by}}" placeholder="Your name" required>
-          </div>
+      
+      <!-- Form Header -->
+      <div class="card mb-4" style="background: #2c3e50;">
+        <div class="card-body p-4 text-white">
+          <h2 class="mb-2">{{form.title}}</h2>
+          <p class="mb-0 opacity-75">{{invite.client_name}} {{#if invite.client_company}}| {{invite.client_company}}{{/if}}</p>
         </div>
       </div>
-    </div>
-    
-    <!-- Dynamic Form Content -->
-    {{{formHtml}}}
-    
-    <!-- Sign-Off Section -->
-    <div class="form-section">
-      <div class="section-header">
-        <h2 class="section-title">
-          <span class="section-number"><i class="bi bi-pen"></i></span>
-          Sign-Off & Confirmation
-        </h2>
+      
+      <!-- Progress Sticky Bar -->
+      <div class="progress-sticky mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+          <span class="fw-semibold">Overall Progress</span>
+          <span id="progressPercent">{{progress}}%</span>
+        </div>
+        <div class="progress">
+          <div class="progress-bar" id="progressBar" style="width: {{progress}}%"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-2">
+          <small class="text-muted">
+            <i class="bi bi-clock me-1"></i>Auto-saves every change
+          </small>
+          <small class="text-muted" id="lastSaved">
+            {{#if lastSaved}}Last saved: {{lastSaved}}{{/if}}
+          </small>
+        </div>
       </div>
-      <div class="section-content">
-        <div class="alert alert-info">
-          <i class="bi bi-info-circle me-2"></i>
-          By submitting this questionnaire, you confirm that the information provided is accurate to the best of your knowledge.
+      
+      <!-- Questionnaire Form -->
+      <form id="questionnaireForm" action="/form/{{inviteCode}}/{{form.slug}}/submit" method="POST">
+        
+        <!-- Accordion Container -->
+        <div class="accordion" id="questionnaireAccordion">
+          
+          <!-- Project Information Section -->
+          <div class="accordion-item" id="section-project-info">
+            <h2 class="accordion-header" id="heading-project-info">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-project-info" aria-expanded="true" aria-controls="collapse-project-info">
+                <span class="section-number me-3"><i class="bi bi-building"></i></span>
+                <span class="section-title-text">Project Information</span>
+              </button>
+            </h2>
+            <div id="collapse-project-info" class="accordion-collapse collapse show" aria-labelledby="heading-project-info" data-bs-parent="#questionnaireAccordion">
+              <div class="accordion-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="header_client_name">Client Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="header_client_name" name="header_client_name" 
+                      value="{{invite.client_name}}" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="header_company">Company</label>
+                    <input type="text" class="form-control" id="header_company" name="header_company" 
+                      value="{{invite.client_company}}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="header_project_start_date">Project Start Date</label>
+                    <input type="date" class="form-control" id="header_project_start_date" name="header_project_start_date" 
+                      value="{{savedData.header_project_start_date}}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="header_target_go_live_date">Target Go-Live Date</label>
+                    <input type="date" class="form-control" id="header_target_go_live_date" name="header_target_go_live_date"
+                      value="{{savedData.header_target_go_live_date}}">
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="header_prepared_by">Prepared By <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="header_prepared_by" name="header_prepared_by" 
+                      value="{{savedData.header_prepared_by}}" placeholder="Your name" required>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Dynamic Form Content (Accordion Items) -->
+          {{{formHtml}}}
+          
+          <!-- Sign-Off Section -->
+          <div class="accordion-item" id="section-signoff">
+            <h2 class="accordion-header" id="heading-signoff">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-signoff" aria-expanded="false" aria-controls="collapse-signoff">
+                <span class="section-number me-3"><i class="bi bi-pen"></i></span>
+                <span class="section-title-text">Sign-Off & Confirmation</span>
+              </button>
+            </h2>
+            <div id="collapse-signoff" class="accordion-collapse collapse" aria-labelledby="heading-signoff" data-bs-parent="#questionnaireAccordion">
+              <div class="accordion-body">
+                <div class="alert alert-info">
+                  <i class="bi bi-info-circle me-2"></i>
+                  By submitting this questionnaire, you confirm that the information provided is accurate to the best of your knowledge.
+                </div>
+                
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="signoff_name">Your Full Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="signoff_name" name="signoff_name" 
+                      value="{{savedData.signoff_name}}" required>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label fw-semibold" for="signoff_title">Your Title/Role</label>
+                    <input type="text" class="form-control" id="signoff_title" name="signoff_title" 
+                      value="{{savedData.signoff_title}}">
+                  </div>
+                  <div class="col-12">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="signoff_confirm" name="signoff_confirm" required>
+                      <label class="form-check-label" for="signoff_confirm">
+                        I confirm that I have reviewed and completed this questionnaire to the best of my ability
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          
         </div>
         
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="signoff_name">Your Full Name <span class="text-danger">*</span></label>
-            <input type="text" class="form-control" id="signoff_name" name="signoff_name" 
-              value="{{savedData.signoff_name}}" required>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold" for="signoff_title">Your Title/Role</label>
-            <input type="text" class="form-control" id="signoff_title" name="signoff_title" 
-              value="{{savedData.signoff_title}}">
-          </div>
-          <div class="col-12">
-            <div class="form-check">
-              <input class="form-check-input" type="checkbox" id="signoff_confirm" name="signoff_confirm" required>
-              <label class="form-check-label" for="signoff_confirm">
-                I confirm that I have reviewed and completed this questionnaire to the best of my ability
-              </label>
+        <!-- Submit Actions -->
+        <div class="card mt-4">
+          <div class="card-body">
+            <div class="row align-items-center">
+              <div class="col-md-6">
+                <p class="mb-0 text-muted">
+                  <i class="bi bi-shield-check me-2"></i>
+                  Your data is automatically saved and securely stored
+                </p>
+              </div>
+              <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                <button type="button" class="btn btn-outline-secondary me-2" id="saveBtn">
+                  <i class="bi bi-save me-2"></i>Save Draft
+                </button>
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
+                  <i class="bi bi-send me-2"></i>Submit Questionnaire
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </form>
     </div>
     
-    <!-- Submit Actions -->
-    <div class="card">
-      <div class="card-body">
-        <div class="row align-items-center">
-          <div class="col-md-6">
-            <p class="mb-0 text-muted">
-              <i class="bi bi-shield-check me-2"></i>
-              Your data is automatically saved and securely stored
-            </p>
+    <!-- Sticky Sidebar Navigation (Desktop) -->
+    <div class="col-lg-3 d-none d-lg-block">
+      <nav class="section-nav" id="sectionNav">
+        <div class="section-nav-header">On this page</div>
+        <ul class="section-nav-list" id="sectionNavList">
+          <li><a href="#section-project-info" class="active">Project Information</a></li>
+          <!-- Dynamic sections will be added by JavaScript -->
+          <li><a href="#section-signoff">Sign-Off & Confirmation</a></li>
+        </ul>
+        <div class="section-nav-progress">
+          <small class="text-muted d-block mb-1">Progress</small>
+          <div class="progress" style="height: 6px;">
+            <div class="progress-bar" id="navProgressBar" style="width: 0%"></div>
           </div>
-          <div class="col-md-6 text-md-end mt-3 mt-md-0">
-            <button type="button" class="btn btn-outline-secondary me-2" id="saveBtn">
-              <i class="bi bi-save me-2"></i>Save Draft
-            </button>
-            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
-              <i class="bi bi-send me-2"></i>Submit Questionnaire
-            </button>
-          </div>
+          <small class="text-muted mt-1 d-block"><span id="navProgressPercent">0</span>% Complete</small>
         </div>
-      </div>
+      </nav>
     </div>
-  </form>
+  </div>
 </div>
+
+<!-- Mobile Section Navigation Offcanvas -->
+<div class="offcanvas offcanvas-end" tabindex="-1" id="mobileSectionNav">
+  <div class="offcanvas-header">
+    <h5 class="offcanvas-title">On this page</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"></button>
+  </div>
+  <div class="offcanvas-body">
+    <ul class="section-nav-list mobile" id="mobileSectionNavList">
+      <!-- Will be populated by JavaScript -->
+    </ul>
+  </div>
+</div>
+
+<style>
+/* Sticky Sidebar Navigation - Bootstrap Docs Style */
+.section-nav {
+  position: sticky;
+  top: 100px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  padding-left: 1rem;
+  border-left: 1px solid var(--cs-border, #dee2e6);
+}
+
+.section-nav-header {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--cs-text, #333);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.section-nav-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.section-nav-list li {
+  margin-bottom: 0.25rem;
+}
+
+.section-nav-list a {
+  display: block;
+  padding: 0.25rem 0;
+  color: var(--cs-text-muted, #6c757d);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  padding-left: 0.75rem;
+  margin-left: -1rem;
+  transition: all 0.15s ease;
+}
+
+.section-nav-list a:hover {
+  color: var(--cs-accent, #00a8e8);
+}
+
+.section-nav-list a.active {
+  color: var(--cs-accent, #00a8e8);
+  border-left-color: var(--cs-accent, #00a8e8);
+  font-weight: 500;
+}
+
+.section-nav-list a.completed::after {
+  content: ' ✓';
+  color: var(--cs-success, #28a745);
+  font-size: 0.75rem;
+}
+
+.section-nav-progress {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--cs-border, #dee2e6);
+}
+
+/* Mobile Navigation List */
+.section-nav-list.mobile {
+  font-size: 1rem;
+}
+
+.section-nav-list.mobile a {
+  padding: 0.75rem 1rem;
+  margin-left: 0;
+  border-left: none;
+  border-radius: 6px;
+}
+
+.section-nav-list.mobile a:hover,
+.section-nav-list.mobile a.active {
+  background: rgba(0, 168, 232, 0.1);
+}
+
+/* Accordion Customization */
+.accordion-item {
+  border: 1px solid var(--cs-border, #dee2e6);
+  margin-bottom: 0.75rem;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.accordion-item:first-of-type,
+.accordion-item:last-of-type {
+  border-radius: 8px !important;
+}
+
+.accordion-button {
+  font-weight: 600;
+  font-size: 1.1rem;
+  padding: 1rem 1.25rem;
+}
+
+.accordion-button:focus {
+  box-shadow: 0 0 0 0.2rem rgba(0, 168, 232, 0.25);
+  border-color: var(--cs-accent);
+}
+
+.accordion-button::after {
+  margin-left: auto;
+}
+
+.section-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: var(--cs-accent, #00a8e8);
+  color: white;
+  border-radius: 8px;
+  font-size: 1rem;
+}
+
+.section-title-text {
+  flex: 1;
+}
+
+.accordion-body {
+  padding: 1.5rem;
+  background: white;
+}
+
+/* Smooth scroll offset for sticky header */
+.accordion-item {
+  scroll-margin-top: 100px;
+}
+
+/* Highlight animation when navigating to section */
+@keyframes highlightSection {
+  0% { box-shadow: 0 0 0 4px rgba(0, 168, 232, 0.4); }
+  100% { box-shadow: none; }
+}
+
+.accordion-item.highlight {
+  animation: highlightSection 1.5s ease-out;
+}
+
+/* Form field styling within accordion */
+.accordion-body .form-label {
+  margin-bottom: 0.375rem;
+}
+
+.accordion-body .mb-4 {
+  margin-bottom: 1.25rem !important;
+}
+
+/* Subsection styling */
+.accordion-body .subsection {
+  background: var(--cs-light, #f8f9fa);
+  border-radius: 8px;
+  padding: 1.25rem;
+  margin-bottom: 1.25rem;
+  border-left: 4px solid var(--cs-accent, #00a8e8);
+}
+
+.accordion-body .subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cs-secondary, #1a3a5c);
+  margin-bottom: 0.75rem;
+}
+
+/* Responsive */
+@media (max-width: 991.98px) {
+  .section-nav {
+    display: none;
+  }
+}
+
+@media (max-width: 767.98px) {
+  .accordion-button {
+    font-size: 1rem;
+    padding: 0.875rem 1rem;
+  }
+  
+  .section-number {
+    width: 32px;
+    height: 32px;
+    font-size: 0.875rem;
+  }
+  
+  .accordion-body {
+    padding: 1rem;
+  }
+}
+</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -146,10 +391,121 @@ document.addEventListener('DOMContentLoaded', function() {
   const submitBtn = document.getElementById('submitBtn');
   const progressBar = document.getElementById('progressBar');
   const progressPercent = document.getElementById('progressPercent');
+  const navProgressBar = document.getElementById('navProgressBar');
+  const navProgressPercent = document.getElementById('navProgressPercent');
   const lastSavedEl = document.getElementById('lastSaved');
+  const sectionNavList = document.getElementById('sectionNavList');
+  const mobileSectionNavList = document.getElementById('mobileSectionNavList');
+  const accordion = document.getElementById('questionnaireAccordion');
   
   let saveTimeout = null;
   let savedData = {{{savedDataJson}}};
+  
+  // Build section navigation from accordion items
+  function buildSectionNav() {
+    const accordionItems = accordion.querySelectorAll('.accordion-item');
+    let navHtml = '';
+    
+    accordionItems.forEach((item) => {
+      const sectionId = item.id;
+      const button = item.querySelector('.accordion-button');
+      const titleText = button.querySelector('.section-title-text');
+      const title = titleText ? titleText.textContent.trim() : button.textContent.trim();
+      
+      navHtml += `<li><a href="#${sectionId}" data-section="${sectionId}">${title}</a></li>`;
+    });
+    
+    if (sectionNavList) sectionNavList.innerHTML = navHtml;
+    if (mobileSectionNavList) mobileSectionNavList.innerHTML = navHtml;
+    
+    // Add click handlers
+    document.querySelectorAll('.section-nav-list a').forEach(link => {
+      link.addEventListener('click', function(e) {
+        e.preventDefault();
+        const sectionId = this.getAttribute('data-section');
+        navigateToSection(sectionId);
+        
+        // Close mobile offcanvas if open
+        const offcanvas = bootstrap.Offcanvas.getInstance(document.getElementById('mobileSectionNav'));
+        if (offcanvas) offcanvas.hide();
+      });
+    });
+    
+    // Set initial active state
+    updateActiveNav();
+  }
+  
+  function navigateToSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    
+    // Find the collapse element and expand it
+    const collapseEl = section.querySelector('.accordion-collapse');
+    if (collapseEl) {
+      const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+      bsCollapse.show();
+    }
+    
+    // Wait for collapse animation, then scroll
+    setTimeout(() => {
+      section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Highlight section
+      section.classList.add('highlight');
+      setTimeout(() => section.classList.remove('highlight'), 1500);
+      
+      // Focus first input after scroll completes
+      setTimeout(() => {
+        const firstInput = section.querySelector('input:not([type="hidden"]), textarea, select');
+        if (firstInput) firstInput.focus();
+      }, 300);
+    }, 350);
+    
+    // Update active nav
+    updateActiveNav(sectionId);
+  }
+  
+  function updateActiveNav(activeSectionId) {
+    document.querySelectorAll('.section-nav-list a').forEach(link => {
+      const linkSection = link.getAttribute('data-section');
+      link.classList.toggle('active', linkSection === activeSectionId);
+    });
+  }
+  
+  // Update nav on scroll
+  function updateNavOnScroll() {
+    const accordionItems = accordion.querySelectorAll('.accordion-item');
+    let currentSection = null;
+    
+    accordionItems.forEach(item => {
+      const rect = item.getBoundingClientRect();
+      if (rect.top <= 150) {
+        currentSection = item.id;
+      }
+    });
+    
+    if (currentSection) {
+      updateActiveNav(currentSection);
+    }
+  }
+  
+  // Listen to accordion show events to update nav
+  accordion.addEventListener('shown.bs.collapse', function(e) {
+    const accordionItem = e.target.closest('.accordion-item');
+    if (accordionItem) {
+      updateActiveNav(accordionItem.id);
+    }
+  });
+  
+  // Throttled scroll handler
+  let scrollTimeout;
+  window.addEventListener('scroll', function() {
+    if (scrollTimeout) return;
+    scrollTimeout = setTimeout(() => {
+      updateNavOnScroll();
+      scrollTimeout = null;
+    }, 100);
+  });
   
   // Restore saved data
   if (savedData) {
@@ -158,7 +514,6 @@ document.addEventListener('DOMContentLoaded', function() {
       if (field) {
         if (field.type === 'checkbox') {
           if (Array.isArray(savedData[key])) {
-            // Multiple checkboxes with same name
             const checkboxes = form.querySelectorAll('[name="' + key + '"]');
             checkboxes.forEach(cb => {
               cb.checked = savedData[key].includes(cb.value);
@@ -173,7 +528,6 @@ document.addEventListener('DOMContentLoaded', function() {
           field.value = savedData[key];
         }
       } else {
-        // Handle multiple checkboxes with same name
         const checkboxes = form.querySelectorAll('[name="' + key + '"]');
         if (checkboxes.length > 0 && Array.isArray(savedData[key])) {
           checkboxes.forEach(cb => {
@@ -204,11 +558,45 @@ document.addEventListener('DOMContentLoaded', function() {
     return total > 0 ? Math.round((filled / total) * 100) : 0;
   }
   
+  // Calculate section progress
+  function calculateSectionProgress(section) {
+    const fields = section.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), textarea, select');
+    let filled = 0;
+    let total = 0;
+    
+    fields.forEach(field => {
+      if (field.name) {
+        total++;
+        if (field.type === 'checkbox' || field.type === 'radio') {
+          if (field.checked) filled++;
+        } else if (field.value && field.value.trim()) {
+          filled++;
+        }
+      }
+    });
+    
+    return total > 0 ? Math.round((filled / total) * 100) : 0;
+  }
+  
   // Update progress display
   function updateProgress() {
     const progress = calculateProgress();
     progressBar.style.width = progress + '%';
     progressPercent.textContent = progress + '%';
+    
+    if (navProgressBar) navProgressBar.style.width = progress + '%';
+    if (navProgressPercent) navProgressPercent.textContent = progress;
+    
+    // Update section completion status in nav
+    accordion.querySelectorAll('.accordion-item').forEach(section => {
+      const sectionId = section.id;
+      const sectionProgress = calculateSectionProgress(section);
+      const navLinks = document.querySelectorAll(`.section-nav-list a[data-section="${sectionId}"]`);
+      
+      navLinks.forEach(link => {
+        link.classList.toggle('completed', sectionProgress === 100);
+      });
+    });
   }
   
   // Auto-save function
@@ -218,7 +606,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     for (let [key, value] of formData.entries()) {
       if (data[key]) {
-        // Handle multiple values (checkboxes)
         if (!Array.isArray(data[key])) {
           data[key] = [data[key]];
         }
@@ -281,7 +668,6 @@ document.addEventListener('DOMContentLoaded', function() {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Submitting...';
     
-    // Final save before submit
     autoSave();
     
     setTimeout(() => {
@@ -289,7 +675,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }, 500);
   });
   
-  // Initial progress calculation
+  // Initialize
+  buildSectionNav();
   updateProgress();
+  updateNavOnScroll();
 });
 </script>

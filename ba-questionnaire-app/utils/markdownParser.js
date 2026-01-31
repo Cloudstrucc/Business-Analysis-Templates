@@ -343,22 +343,29 @@ class MarkdownFormParser {
   }
 
   /**
-   * Generate HTML form from parsed structure
+   * Generate HTML form from parsed structure using Bootstrap 5 Accordion
    */
   generateFormHtml(formStructure) {
     let html = '';
     
     formStructure.sections.forEach((section, sectionIndex) => {
+      const sectionId = `section-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
+      const collapseId = `collapse-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
+      const headingId = `heading-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
+      const isFirst = sectionIndex === 0;
+      const icon = this.getIconForSection(section.title);
+      
       html += `
-        <div class="form-section" data-section="${section.id}">
-          <div class="section-header">
-            <h2 class="section-title">
-              <span class="section-number">${section.number || sectionIndex + 1}</span>
-              ${section.title}
-            </h2>
-            ${section.description ? `<p class="section-description">${this.cleanMarkdown(section.description)}</p>` : ''}
-          </div>
-          <div class="section-content">
+        <div class="accordion-item" id="${sectionId}">
+          <h2 class="accordion-header" id="${headingId}">
+            <button class="accordion-button${isFirst ? '' : ' collapsed'}" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="${isFirst ? 'true' : 'false'}" aria-controls="${collapseId}">
+              <span class="section-number me-3"><i class="bi ${icon}"></i></span>
+              <span class="section-title-text">${section.title}</span>
+            </button>
+          </h2>
+          <div id="${collapseId}" class="accordion-collapse collapse${isFirst ? ' show' : ''}" aria-labelledby="${headingId}" data-bs-parent="#questionnaireAccordion">
+            <div class="accordion-body">
+              ${section.description ? `<p class="section-description text-muted mb-4">${this.cleanMarkdown(section.description)}</p>` : ''}
       `;
 
       // Render subsections
@@ -366,7 +373,7 @@ class MarkdownFormParser {
         html += `
           <div class="subsection" data-subsection="${subsection.id}">
             <h3 class="subsection-title">${subsection.title}</h3>
-            ${subsection.description ? `<p class="subsection-description">${this.cleanMarkdown(subsection.description)}</p>` : ''}
+            ${subsection.description ? `<p class="subsection-description text-muted small">${this.cleanMarkdown(subsection.description)}</p>` : ''}
         `;
 
         // Render tables as form groups
@@ -387,12 +394,46 @@ class MarkdownFormParser {
       }
 
       html += `
+            </div>
           </div>
         </div>
       `;
     });
 
     return html;
+  }
+
+  /**
+   * Get appropriate icon for section based on title
+   */
+  getIconForSection(title) {
+    const titleLower = title.toLowerCase();
+    if (titleLower.includes('project') || titleLower.includes('information') || titleLower.includes('overview')) return 'bi-building';
+    if (titleLower.includes('sign') || titleLower.includes('approval')) return 'bi-pen';
+    if (titleLower.includes('case') || titleLower.includes('ticket')) return 'bi-ticket-detailed';
+    if (titleLower.includes('queue') || titleLower.includes('routing')) return 'bi-diagram-3';
+    if (titleLower.includes('sla') || titleLower.includes('entitlement')) return 'bi-clock-history';
+    if (titleLower.includes('knowledge') || titleLower.includes('article')) return 'bi-book';
+    if (titleLower.includes('email')) return 'bi-envelope';
+    if (titleLower.includes('chat') || titleLower.includes('message') || titleLower.includes('channel')) return 'bi-chat-dots';
+    if (titleLower.includes('voice') || titleLower.includes('phone') || titleLower.includes('call')) return 'bi-telephone';
+    if (titleLower.includes('report') || titleLower.includes('analytic') || titleLower.includes('dashboard')) return 'bi-graph-up';
+    if (titleLower.includes('security') || titleLower.includes('role') || titleLower.includes('permission')) return 'bi-shield-lock';
+    if (titleLower.includes('integrat') || titleLower.includes('connect')) return 'bi-link-45deg';
+    if (titleLower.includes('workflow') || titleLower.includes('automat') || titleLower.includes('flow')) return 'bi-gear';
+    if (titleLower.includes('user') || titleLower.includes('agent') || titleLower.includes('team')) return 'bi-people';
+    if (titleLower.includes('train') || titleLower.includes('document') || titleLower.includes('guide')) return 'bi-mortarboard';
+    if (titleLower.includes('custom') || titleLower.includes('config')) return 'bi-sliders';
+    if (titleLower.includes('data') || titleLower.includes('migrat')) return 'bi-database';
+    if (titleLower.includes('test') || titleLower.includes('quality')) return 'bi-check2-square';
+    if (titleLower.includes('deploy') || titleLower.includes('release')) return 'bi-rocket-takeoff';
+    if (titleLower.includes('portal') || titleLower.includes('self-service')) return 'bi-window';
+    if (titleLower.includes('mobile') || titleLower.includes('app')) return 'bi-phone';
+    if (titleLower.includes('ai') || titleLower.includes('copilot') || titleLower.includes('intelligence')) return 'bi-robot';
+    if (titleLower.includes('feedback') || titleLower.includes('survey')) return 'bi-star';
+    if (titleLower.includes('schedule') || titleLower.includes('calendar')) return 'bi-calendar-event';
+    if (titleLower.includes('resource') || titleLower.includes('capacity')) return 'bi-boxes';
+    return 'bi-list-check';
   }
 
   /**

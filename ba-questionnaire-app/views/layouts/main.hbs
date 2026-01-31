@@ -10,30 +10,30 @@
   <!-- Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
   <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@300;400;500;600;700&family=Raleway:wght@500;600;700&display=swap" rel="stylesheet">
   
   <style>
     :root {
-      --cs-primary: #0d1f3c;
-      --cs-secondary: #1a3a5c;
-      --cs-accent: #00a8e8;
-      --cs-accent-hover: #0090c9;
+      --cs-primary: #2c3e50;
+      --cs-secondary: #3d5a73;
+      --cs-accent: #3498db;
+      --cs-accent-hover: #2980b9;
       --cs-light: #f8f9fa;
-      --cs-dark: #0d1f3c;
-      --cs-success: #28a745;
-      --cs-warning: #ffc107;
-      --cs-danger: #dc3545;
-      --cs-border: #dee2e6;
+      --cs-dark: #2c3e50;
+      --cs-success: #27ae60;
+      --cs-warning: #f39c12;
+      --cs-danger: #e74c3c;
+      --cs-border: #e0e0e0;
       --cs-text: #333;
       --cs-text-muted: #6c757d;
     }
     
     * {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: 'Open Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
     h1, h2, h3, h4, h5, h6 {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Raleway', 'Open Sans', sans-serif;
       font-weight: 600;
     }
     
@@ -47,45 +47,61 @@
     
     /* Navbar */
     .navbar-cloudstrucc {
-      background: linear-gradient(135deg, var(--cs-primary) 0%, var(--cs-secondary) 100%);
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      background: #ffffff;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+      padding: 1rem 0;
     }
     
     .navbar-cloudstrucc .navbar-brand {
-      font-family: 'Poppins', sans-serif;
+      font-family: 'Raleway', sans-serif;
       font-weight: 700;
-      font-size: 1.5rem;
-      color: var(--cs-accent) !important;
+      font-size: 1.6rem;
+      color: #1a1a2e !important;
       display: flex;
       align-items: center;
-      gap: 10px;
     }
     
     .navbar-cloudstrucc .navbar-brand .brand-icon {
-      width: 40px;
-      height: 40px;
-      background: var(--cs-accent);
-      border-radius: 8px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-size: 1.2rem;
+      display: none;
     }
     
     .navbar-cloudstrucc .nav-link {
-      color: rgba(255,255,255,0.85) !important;
+      color: #4a7dfc !important;
       font-weight: 500;
-      padding: 0.5rem 1rem !important;
+      font-size: 1rem;
+      padding: 0.5rem 1.25rem !important;
       transition: color 0.2s;
     }
     
     .navbar-cloudstrucc .nav-link:hover {
-      color: var(--cs-accent) !important;
+      color: #2a5bd6 !important;
     }
     
     .navbar-cloudstrucc .nav-link.active {
-      color: var(--cs-accent) !important;
+      color: #2a5bd6 !important;
+      font-weight: 600;
+    }
+    
+    .navbar-cloudstrucc .navbar-toggler {
+      border-color: rgba(0,0,0,0.1);
+    }
+    
+    .navbar-cloudstrucc .navbar-toggler-icon {
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2874, 125, 252, 1%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    }
+    
+    .navbar-cloudstrucc .dropdown-menu {
+      border: 1px solid var(--cs-border);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .navbar-cloudstrucc .dropdown-item {
+      color: #333;
+    }
+    
+    .navbar-cloudstrucc .dropdown-item:hover {
+      background: #f5f7fa;
+      color: #4a7dfc;
     }
     
     /* Main Content */
@@ -496,8 +512,7 @@
   <nav class="navbar navbar-expand-lg navbar-cloudstrucc">
     <div class="container">
       <a class="navbar-brand" href="{{#if isAdmin}}/admin/dashboard{{else}}/{{/if}}">
-        <span class="brand-icon"><i class="bi bi-cloud-fill"></i></span>
-        Cloudstrucc
+        Cloudstrucc inc.
       </a>
       
       <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
