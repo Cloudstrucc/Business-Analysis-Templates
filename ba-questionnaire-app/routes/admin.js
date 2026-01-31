@@ -293,6 +293,89 @@ router.post('/invites/:id/revoke', ensureAuthenticated, (req, res) => {
   res.redirect('/admin/invites');
 });
 
+// Re-activate invite (for revoked or expired invites)
+router.post('/invites/:id/reactivate', ensureAuthenticated, async (req, res) => {
+  try {
+    const { expiry_days = 14 } = req.body;
+    const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
+    
+    if (!invite) {
+      return res.json({ success: false, message: 'Invite not found' });
+    }
+
+    // Calculate new expiry date
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + parseInt(expiry_days));
+    const expiresAtISO = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
+
+    // Update invite: clear revoked flag, set new expiry
+    run(`
+      UPDATE invites 
+      SET is_revoked = 0, 
+          expires_at = ?
+      WHERE id = ?
+    `, [expiresAtISO, req.params.id]);
+
+    // Get linked forms for email
+    const forms = all(`
+      SELECT f.* FROM forms f
+      JOIN invite_forms inf ON f.id = inf.form_id
+      WHERE inf.invite_id = ?
+    `, [req.params.id]);
+
+    // Send reactivation email
+    emailService.initialize();
+    await emailService.sendInvite({
+      to: invite.client_email,
+      clientName: invite.client_name,
+      inviteCode: invite.code,
+      forms,
+      expiresAt: expiresAtISO,
+      submissionDeadline: invite.submission_deadline
+    });
+
+    res.json({ success: true, message: 'Invite reactivated and email sent' });
+  } catch (error) {
+    console.error('Reactivate error:', error);
+    res.json({ success: false, message: error.message });
+  }
+});
+
+// Delete invite permanently (for revoked or expired invites only)
+router.post('/invites/:id/delete', ensureAuthenticated, (req, res) => {
+  try {
+    const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
+    
+    if (!invite) {
+      req.flash('error', 'Invite not found');
+      return res.redirect('/admin/invites');
+    }
+
+    // Safety check: only allow deletion of revoked or expired invites
+    const isExpired = new Date(invite.expires_at) < new Date();
+    if (!invite.is_revoked && !isExpired) {
+      req.flash('error', 'Cannot delete an active invite. Revoke it first.');
+      return res.redirect('/admin/invites');
+    }
+
+    // Delete associated submissions first
+    run(`DELETE FROM submissions WHERE invite_id = ?`, [req.params.id]);
+    
+    // Delete invite-form links
+    run(`DELETE FROM invite_forms WHERE invite_id = ?`, [req.params.id]);
+    
+    // Delete the invite
+    run(`DELETE FROM invites WHERE id = ?`, [req.params.id]);
+
+    req.flash('success', `Invite for "${invite.client_name}" has been permanently deleted`);
+    res.redirect('/admin/invites');
+  } catch (error) {
+    console.error('Delete error:', error);
+    req.flash('error', 'Failed to delete invite: ' + error.message);
+    res.redirect('/admin/invites');
+  }
+});
+
 // Submissions list
 router.get('/submissions', ensureAuthenticated, (req, res) => {
   const { status, form, search } = req.query;

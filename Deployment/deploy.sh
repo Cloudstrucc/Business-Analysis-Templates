@@ -13,7 +13,7 @@ APP_SERVICE_SKU="B1"
 
 # Application Settings
 ADMIN_EMAIL="admin@cloudstrucc.com"
-ADMIN_PASSWORD="ChangeThisPassword123!"
+ADMIN_PASSWORD="dpg613"
 SMTP_HOST="smtp.office365.com"
 SMTP_PORT="587"
 SMTP_USER=""
