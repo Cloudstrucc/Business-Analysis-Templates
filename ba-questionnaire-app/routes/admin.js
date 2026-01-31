@@ -483,11 +483,47 @@ router.get('/submissions/:id', ensureAuthenticated, (req, res) => {
   });
 });
 
-// Export submission as PDF (placeholder)
-router.get('/submissions/:id/export', ensureAuthenticated, (req, res) => {
-  // TODO: Implement PDF export with puppeteer
-  req.flash('error', 'PDF export coming soon');
-  res.redirect('/admin/submissions/' + req.params.id);
+// Export submission as PDF
+router.get('/submissions/:id/export', ensureAuthenticated, async (req, res) => {
+  try {
+    const submission = get(`SELECT * FROM submissions WHERE id = ?`, [req.params.id]);
+    
+    if (!submission) {
+      req.flash('error', 'Submission not found');
+      return res.redirect('/admin/submissions');
+    }
+
+    const invite = get(`SELECT * FROM invites WHERE id = ?`, [submission.invite_id]);
+    const form = get(`SELECT * FROM forms WHERE id = ?`, [submission.form_id]);
+    
+    let responses = {};
+    try {
+      responses = JSON.parse(submission.data || '{}');
+    } catch (e) {
+      responses = {};
+    }
+
+    // Generate PDF
+    const { generateSubmissionPdf } = require('../utils/pdfExport');
+    const pdfBuffer = await generateSubmissionPdf(submission, invite, form, responses);
+
+    // Generate filename
+    const clientName = invite.client_name.replace(/[^a-zA-Z0-9]/g, '-');
+    const formTitle = form.title.replace(/[^a-zA-Z0-9]/g, '-');
+    const date = new Date().toISOString().split('T')[0];
+    const filename = `${formTitle}_${clientName}_${date}.pdf`;
+
+    // Send PDF
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.send(pdfBuffer);
+    
+  } catch (error) {
+    console.error('PDF export error:', error);
+    req.flash('error', 'Failed to export PDF: ' + error.message);
+    res.redirect('/admin/submissions/' + req.params.id);
+  }
 });
 
 // Forms management
