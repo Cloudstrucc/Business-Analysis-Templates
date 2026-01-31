@@ -156,15 +156,27 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Trust proxy for Azure App Service (required for secure cookies)
 app.set('trust proxy', 1);
 
+// app.use(session({
+//   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
+//   resave: false,
+//   saveUninitialized: false,
+//   cookie: {
+//     secure: process.env.NODE_ENV === 'production',
+//     httpOnly: true,
+//     sameSite: 'lax',
+//     maxAge: 24 * 60 * 60 * 1000 // 24 hours
+//   }
+// }));
+
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
   resave: false,
   saveUninitialized: false,
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
+  cookie: { 
+    secure: false,  // Set to true ONLY if using HTTPS
     httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: 'lax'  // or 'strict'
   }
 }));
 
