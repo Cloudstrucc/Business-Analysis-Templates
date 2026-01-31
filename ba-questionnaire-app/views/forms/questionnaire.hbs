@@ -89,45 +89,6 @@
           <!-- Dynamic Form Content (Accordion Items) -->
           {{{formHtml}}}
           
-          <!-- Sign-Off Section -->
-          <div class="accordion-item" id="section-signoff">
-            <h2 class="accordion-header" id="heading-signoff">
-              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-signoff" aria-expanded="false" aria-controls="collapse-signoff">
-                <span class="section-number me-3"><i class="bi bi-pen"></i></span>
-                <span class="section-title-text">Sign-Off & Confirmation</span>
-              </button>
-            </h2>
-            <div id="collapse-signoff" class="accordion-collapse collapse" aria-labelledby="heading-signoff" data-bs-parent="#questionnaireAccordion">
-              <div class="accordion-body">
-                <div class="alert alert-info">
-                  <i class="bi bi-info-circle me-2"></i>
-                  By submitting this questionnaire, you confirm that the information provided is accurate to the best of your knowledge.
-                </div>
-                
-                <div class="row g-3">
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold" for="signoff_name">Your Full Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="signoff_name" name="signoff_name" 
-                      value="{{savedData.signoff_name}}" required>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label fw-semibold" for="signoff_title">Your Title/Role</label>
-                    <input type="text" class="form-control" id="signoff_title" name="signoff_title" 
-                      value="{{savedData.signoff_title}}">
-                  </div>
-                  <div class="col-12">
-                    <div class="form-check">
-                      <input class="form-check-input" type="checkbox" id="signoff_confirm" name="signoff_confirm" required>
-                      <label class="form-check-label" for="signoff_confirm">
-                        I confirm that I have reviewed and completed this questionnaire to the best of my ability
-                      </label>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          
         </div>
         
         <!-- Submit Actions -->
@@ -359,6 +320,49 @@
   margin-bottom: 0.75rem;
 }
 
+/* Disabled field styling */
+.form-field.field-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  position: relative;
+}
+
+.form-field.field-disabled::after {
+  content: 'N/A - Skipped';
+  position: absolute;
+  top: 50%;
+  right: 1rem;
+  transform: translateY(-50%);
+  font-size: 0.75rem;
+  color: #6c757d;
+  background: #e9ecef;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+}
+
+.form-field.field-disabled .form-control,
+.form-field.field-disabled .form-check-input {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
+/* Subsection disabled state */
+.subsection.subsection-disabled {
+  opacity: 0.6;
+  background: #f0f0f0;
+  border-left-color: #ccc;
+}
+
+.subsection.subsection-disabled .form-field {
+  pointer-events: none;
+}
+
+.subsection.subsection-disabled .form-control,
+.subsection.subsection-disabled .form-check-input:not(.toggle-trigger) {
+  background-color: #e9ecef;
+  cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 991.98px) {
   .section-nav {
@@ -400,6 +404,75 @@ document.addEventListener('DOMContentLoaded', function() {
   
   let saveTimeout = null;
   let savedData = {{{savedDataJson}}};
+  
+  // Track disabled subsections for progress calculation
+  let disabledSubsections = new Set();
+  
+  // Initialize feature toggle handlers
+  function initFeatureToggles() {
+    const toggleInputs = document.querySelectorAll('.toggle-trigger');
+    
+    toggleInputs.forEach(input => {
+      // Add change listener
+      input.addEventListener('change', function() {
+        handleFeatureToggle(this);
+      });
+      
+      // Check initial state (if already selected from saved data)
+      if (input.checked) {
+        handleFeatureToggle(input);
+      }
+    });
+  }
+  
+  // Handle feature toggle change
+  function handleFeatureToggle(input) {
+    const action = input.getAttribute('data-toggle-action');
+    const fieldContainer = input.closest('.form-field');
+    const subsection = input.closest('.subsection');
+    
+    if (!subsection) return;
+    
+    // Get all subsequent fields in the same subsection (after the toggle field)
+    const allFields = Array.from(subsection.querySelectorAll('.form-field'));
+    const toggleFieldIndex = allFields.indexOf(fieldContainer);
+    const fieldsToToggle = allFields.slice(toggleFieldIndex + 1);
+    
+    if (action === 'disable') {
+      // Disable subsequent fields
+      fieldsToToggle.forEach(field => {
+        field.classList.add('field-disabled');
+        const inputs = field.querySelectorAll('input, textarea, select');
+        inputs.forEach(inp => {
+          inp.disabled = true;
+          // Clear values when disabled
+          if (inp.type === 'checkbox' || inp.type === 'radio') {
+            inp.checked = false;
+          } else {
+            inp.value = '';
+          }
+        });
+      });
+      
+      // Mark subsection as partially disabled
+      disabledSubsections.add(subsection.getAttribute('data-subsection'));
+    } else {
+      // Enable subsequent fields
+      fieldsToToggle.forEach(field => {
+        field.classList.remove('field-disabled');
+        const inputs = field.querySelectorAll('input, textarea, select');
+        inputs.forEach(inp => {
+          inp.disabled = false;
+        });
+      });
+      
+      // Remove from disabled set
+      disabledSubsections.delete(subsection.getAttribute('data-subsection'));
+    }
+    
+    // Update progress after toggle
+    updateProgress();
+  }
   
   // Build section navigation from accordion items
   function buildSectionNav() {
@@ -540,11 +613,17 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Calculate progress
   function calculateProgress() {
-    const allFields = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), textarea, select');
+    const allFields = form.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
     let filled = 0;
     let total = 0;
     
     allFields.forEach(field => {
+      // Skip fields in disabled containers
+      const fieldContainer = field.closest('.form-field');
+      if (fieldContainer && fieldContainer.classList.contains('field-disabled')) {
+        return;
+      }
+      
       if (field.name && !field.name.startsWith('signoff_')) {
         total++;
         if (field.type === 'checkbox' || field.type === 'radio') {
@@ -555,16 +634,27 @@ document.addEventListener('DOMContentLoaded', function() {
       }
     });
     
+    // Add disabled subsections as "completed" (N/A selections count as complete)
+    const disableToggles = form.querySelectorAll('.toggle-trigger[data-toggle-action="disable"]:checked');
+    filled += disableToggles.length;
+    total += disableToggles.length;
+    
     return total > 0 ? Math.round((filled / total) * 100) : 0;
   }
   
   // Calculate section progress
   function calculateSectionProgress(section) {
-    const fields = section.querySelectorAll('input:not([type="hidden"]):not([type="submit"]), textarea, select');
+    const fields = section.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([disabled]), textarea:not([disabled]), select:not([disabled])');
     let filled = 0;
     let total = 0;
     
     fields.forEach(field => {
+      // Skip fields in disabled containers
+      const fieldContainer = field.closest('.form-field');
+      if (fieldContainer && fieldContainer.classList.contains('field-disabled')) {
+        return;
+      }
+      
       if (field.name) {
         total++;
         if (field.type === 'checkbox' || field.type === 'radio') {
@@ -574,6 +664,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
       }
     });
+    
+    // Check if section has any N/A disabled toggles - those count as complete
+    const disableToggles = section.querySelectorAll('.toggle-trigger[data-toggle-action="disable"]:checked');
+    if (disableToggles.length > 0) {
+      // Section has N/A selections, count those as progress
+      filled += disableToggles.length;
+      total += disableToggles.length;
+    }
     
     return total > 0 ? Math.round((filled / total) * 100) : 0;
   }
@@ -660,8 +758,30 @@ document.addEventListener('DOMContentLoaded', function() {
   form.addEventListener('submit', function(e) {
     e.preventDefault();
     
-    if (!document.getElementById('signoff_confirm').checked) {
-      alert('Please confirm that you have reviewed the questionnaire before submitting.');
+    // Check if at least the business owner has approved
+    const businessOwnerApprove = document.getElementById('signoff_business_owner_approve');
+    const businessOwnerName = document.getElementById('signoff_business_owner_name');
+    
+    if (!businessOwnerApprove || !businessOwnerApprove.checked) {
+      alert('Please have the Business Owner / Project Sponsor approve the questionnaire before submitting.');
+      // Navigate to sign-off section
+      const signOffSection = document.getElementById('section-sign-off');
+      if (signOffSection) {
+        const collapseEl = signOffSection.querySelector('.accordion-collapse');
+        if (collapseEl) {
+          const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseEl, { toggle: false });
+          bsCollapse.show();
+        }
+        setTimeout(() => {
+          signOffSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 350);
+      }
+      return;
+    }
+    
+    if (!businessOwnerName || !businessOwnerName.value.trim()) {
+      alert('Please enter the Business Owner / Project Sponsor name before submitting.');
+      businessOwnerName.focus();
       return;
     }
     
@@ -677,6 +797,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Initialize
   buildSectionNav();
+  initFeatureToggles();
   updateProgress();
   updateNavOnScroll();
 });

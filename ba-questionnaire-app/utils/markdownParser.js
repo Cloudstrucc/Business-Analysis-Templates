@@ -274,11 +274,14 @@ class MarkdownFormParser {
           ).filter(o => o);
           
           if (cleanOptions.length > 0) {
+            // Check if this is a binary choice (Yes/No, OOB/CUSTOMIZE, Enable/Disable, etc.)
+            const isBinaryChoice = this.isBinaryChoice(cleanOptions);
+            
             fields.push({
               id: fieldId,
               name: fieldId,
               label: fieldLabel,
-              type: 'checkbox_group',
+              type: isBinaryChoice ? 'radio_group' : 'checkbox_group',
               options: cleanOptions,
               section: sectionId,
               subsection: subsectionId
@@ -315,11 +318,14 @@ class MarkdownFormParser {
           ).filter(o => o);
           
           if (cleanOptions.length > 0) {
+            // Check if this is a binary choice
+            const isBinaryChoice = this.isBinaryChoice(cleanOptions);
+            
             fields.push({
               id: fieldId,
               name: fieldId,
               label: fieldLabel,
-              type: 'checkbox_group',
+              type: isBinaryChoice ? 'radio_group' : 'checkbox_group',
               options: cleanOptions,
               section: sectionId,
               subsection: subsectionId
@@ -343,12 +349,64 @@ class MarkdownFormParser {
   }
 
   /**
+   * Check if options represent a binary/mutually exclusive choice
+   */
+  isBinaryChoice(options) {
+    if (options.length !== 2) return false;
+    
+    const normalized = options.map(o => o.toLowerCase().trim());
+    
+    // Common binary patterns
+    const binaryPatterns = [
+      ['yes', 'no'],
+      ['oob', 'customize'],
+      ['oob', 'disable'],
+      ['enable', 'disable'],
+      ['enabled', 'disabled'],
+      ['on', 'off'],
+      ['true', 'false'],
+      ['include', 'exclude'],
+      ['active', 'inactive'],
+      ['required', 'optional'],
+      ['standard', 'custom'],
+      ['default', 'custom'],
+      ['use', 'skip'],
+      ['accept', 'reject'],
+      ['approve', 'reject'],
+      ['allow', 'deny'],
+      ['show', 'hide'],
+      ['visible', 'hidden']
+    ];
+    
+    for (const pattern of binaryPatterns) {
+      if ((normalized.includes(pattern[0]) && normalized.includes(pattern[1])) ||
+          (normalized[0] === pattern[0] && normalized[1] === pattern[1]) ||
+          (normalized[0] === pattern[1] && normalized[1] === pattern[0])) {
+        return true;
+      }
+    }
+    
+    // Also check for N/A patterns
+    if (normalized.some(o => o === 'n/a' || o === 'na' || o === 'not applicable')) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
    * Generate HTML form from parsed structure using Bootstrap 5 Accordion
    */
   generateFormHtml(formStructure) {
     let html = '';
     
     formStructure.sections.forEach((section, sectionIndex) => {
+      // Skip sign-off section - it will be handled separately in the template
+      if (section.type === 'signoff') {
+        html += this.renderSignOffSection(section, sectionIndex);
+        return;
+      }
+      
       const sectionId = `section-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
       const collapseId = `collapse-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
       const headingId = `heading-${(section.id || 'sec-' + (sectionIndex + 1)).replace(/[^a-z0-9-]/gi, '-')}`;
@@ -401,6 +459,144 @@ class MarkdownFormParser {
     });
 
     return html;
+  }
+
+  /**
+   * Render a proper sign-off section with approval fields
+   */
+  renderSignOffSection(section, sectionIndex) {
+    const sectionId = 'section-sign-off';
+    const collapseId = 'collapse-sign-off';
+    const headingId = 'heading-sign-off';
+    
+    return `
+      <div class="accordion-item" id="${sectionId}">
+        <h2 class="accordion-header" id="${headingId}">
+          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false" aria-controls="${collapseId}">
+            <span class="section-number me-3"><i class="bi bi-pen"></i></span>
+            <span class="section-title-text">Sign-Off & Approval</span>
+          </button>
+        </h2>
+        <div id="${collapseId}" class="accordion-collapse collapse" aria-labelledby="${headingId}" data-bs-parent="#questionnaireAccordion">
+          <div class="accordion-body">
+            
+            <!-- Implementation Checklist -->
+            <div class="subsection" data-subsection="implementation-checklist">
+              <h3 class="subsection-title">Implementation Checklist Completion</h3>
+              <p class="text-muted small mb-3">Please confirm you have reviewed and completed all applicable sections of this questionnaire.</p>
+              
+              <div class="mb-4 form-field">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="signoff_checklist_complete" id="signoff_checklist_complete" value="yes">
+                  <label class="form-check-label" for="signoff_checklist_complete">
+                    <strong>I confirm that I have completed all applicable sections of this implementation questionnaire</strong>
+                  </label>
+                </div>
+              </div>
+              
+              <div class="mb-4 form-field">
+                <label class="form-label fw-semibold" for="signoff_completion_notes">Additional Notes or Exceptions</label>
+                <textarea class="form-control" id="signoff_completion_notes" name="signoff_completion_notes" rows="2" placeholder="Note any sections that were not applicable or require follow-up..."></textarea>
+              </div>
+            </div>
+            
+            <!-- Business Owner Approval -->
+            <div class="subsection" data-subsection="business-owner-approval">
+              <h3 class="subsection-title">Business Owner / Project Sponsor Approval</h3>
+              
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_business_owner_name">Full Name <span class="text-danger">*</span></label>
+                  <input type="text" class="form-control" id="signoff_business_owner_name" name="signoff_business_owner_name" placeholder="Enter full name" required>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_business_owner_title">Title / Role</label>
+                  <input type="text" class="form-control" id="signoff_business_owner_title" name="signoff_business_owner_title" placeholder="e.g., Project Sponsor, Business Owner">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_business_owner_email">Email</label>
+                  <input type="email" class="form-control" id="signoff_business_owner_email" name="signoff_business_owner_email" placeholder="email@company.com">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_business_owner_date">Date</label>
+                  <input type="date" class="form-control" id="signoff_business_owner_date" name="signoff_business_owner_date">
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="signoff_business_owner_approve" id="signoff_business_owner_approve" value="approved">
+                    <label class="form-check-label" for="signoff_business_owner_approve">
+                      <strong>I Approve</strong> - I have reviewed and approve the requirements captured in this document
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- IT/Technical Lead Approval -->
+            <div class="subsection" data-subsection="technical-lead-approval">
+              <h3 class="subsection-title">IT / Technical Lead Approval</h3>
+              
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_tech_lead_name">Full Name</label>
+                  <input type="text" class="form-control" id="signoff_tech_lead_name" name="signoff_tech_lead_name" placeholder="Enter full name">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_tech_lead_title">Title / Role</label>
+                  <input type="text" class="form-control" id="signoff_tech_lead_title" name="signoff_tech_lead_title" placeholder="e.g., IT Manager, Technical Lead">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_tech_lead_email">Email</label>
+                  <input type="email" class="form-control" id="signoff_tech_lead_email" name="signoff_tech_lead_email" placeholder="email@company.com">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_tech_lead_date">Date</label>
+                  <input type="date" class="form-control" id="signoff_tech_lead_date" name="signoff_tech_lead_date">
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="signoff_tech_lead_approve" id="signoff_tech_lead_approve" value="approved">
+                    <label class="form-check-label" for="signoff_tech_lead_approve">
+                      <strong>I Approve</strong> - I have reviewed and approve the technical requirements in this document
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Implementation Partner -->
+            <div class="subsection" data-subsection="partner-approval">
+              <h3 class="subsection-title">Implementation Partner (Cloudstrucc Inc.)</h3>
+              
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_partner_name">Consultant Name</label>
+                  <input type="text" class="form-control" id="signoff_partner_name" name="signoff_partner_name" placeholder="Enter consultant name">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-semibold" for="signoff_partner_date">Date</label>
+                  <input type="date" class="form-control" id="signoff_partner_date" name="signoff_partner_date">
+                </div>
+                <div class="col-12">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="signoff_partner_acknowledge" id="signoff_partner_acknowledge" value="acknowledged">
+                    <label class="form-check-label" for="signoff_partner_acknowledge">
+                      <strong>Acknowledged</strong> - Requirements have been documented and reviewed with the client
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="alert alert-info mt-4">
+              <i class="bi bi-info-circle me-2"></i>
+              <em>Document prepared by Cloudstrucc Inc. For questions or assistance, contact your assigned consultant.</em>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    `;
   }
 
   /**
@@ -469,7 +665,7 @@ class MarkdownFormParser {
             <label class="form-label fw-semibold">${label}</label>
             <div class="checkbox-group">
               ${field.options.map((opt, idx) => `
-                <div class="form-check">
+                <div class="form-check form-check-inline">
                   <input class="form-check-input" type="checkbox" 
                     name="${name}" value="${opt}" id="${id}_${idx}">
                   <label class="form-check-label" for="${id}_${idx}">${opt}</label>
@@ -480,17 +676,31 @@ class MarkdownFormParser {
         `;
 
       case 'radio_group':
+        // Check if this is an enable/disable type field
+        const isEnableDisableField = field.options.some(opt => 
+          ['enable', 'disable', 'n/a', 'na', 'enabled', 'disabled', 'oob', 'customize', 'yes', 'no'].includes(opt.toLowerCase().trim())
+        );
+        const enableValues = field.options.filter(opt => 
+          ['enable', 'enabled', 'oob', 'customize', 'yes', 'use', 'include', 'active', 'on', 'true', 'show', 'visible'].includes(opt.toLowerCase().trim())
+        ).map(o => o);
+        const disableValues = field.options.filter(opt => 
+          ['disable', 'disabled', 'n/a', 'na', 'no', 'skip', 'exclude', 'inactive', 'off', 'false', 'hide', 'hidden', 'not applicable'].includes(opt.toLowerCase().trim())
+        ).map(o => o);
+        
         return `
-          <div class="mb-4 form-field" data-field="${id}">
+          <div class="mb-4 form-field" data-field="${id}" ${isEnableDisableField ? `data-toggle-field="true" data-enable-values="${enableValues.join(',')}" data-disable-values="${disableValues.join(',')}"` : ''}>
             <label class="form-label fw-semibold">${label}</label>
             <div class="radio-group">
-              ${field.options.map((opt, idx) => `
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" 
-                    name="${name}" value="${opt}" id="${id}_${idx}">
+              ${field.options.map((opt, idx) => {
+                const isDisableOption = ['disable', 'disabled', 'n/a', 'na', 'no', 'skip', 'exclude', 'inactive', 'off', 'false', 'hide', 'hidden', 'not applicable'].includes(opt.toLowerCase().trim());
+                return `
+                <div class="form-check form-check-inline">
+                  <input class="form-check-input${isEnableDisableField ? ' toggle-trigger' : ''}" type="radio" 
+                    name="${name}" value="${opt}" id="${id}_${idx}"
+                    ${isEnableDisableField ? `data-action="${isDisableOption ? 'disable' : 'enable'}"` : ''}>
                   <label class="form-check-label" for="${id}_${idx}">${opt}</label>
                 </div>
-              `).join('')}
+              `}).join('')}
             </div>
           </div>
         `;

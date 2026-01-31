@@ -1,4 +1,45 @@
 <div class="container py-4">
+  <style>
+    .form-select-card {
+      display: flex;
+      align-items: flex-start;
+      padding: 1rem 1.25rem;
+      background: white;
+      border: 1px solid var(--cs-border, #dee2e6);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      height: 100%;
+    }
+    
+    .form-select-card:hover {
+      border-color: var(--cs-accent, #3498db);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    
+    .form-select-card .form-check-input {
+      flex-shrink: 0;
+      margin-top: 0.25rem;
+      margin-right: 0.75rem;
+      width: 1.25rem;
+      height: 1.25rem;
+    }
+    
+    .form-select-card .form-check-input:checked {
+      background-color: var(--cs-accent, #3498db);
+      border-color: var(--cs-accent, #3498db);
+    }
+    
+    .form-select-card:has(.form-check-input:checked) {
+      border-color: var(--cs-accent, #3498db);
+      background: rgba(52, 152, 219, 0.05);
+    }
+    
+    .form-select-card-content {
+      flex: 1;
+      line-height: 1.4;
+    }
+  </style>
   <div class="row justify-content-center">
     <div class="col-lg-8">
       <div class="d-flex align-items-center mb-4">
@@ -44,16 +85,16 @@
             <div class="row g-3 mb-4">
               {{#each forms}}
                 <div class="col-md-6">
-                  <div class="form-check card p-3">
+                  <label class="form-select-card" for="form_{{this.id}}">
                     <input class="form-check-input" type="checkbox" name="forms" value="{{this.id}}" 
                       id="form_{{this.id}}">
-                    <label class="form-check-label d-block ms-2" for="form_{{this.id}}">
+                    <span class="form-select-card-content">
                       <strong>{{this.title}}</strong>
                       {{#if this.description}}
                         <br><small class="text-muted">{{this.description}}</small>
                       {{/if}}
-                    </label>
-                  </div>
+                    </span>
+                  </label>
                 </div>
               {{/each}}
             </div>
