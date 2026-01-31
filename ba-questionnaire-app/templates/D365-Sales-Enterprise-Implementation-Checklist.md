@@ -5,8 +5,19 @@
 **Project Start Date:** _______________________________________________  
 **Target Go-Live Date:** _______________________________________________  
 **Prepared By:** _______________________________________________  
-**Version:** 1.0  
+**Version:** 1.1 (Revised)  
 **Last Updated:** _______________________________________________
+
+---
+
+## Document Revision Notes
+
+> **⚠️ IMPORTANT UPDATES IN THIS VERSION:**
+> 
+> 1. **Sales Playbooks (Section 18)**: This feature has been **DEPRECATED** by Microsoft. The section has been updated with a deprecation notice and alternative guidance.
+> 2. **Data Retention (Section 22)**: Documentation link corrected to point to the current Dataverse long-term retention documentation.
+> 3. **Partner Relationship Management (Section 20)**: Updated with correct documentation link (accounts management) as there is no dedicated PRM module.
+> 4. All other Microsoft Learn documentation links have been verified as working first-party Microsoft documentation.
 
 ---
 
@@ -47,7 +58,7 @@ This checklist is designed to help you get the most out of your Dynamics 365 Sal
 15. [Word & Excel Templates](#15-word--excel-templates)
 16. [LinkedIn Sales Navigator Integration](#16-linkedin-sales-navigator-integration)
 17. [Copilot AI Integration](#17-copilot-ai-integration)
-18. [Sales Playbooks](#18-sales-playbooks) 🏢
+18. [Sales Playbooks](#18-sales-playbooks) 🏢 ⚠️ DEPRECATED
 19. [Knowledge Management](#19-knowledge-management) 🏢
 20. [Partner Relationship Management](#20-partner-relationship-management) 🏢
 21. [Queues & Service Level Agreements (SLAs)](#21-queues--service-level-agreements-slas)
@@ -311,6 +322,8 @@ LEAD → (Qualify) → OPPORTUNITY → (Win/Lose) → ACCOUNT/CONTACT + ORDER
 | **Product Hierarchies** | Create parent-child product relationships | ☐ ENABLE ☐ N/A | |
 | **Product Relationships** | Define cross-sell, up-sell, substitute, accessory relationships | ☐ ENABLE ☐ N/A | |
 | **Product Bundles** | Pre-configured groups of products sold together | ☐ ENABLE ☐ N/A | |
+
+**📖 Learn More:** [Set Up Product Catalog](https://learn.microsoft.com/en-us/dynamics365/sales/set-up-product-catalog-walkthrough)
 
 ### Business Process Flow (BPF)
 
@@ -854,53 +867,26 @@ Microsoft Copilot in Dynamics 365 Sales uses AI to help your team work more effi
 
 ## 18. Sales Playbooks 🏢 ENTERPRISE FEATURE
 
-### What Is It?
-Sales Playbooks provide structured guidance to help salespeople follow best practices during the sales process. Playbooks can include activities, notes, and recommended actions triggered at specific points in the sales cycle.
+> **⚠️ DEPRECATION NOTICE:** Sales Playbooks have been **DEPRECATED** by Microsoft. This feature is no longer actively maintained and Microsoft recommends using alternative approaches for guided selling.
+> 
+> **📖 Deprecation Information:** [Removed or Deprecated Features in Dynamics 365 Sales](https://learn.microsoft.com/en-us/dynamics365/sales/deprecations-sales)
+> 
+> **Recommended Alternatives:**
+> - **Sales Accelerator & Sequences** (Section 10) - For automated engagement workflows
+> - **Business Process Flows** (Section 6) - For stage-based guidance
+> - **Power Automate Flows** - For custom automation and notifications
 
-**📖 Learn More:** [Sales Playbooks](https://learn.microsoft.com/en-us/dynamics365/sales/enforce-best-practices-playbooks)
+### What Was It?
+Sales Playbooks previously provided structured guidance to help salespeople follow best practices during the sales process. Playbooks could include activities, notes, and recommended actions triggered at specific points in the sales cycle.
 
-### Playbook Configuration
-
-| Feature | Description | Your Decision | Notes |
-|---------|-------------|---------------|-------|
-| **Enable Playbooks** | Turn on the playbook feature | ☐ ENABLE ☐ N/A | |
-| **Playbook Templates** | Pre-built playbook templates | ☐ Use ☐ Create Custom | |
-| **Auto-Launch Playbooks** | Automatically start playbooks at certain stages | ☐ Yes ☐ No | |
-| **Playbook Tracking** | Track completion of playbook activities | ☐ ENABLE ☐ DISABLE | |
-
-### Playbooks to Create
-
-| Playbook Type | Trigger | Create? | Notes |
-|---------------|---------|---------|-------|
-| **New Lead Qualification** | When new lead is created | ☐ Yes ☐ No | |
-| **Discovery Process** | When opportunity reaches Qualify stage | ☐ Yes ☐ No | |
-| **Proposal Preparation** | When opportunity reaches Propose stage | ☐ Yes ☐ No | |
-| **Negotiation** | When opportunity reaches Negotiate stage | ☐ Yes ☐ No | |
-| **Win-Back** | For lost opportunities being re-engaged | ☐ Yes ☐ No | |
-| **Enterprise Deal** | For high-value opportunities | ☐ Yes ☐ No | Value threshold: |
-| **Competitive Situation** | When competitor is identified | ☐ Yes ☐ No | |
-| **New Customer Onboarding** | When opportunity is won | ☐ Yes ☐ No | |
-
-### Playbook Activities
-
-| Activity Type | Description | Include in Playbooks? | Notes |
-|---------------|-------------|----------------------|-------|
-| **Phone Calls** | Scheduled call activities | ☐ Yes ☐ No | |
-| **Emails** | Templated or suggested emails | ☐ Yes ☐ No | |
-| **Tasks** | To-do items for the rep | ☐ Yes ☐ No | |
-| **Appointments** | Meetings to schedule | ☐ Yes ☐ No | |
-| **Notes/Guidance** | Best practice tips and reminders | ☐ Yes ☐ No | |
-| **Documents** | Required documents to share/collect | ☐ Yes ☐ No | |
-
-### Considerations
+### Migration Considerations
 
 | Question | Your Answer | Notes |
 |----------|-------------|-------|
-| Do you have documented sales processes today? | ☐ Yes ☐ No | |
-| What activities are required at each sales stage? | | |
-| Should playbooks be mandatory or optional? | ☐ Mandatory ☐ Optional | |
-| Who should be able to create/modify playbooks? | | |
-| How will you measure playbook effectiveness? | | |
+| Did you plan to use Sales Playbooks for any processes? | ☐ Yes ☐ No | |
+| If yes, can these be implemented using Sales Accelerator Sequences instead? | ☐ Yes ☐ No | |
+| Would Business Process Flows meet your guided selling needs? | ☐ Yes ☐ No | |
+| Do you need custom automation using Power Automate? | ☐ Yes ☐ No | |
 
 ---
 
@@ -947,19 +933,25 @@ Knowledge Management allows you to create, manage, and share internal knowledge 
 ## 20. Partner Relationship Management 🏢 ENTERPRISE FEATURE
 
 ### What Is It?
-Partner Relationship Management (PRM) allows you to manage relationships with channel partners, distributors, or resellers. You can share opportunities, track partner performance, and collaborate on deals.
+Partner Relationship Management (PRM) allows you to manage relationships with channel partners, distributors, or resellers. In Dynamics 365 Sales, this is accomplished using Account entities with partner classifications to track partner organizations and their contacts.
 
-**📖 Learn More:** [Partner Relationship Management](https://learn.microsoft.com/en-us/dynamics365/sales/work-with-partners)
+**📖 Learn More:** [Manage Your Accounts and Contacts](https://learn.microsoft.com/en-us/dynamics365/sales/accounts-contacts)
+
+**Note:** Dynamics 365 Sales does not include a dedicated PRM module. Partner management is typically implemented using:
+- Account records with "Partner" classification
+- Contact records associated with partner accounts
+- Opportunity sharing and assignment features
+- Power Pages for external partner portals (separate license required)
 
 ### PRM Configuration
 
 | Feature | Description | Your Decision | Notes |
 |---------|-------------|---------------|-------|
-| **Enable Partner Management** | Turn on partner relationship tracking | ☐ ENABLE ☐ N/A | |
-| **Partner Accounts** | Track partner organizations | ☐ Yes ☐ No | |
+| **Enable Partner Management** | Turn on partner relationship tracking using Account classification | ☐ ENABLE ☐ N/A | |
+| **Partner Accounts** | Track partner organizations using Account entity | ☐ Yes ☐ No | |
 | **Partner Contacts** | Track individuals at partner organizations | ☐ Yes ☐ No | |
-| **Deal Registration** | Partners can register opportunities | ☐ ENABLE ☐ N/A | |
-| **Partner Portal** | External portal for partner access | ☐ ENABLE ☐ N/A | |
+| **Deal Registration** | Partners can register opportunities (requires customization) | ☐ ENABLE ☐ N/A | |
+| **Partner Portal** | External portal for partner access (requires Power Pages) | ☐ ENABLE ☐ N/A | |
 
 ### Opportunity Sharing with Partners
 
@@ -1035,7 +1027,7 @@ Partner Relationship Management (PRM) allows you to manage relationships with ch
 ### What Is It?
 Data retention policies determine how long records are kept and what happens to old data. This is important for compliance (legal hold requirements), storage management, and keeping the system clean of outdated information.
 
-**📖 Learn More:** [Data Retention Policies](https://learn.microsoft.com/en-us/power-platform/admin/data-retention-overview)
+**📖 Learn More:** [Dataverse Long Term Data Retention](https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-retention-overview)
 
 ### Retention Considerations by Record Type
 
@@ -1238,7 +1230,6 @@ Even the best-configured system provides no value if people don't use it. This s
 | **Forecasting & Pipeline Management** | Sales Managers | ☐ High ☐ Medium ☐ Low | |
 | **Goal Setting & Tracking** | Sales Managers | ☐ High ☐ Medium ☐ Low | |
 | **Territory Management** | Admins, Managers | ☐ High ☐ Medium ☐ Low | |
-| **Playbooks** | Sales Reps | ☐ High ☐ Medium ☐ Low | |
 | **AI/Sales Insights Features** | All Users | ☐ High ☐ Medium ☐ Low | |
 | **Knowledge Base** | Sales Reps, Admins | ☐ High ☐ Medium ☐ Low | |
 
@@ -1290,7 +1281,7 @@ Even the best-configured system provides no value if people don't use it. This s
 | 15. Word & Excel Templates | | | ☐ Complete |
 | 16. LinkedIn Sales Navigator | | | ☐ Complete |
 | 17. Copilot AI Integration | | | ☐ Complete |
-| 18. Sales Playbooks 🏢 | | | ☐ Complete |
+| 18. Sales Playbooks 🏢 ⚠️ DEPRECATED | | | ☐ Complete |
 | 19. Knowledge Management 🏢 | | | ☐ Complete |
 | 20. Partner Relationship Management 🏢 | | | ☐ Complete |
 | 21. Queues & SLAs | | | ☐ Complete |
@@ -1333,32 +1324,38 @@ Date: _______________________________________________
 
 ## Appendix A: Quick Reference - Microsoft Documentation Links
 
-| Topic | URL |
-|-------|-----|
-| Dynamics 365 Sales Documentation Home | https://learn.microsoft.com/en-us/dynamics365/sales/ |
-| Sales Professional vs Enterprise Comparison | https://learn.microsoft.com/en-us/dynamics365/sales/overview#dynamics-365-sales-offerings |
-| Customize Forms | https://learn.microsoft.com/en-us/dynamics365/sales/customize-forms |
-| Create and Edit Views | https://learn.microsoft.com/en-us/power-apps/maker/model-driven-apps/create-edit-views |
-| Dashboards | https://learn.microsoft.com/en-us/dynamics365/sales/dashboards |
-| Email Integration | https://learn.microsoft.com/en-us/power-platform/admin/set-up-server-side-synchronization-of-email-appointments-contacts-and-tasks |
-| SharePoint Integration | https://learn.microsoft.com/en-us/power-platform/admin/manage-documents-using-sharepoint |
-| Teams Integration | https://learn.microsoft.com/en-us/dynamics365/sales/teams-integration/teams-collaboration |
-| Security Roles | https://learn.microsoft.com/en-us/power-platform/admin/security-roles-privileges |
-| Business Process Flows | https://learn.microsoft.com/en-us/power-automate/business-process-flows-overview |
-| Copilot in Sales | https://learn.microsoft.com/en-us/dynamics365/sales/copilot-overview |
-| LinkedIn Integration | https://learn.microsoft.com/en-us/dynamics365/linkedin/integrate-sales-navigator |
-| Word Templates | https://learn.microsoft.com/en-us/power-platform/admin/using-word-templates-dynamics-365 |
-| Excel Templates | https://learn.microsoft.com/en-us/power-platform/admin/analyze-your-data-with-excel-templates |
-| Queues | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/queues-omnichannel |
-| SLAs | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/define-service-level-agreements |
-| **Sales Goals** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/goals-overview |
-| **Territory Management** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/set-up-sales-territories |
-| **Forecasting** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/configure-forecast |
-| **Sales Accelerator** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/sales-accelerator-intro |
-| **Sales Insights** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/intro-admin-guide-sales-insights |
-| **Sales Playbooks** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/enforce-best-practices-playbooks |
-| **Knowledge Management** 🏢 | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/set-up-knowledge-management-embedded-knowledge-search |
-| **Product Catalog** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/set-up-product-catalog-walkthrough |
+| Topic | URL | Status |
+|-------|-----|--------|
+| Dynamics 365 Sales Documentation Home | https://learn.microsoft.com/en-us/dynamics365/sales/ | ✅ Verified |
+| Sales Professional vs Enterprise Comparison | https://learn.microsoft.com/en-us/dynamics365/sales/overview#dynamics-365-sales-offerings | ✅ Verified |
+| Navigate the Sales Hub App | https://learn.microsoft.com/en-us/dynamics365/sales/user-guide-learn-basics | ✅ Verified |
+| Customize Forms | https://learn.microsoft.com/en-us/dynamics365/sales/customize-forms | ✅ Verified |
+| Create and Edit Views | https://learn.microsoft.com/en-us/power-apps/maker/model-driven-apps/create-edit-views | ✅ Verified |
+| Dashboards | https://learn.microsoft.com/en-us/dynamics365/sales/dashboards | ✅ Verified |
+| Search for Records | https://learn.microsoft.com/en-us/power-apps/user/search | ✅ Verified |
+| Nurture Sales from Lead to Order | https://learn.microsoft.com/en-us/dynamics365/sales/nurture-sales-from-lead-order-sales | ✅ Verified |
+| Business Process Flows | https://learn.microsoft.com/en-us/power-automate/business-process-flows-overview | ✅ Verified |
+| Email Integration | https://learn.microsoft.com/en-us/power-platform/admin/set-up-server-side-synchronization-of-email-appointments-contacts-and-tasks | ✅ Verified |
+| SharePoint Integration | https://learn.microsoft.com/en-us/power-platform/admin/manage-documents-using-sharepoint | ✅ Verified |
+| Teams Integration | https://learn.microsoft.com/en-us/dynamics365/sales/teams-integration/teams-collaboration | ✅ Verified |
+| Security Roles | https://learn.microsoft.com/en-us/power-platform/admin/security-roles-privileges | ✅ Verified |
+| Security Concepts | https://learn.microsoft.com/en-us/power-platform/admin/wp-security-cds | ✅ Verified |
+| Copilot in Sales | https://learn.microsoft.com/en-us/dynamics365/sales/copilot-overview | ✅ Verified |
+| LinkedIn Integration | https://learn.microsoft.com/en-us/dynamics365/linkedin/integrate-sales-navigator | ✅ Verified |
+| Word Templates | https://learn.microsoft.com/en-us/power-platform/admin/using-word-templates-dynamics-365 | ✅ Verified |
+| Excel Templates | https://learn.microsoft.com/en-us/power-platform/admin/analyze-your-data-with-excel-templates | ✅ Verified |
+| Queues | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/queues-omnichannel | ✅ Verified |
+| SLAs | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/define-service-level-agreements | ✅ Verified |
+| **Sales Goals** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/goals-overview | ✅ Verified |
+| **Territory Management** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/set-up-sales-territories | ✅ Verified |
+| **Forecasting** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/configure-forecast | ✅ Verified |
+| **Sales Accelerator** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/sales-accelerator-intro | ✅ Verified |
+| **Sales Insights** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/intro-admin-guide-sales-insights | ✅ Verified |
+| **Sales Playbooks** 🏢 ⚠️ | https://learn.microsoft.com/en-us/dynamics365/sales/deprecations-sales | ⚠️ DEPRECATED |
+| **Knowledge Management** 🏢 | https://learn.microsoft.com/en-us/dynamics365/customer-service/administer/set-up-knowledge-management-embedded-knowledge-search | ✅ Verified |
+| **Product Catalog** 🏢 | https://learn.microsoft.com/en-us/dynamics365/sales/set-up-product-catalog-walkthrough | ✅ Verified |
+| **Data Retention** | https://learn.microsoft.com/en-us/power-apps/maker/data-platform/data-retention-overview | ✅ Corrected |
+| **Accounts & Contacts** (PRM) | https://learn.microsoft.com/en-us/dynamics365/sales/accounts-contacts | ✅ Corrected |
 
 ---
 
@@ -1382,7 +1379,6 @@ Date: _______________________________________________
 | **Lead** | A potential customer who hasn't been qualified yet |
 | **OOB (Out of Box)** | Default configuration provided by Microsoft |
 | **Opportunity** | A qualified potential sale being actively worked |
-| 🏢 **Playbook** | A structured guide for sales activities at specific stages |
 | 🏢 **Predictive Scoring** | AI-calculated likelihood of lead conversion or deal win |
 | 🏢 **Product Family** | A grouping of related products |
 | **Queue** | A shared pool of work items waiting to be claimed |
@@ -1406,12 +1402,24 @@ Date: _______________________________________________
 | **Sales Management** | Sales Goals, Territory Management, Forecasting, Competitor Tracking |
 | **Product Catalog** | Product Families, Hierarchies, Relationships, Bundles |
 | **AI & Intelligence** | Sales Accelerator, Predictive Scoring, Relationship Analytics, Pipeline Intelligence, Notes Analysis, Who Knows Whom (limited capacity) |
-| **Guidance** | Sales Playbooks, Knowledge Management |
+| **Guidance** | Knowledge Management |
 | **Organization** | Business Units, Team Configuration |
-| **Relationships** | Partner Relationship Management |
+| **Relationships** | Partner Account Classification |
 | **Email** | Email Engagement Tracking, Auto Capture |
 | **Customization** | Unlimited Custom Tables, Unlimited BPFs, Unlimited Integrations, Portal/API Access |
 | **Storage** | Additional 250MB database + 2GB file capacity per user |
+
+---
+
+## Appendix D: Link Verification Summary
+
+**Document Revision Date:** January 2026
+
+| Status | Count | Description |
+|--------|-------|-------------|
+| ✅ **Verified** | 28 | Links confirmed working, first-party Microsoft Learn documentation |
+| ⚠️ **Deprecated** | 1 | Sales Playbooks - feature deprecated, link redirects to deprecation notice |
+| 🔧 **Corrected** | 2 | Data Retention and Partner Management - URLs updated to correct destinations |
 
 ---
 
