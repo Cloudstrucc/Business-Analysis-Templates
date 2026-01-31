@@ -7,6 +7,12 @@
           <h4 class="mb-0">Administrator Login</h4>
         </div>
         <div class="card-body p-4">
+          {{#if passwordChanged}}
+            <div class="alert alert-success">
+              <i class="bi bi-check-circle me-2"></i>Password changed successfully. Please log in with your new password.
+            </div>
+          {{/if}}
+          
           <form action="/admin/login" method="POST">
             <div class="mb-3">
               <label for="email" class="form-label">Email Address</label>

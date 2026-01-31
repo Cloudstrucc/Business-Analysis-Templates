@@ -9,6 +9,7 @@ const emailService = require('../utils/emailService');
 router.get('/login', ensureNotAuthenticated, (req, res) => {
   res.render('admin/login', { 
     title: 'Admin Login',
+    passwordChanged: req.query.passwordChanged === '1',
     messages: {
       error: req.flash('error')[0],
       success: req.flash('success')[0]
@@ -576,6 +577,82 @@ router.get('/forms/:id/preview', ensureAuthenticated, (req, res) => {
     savedData: {},
     savedDataJson: '{}'
   });
+});
+
+// Settings page
+router.get('/settings', ensureAuthenticated, (req, res) => {
+  res.render('admin/settings', {
+    title: 'Settings',
+    isAdmin: true,
+    isSettings: true,
+    admin: req.user,
+    messages: {
+      success: req.flash('success')[0],
+      error: req.flash('error')[0]
+    }
+  });
+});
+
+// Change password
+router.post('/settings/password', ensureAuthenticated, async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      req.flash('error', 'All fields are required');
+      return res.redirect('/admin/settings');
+    }
+
+    if (newPassword.length < 8) {
+      req.flash('error', 'New password must be at least 8 characters long');
+      return res.redirect('/admin/settings');
+    }
+
+    if (newPassword !== confirmPassword) {
+      req.flash('error', 'New passwords do not match');
+      return res.redirect('/admin/settings');
+    }
+
+    // Get current admin from database
+    const admin = get(`SELECT * FROM admins WHERE id = ?`, [req.user.id]);
+    
+    if (!admin) {
+      req.flash('error', 'Admin account not found');
+      return res.redirect('/admin/settings');
+    }
+
+    // Verify current password
+    const bcrypt = require('bcryptjs');
+    const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
+    
+    if (!isValidPassword) {
+      req.flash('error', 'Current password is incorrect');
+      return res.redirect('/admin/settings');
+    }
+
+    // Hash new password and update
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    run(`UPDATE admins SET password = ? WHERE id = ?`, [hashedPassword, req.user.id]);
+
+    // Log out and destroy session, then redirect to login
+    req.logout((err) => {
+      if (err) {
+        console.error('Logout error:', err);
+      }
+      req.session.destroy((err) => {
+        if (err) {
+          console.error('Session destroy error:', err);
+        }
+        res.clearCookie('connect.sid'); // Clear the session cookie
+        res.redirect('/admin/login?passwordChanged=1');
+      });
+    });
+  } catch (error) {
+    console.error('Password change error:', error);
+    req.flash('error', 'Failed to change password: ' + error.message);
+    res.redirect('/admin/settings');
+  }
 });
 
 module.exports = router;

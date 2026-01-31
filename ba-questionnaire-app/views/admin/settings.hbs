@@ -1,0 +1,104 @@
+<div class="container py-4">
+  <div class="row">
+    <div class="col-lg-8">
+      <h1 class="h3 mb-4">Settings</h1>
+      
+      <!-- Change Password Card -->
+      <div class="card">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-key me-2"></i>Change Password
+          </h5>
+        </div>
+        <div class="card-body">
+          <form action="/admin/settings/password" method="POST">
+            <div class="mb-3">
+              <label for="currentPassword" class="form-label">Current Password</label>
+              <input type="password" class="form-control" id="currentPassword" name="currentPassword" required>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="mb-3">
+              <label for="newPassword" class="form-label">New Password</label>
+              <input type="password" class="form-control" id="newPassword" name="newPassword" 
+                     minlength="8" required>
+              <div class="form-text">Minimum 8 characters</div>
+            </div>
+            
+            <div class="mb-3">
+              <label for="confirmPassword" class="form-label">Confirm New Password</label>
+              <input type="password" class="form-control" id="confirmPassword" name="confirmPassword" 
+                     minlength="8" required>
+            </div>
+            
+            <div class="d-flex justify-content-end">
+              <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check-lg me-1"></i>Update Password
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
+      <!-- Account Info Card -->
+      <div class="card mt-4">
+        <div class="card-header">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-person me-2"></i>Account Information
+          </h5>
+        </div>
+        <div class="card-body">
+          <dl class="row mb-0">
+            <dt class="col-sm-3">Username</dt>
+            <dd class="col-sm-9"><code>{{admin.username}}</code></dd>
+            
+            <dt class="col-sm-3">Email</dt>
+            <dd class="col-sm-9">{{#if admin.email}}{{admin.email}}{{else}}<span class="text-muted">Not set</span>{{/if}}</dd>
+            
+            <dt class="col-sm-3">Admin ID</dt>
+            <dd class="col-sm-9"><code>{{admin.id}}</code></dd>
+          </dl>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="card bg-light">
+        <div class="card-body">
+          <h6 class="card-title">
+            <i class="bi bi-info-circle me-1"></i>Password Tips
+          </h6>
+          <ul class="small mb-0">
+            <li>Use at least 8 characters</li>
+            <li>Mix uppercase and lowercase letters</li>
+            <li>Include numbers and symbols</li>
+            <li>Avoid common words or patterns</li>
+            <li>Don't reuse passwords from other sites</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Client-side password match validation
+document.querySelector('form').addEventListener('submit', function(e) {
+  const newPass = document.getElementById('newPassword').value;
+  const confirmPass = document.getElementById('confirmPassword').value;
+  
+  if (newPass !== confirmPass) {
+    e.preventDefault();
+    alert('New passwords do not match');
+    return false;
+  }
+  
+  if (newPass.length < 8) {
+    e.preventDefault();
+    alert('Password must be at least 8 characters');
+    return false;
+  }
+});
+</script>
