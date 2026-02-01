@@ -1,13 +1,21 @@
+#!/bin/bash
 set -e
+
+# ============================================================
+# Cloudstrucc BA Forms - Unified Azure Deployment Script
+# Supports: dev, qa, prod environments
+# Features: TTL auto-shutdown, passphrase protection for prod
+# ============================================================
 
 # ============================================================
 # CONFIGURATION - Edit these for your deployment
 # ============================================================
 
-RESOURCE_GROUP="cloudstrucc-rg"
-APP_SERVICE_PLAN="cloudstrucc-plan"
-APP_NAME="cloudstrucc-ba-forms"
-STORAGE_ACCOUNT="cloudstruccdata"
+# Base names (environment suffix will be added automatically)
+RESOURCE_GROUP_BASE="cloudstrucc-rg"
+APP_SERVICE_PLAN_BASE="cloudstrucc-plan"
+APP_NAME_BASE="cloudstrucc-ba-forms"
+STORAGE_ACCOUNT_BASE="cloudstruccdata"
 LOCATION="canadacentral"
 APP_SERVICE_SKU="B1"
 
@@ -19,6 +27,9 @@ SMTP_PORT="587"
 SMTP_USER=""
 SMTP_PASS=""
 
+# Production Passphrase (change this to your own secure passphrase)
+PROD_PASSPHRASE="cloudstrucc-prod-deploy-2026"
+
 # ============================================================
 # DO NOT EDIT BELOW THIS LINE
 # ============================================================
@@ -29,6 +40,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
+MAGENTA='\033[0;35m'
 NC='\033[0m'
 
 # Get script and app directories
@@ -38,18 +50,212 @@ APP_DIR="$REPO_ROOT/ba-questionnaire-app"
 QUESTIONNAIRES_DIR="$REPO_ROOT/Questionnaires"
 TEMPLATES_DIR="$APP_DIR/templates"
 
-echo -e "${CYAN}"
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║     Cloudstrucc BA Forms - Azure Deployment                  ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-echo -e "${NC}"
+# Default environment is production
+ENVIRONMENT="prod"
+TTL_HOURS=""
+SKIP_PASSPHRASE=false
 
-echo "Script directory:       $SCRIPT_DIR"
-echo "Repository root:        $REPO_ROOT"
-echo "App directory:          $APP_DIR"
-echo "Questionnaires folder:  $QUESTIONNAIRES_DIR"
-echo "Templates folder:       $TEMPLATES_DIR"
-echo ""
+# Parse command line arguments
+parse_arguments() {
+    COMMAND=""
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                COMMAND="help"
+                shift
+                ;;
+            --dev)
+                ENVIRONMENT="dev"
+                shift
+                ;;
+            --qa)
+                ENVIRONMENT="qa"
+                shift
+                ;;
+            --prod)
+                ENVIRONMENT="prod"
+                shift
+                ;;
+            --ttl)
+                if [[ -n "$2" && "$2" =~ ^[0-9]+$ ]]; then
+                    TTL_HOURS="$2"
+                    shift 2
+                else
+                    echo -e "${RED}Error: --ttl requires a numeric value (hours)${NC}"
+                    exit 1
+                fi
+                ;;
+            --deploy)
+                COMMAND="deploy"
+                shift
+                ;;
+            --setup)
+                COMMAND="setup"
+                shift
+                ;;
+            --sync)
+                COMMAND="sync"
+                shift
+                ;;
+            --logs)
+                COMMAND="logs"
+                shift
+                ;;
+            --ssh)
+                COMMAND="ssh"
+                shift
+                ;;
+            --restart)
+                COMMAND="restart"
+                shift
+                ;;
+            --status)
+                COMMAND="status"
+                shift
+                ;;
+            --delete)
+                COMMAND="delete"
+                shift
+                ;;
+            --stop)
+                COMMAND="stop"
+                shift
+                ;;
+            --start)
+                COMMAND="start"
+                shift
+                ;;
+            --list-envs)
+                COMMAND="list-envs"
+                shift
+                ;;
+            --force)
+                SKIP_PASSPHRASE=true
+                shift
+                ;;
+            *)
+                if [[ -z "$COMMAND" ]]; then
+                    COMMAND="full"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Default to full deployment if no command specified
+    if [[ -z "$COMMAND" ]]; then
+        COMMAND="full"
+    fi
+}
+
+# Set environment-specific variables
+set_environment_vars() {
+    case $ENVIRONMENT in
+        dev)
+            ENV_SUFFIX="-dev"
+            ENV_DISPLAY="DEVELOPMENT"
+            ENV_COLOR="${YELLOW}"
+            ;;
+        qa)
+            ENV_SUFFIX="-qa"
+            ENV_DISPLAY="QA/STAGING"
+            ENV_COLOR="${MAGENTA}"
+            ;;
+        prod)
+            ENV_SUFFIX=""
+            ENV_DISPLAY="PRODUCTION"
+            ENV_COLOR="${RED}"
+            ;;
+    esac
+    
+    # Set resource names based on environment
+    # Each environment gets its own resource group for complete isolation
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
+        RESOURCE_GROUP="${RESOURCE_GROUP_BASE}"
+        STORAGE_ACCOUNT="${STORAGE_ACCOUNT_BASE}"
+    else
+        RESOURCE_GROUP="${RESOURCE_GROUP_BASE}-${ENVIRONMENT}"
+        STORAGE_ACCOUNT="${STORAGE_ACCOUNT_BASE}${ENVIRONMENT}"
+    fi
+    
+    APP_SERVICE_PLAN="${APP_SERVICE_PLAN_BASE}${ENV_SUFFIX}"
+    APP_NAME="${APP_NAME_BASE}${ENV_SUFFIX}"
+}
+
+# Verify production passphrase
+verify_prod_passphrase() {
+    if [[ "$ENVIRONMENT" != "prod" ]]; then
+        return 0
+    fi
+    
+    if [[ "$SKIP_PASSPHRASE" == "true" ]]; then
+        show_warning "Passphrase check skipped (--force flag used)"
+        return 0
+    fi
+    
+    echo ""
+    echo -e "${RED}╔══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${RED}║                    ⚠️  PRODUCTION DEPLOYMENT ⚠️                ║${NC}"
+    echo -e "${RED}╚══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+    echo -e "${RED}You are about to deploy to PRODUCTION.${NC}"
+    echo ""
+    read -s -p "Enter production passphrase: " entered_passphrase
+    echo ""
+    
+    if [[ "$entered_passphrase" != "$PROD_PASSPHRASE" ]]; then
+        echo ""
+        echo -e "${RED}✗ Invalid passphrase. Deployment aborted.${NC}"
+        echo ""
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✓ Passphrase verified${NC}"
+    echo ""
+    
+    # Extra confirmation for TTL on production
+    if [[ -n "$TTL_HOURS" ]]; then
+        echo -e "${RED}WARNING: You are setting TTL auto-shutdown on PRODUCTION!${NC}"
+        echo "The production app will automatically stop in $TTL_HOURS hour(s)."
+        echo ""
+        read -p "Are you SURE you want TTL on production? (yes/no): " ttl_confirm
+        if [[ "$ttl_confirm" != "yes" ]]; then
+            echo "TTL removed. Continuing without auto-shutdown."
+            TTL_HOURS=""
+        fi
+    fi
+}
+
+show_environment_banner() {
+    echo -e "${CYAN}"
+    echo "╔══════════════════════════════════════════════════════════════╗"
+    echo "║     Cloudstrucc BA Forms - Azure Deployment                  ║"
+    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo -e "${NC}"
+    
+    echo -e "${ENV_COLOR}┌──────────────────────────────────────────────────────────────┐${NC}"
+    echo -e "${ENV_COLOR}│  ENVIRONMENT: ${ENV_DISPLAY}$(printf '%*s' $((43 - ${#ENV_DISPLAY})) '')│${NC}"
+    echo -e "${ENV_COLOR}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    
+    echo "Script directory:       $SCRIPT_DIR"
+    echo "Repository root:        $REPO_ROOT"
+    echo "App directory:          $APP_DIR"
+    echo ""
+    echo "Resource Configuration:"
+    echo "  Resource Group:       $RESOURCE_GROUP"
+    echo "  App Service Plan:     $APP_SERVICE_PLAN"
+    echo "  App Name:             $APP_NAME"
+    echo "  Storage Account:      $STORAGE_ACCOUNT"
+    echo "  Location:             $LOCATION"
+    
+    if [[ -n "$TTL_HOURS" ]]; then
+        echo ""
+        echo -e "${YELLOW}  ⏱  TTL Auto-Shutdown:   ${TTL_HOURS} hour(s)${NC}"
+    fi
+    echo ""
+}
 
 # Function to show progress
 show_step() {
@@ -148,6 +354,13 @@ validate_setup() {
         echo -e "${RED}Error: app.js not found in $APP_DIR${NC}"
         exit 1
     fi
+    
+    # Check for startup.sh
+    if [ ! -f "$APP_DIR/startup.sh" ]; then
+        echo -e "${RED}Error: startup.sh not found in $APP_DIR${NC}"
+        echo "Please copy the startup.sh to your ba-questionnaire-app folder"
+        exit 1
+    fi
 
     # Check Azure CLI is installed
     if ! command -v az &> /dev/null; then
@@ -173,31 +386,98 @@ validate_setup() {
 # ============================================================
 
 show_help() {
-    echo "Usage: ./deploy.sh [option]"
+    echo "Usage: ./deploy.sh [command] [environment] [options]"
     echo ""
-    echo "Options:"
-    echo "  (none)       Full deployment (setup + deploy)"
-    echo "  --deploy     Deploy code only (resources must exist)"
-    echo "  --setup      Create Azure resources only"
-    echo "  --sync       Sync questionnaires to templates folder only"
-    echo "  --logs       View live application logs"
-    echo "  --ssh        SSH into the container"
-    echo "  --restart    Restart the web app"
-    echo "  --status     Check app status and health"
-    echo "  --delete     Delete all Azure resources"
-    echo "  --help       Show this help message"
+    echo -e "${CYAN}Commands:${NC}"
+    echo "  (none)         Full deployment (setup + deploy)"
+    echo "  --deploy       Deploy code only (resources must exist)"
+    echo "  --setup        Create Azure resources only"
+    echo "  --sync         Sync questionnaires to templates folder only"
+    echo "  --logs         View live application logs"
+    echo "  --ssh          SSH into the container"
+    echo "  --restart      Restart the web app"
+    echo "  --status       Check app status and health"
+    echo "  --start        Start a stopped web app"
+    echo "  --stop         Stop a running web app"
+    echo "  --delete       Delete all Azure resources for environment"
+    echo "  --list-envs    List all deployed environments"
+    echo "  --help         Show this help message"
     echo ""
-    echo "Folder Structure:"
-    echo "  Questionnaires/     Source .md files (edit here)"
-    echo "  ba-questionnaire-app/templates/  Deployed .md files (auto-synced)"
+    echo -e "${CYAN}Environments:${NC}"
+    echo "  --dev          Target development environment"
+    echo "  --qa           Target QA/staging environment"
+    echo "  --prod         Target production environment (default)"
     echo ""
-    echo "Configuration (edit at top of script):"
-    echo "  APP_NAME:          $APP_NAME"
-    echo "  RESOURCE_GROUP:    $RESOURCE_GROUP"
-    echo "  LOCATION:          $LOCATION"
-    echo "  APP_SERVICE_SKU:   $APP_SERVICE_SKU"
+    echo -e "${CYAN}Options:${NC}"
+    echo "  --ttl <hours>  Auto-stop the app after specified hours"
+    echo "  --force        Skip passphrase for production (use with caution!)"
     echo ""
-    echo "App URL: https://$APP_NAME.azurewebsites.net"
+    echo -e "${CYAN}Examples:${NC}"
+    echo "  ./deploy.sh --deploy --dev              Deploy to dev"
+    echo "  ./deploy.sh --deploy --dev --ttl 2      Deploy to dev, auto-stop in 2 hours"
+    echo "  ./deploy.sh --deploy --qa --ttl 4       Deploy to QA, auto-stop in 4 hours"
+    echo "  ./deploy.sh --deploy --prod             Deploy to production (requires passphrase)"
+    echo "  ./deploy.sh --deploy                    Deploy to production (default)"
+    echo "  ./deploy.sh --setup --dev               Setup dev resources only"
+    echo "  ./deploy.sh --stop --dev                Stop dev environment"
+    echo "  ./deploy.sh --start --dev               Start dev environment"
+    echo "  ./deploy.sh --logs --qa                 View QA logs"
+    echo "  ./deploy.sh --delete --dev              Delete dev environment"
+    echo ""
+    echo -e "${CYAN}Environment Resources (Fully Isolated):${NC}"
+    echo "  ┌─────────────┬─────────────────────────┬────────────────────────────┬─────────────────────┐"
+    echo "  │ Environment │ Resource Group          │ App Name                   │ Storage Account     │"
+    echo "  ├─────────────┼─────────────────────────┼────────────────────────────┼─────────────────────┤"
+    echo "  │ dev         │ ${RESOURCE_GROUP_BASE}-dev      │ ${APP_NAME_BASE}-dev       │ ${STORAGE_ACCOUNT_BASE}dev │"
+    echo "  │ qa          │ ${RESOURCE_GROUP_BASE}-qa       │ ${APP_NAME_BASE}-qa        │ ${STORAGE_ACCOUNT_BASE}qa  │"
+    echo "  │ prod        │ ${RESOURCE_GROUP_BASE}          │ ${APP_NAME_BASE}           │ ${STORAGE_ACCOUNT_BASE}    │"
+    echo "  └─────────────┴─────────────────────────┴────────────────────────────┴─────────────────────┘"
+    echo ""
+    echo -e "${CYAN}URLs:${NC}"
+    echo "  Dev:  https://${APP_NAME_BASE}-dev.azurewebsites.net"
+    echo "  QA:   https://${APP_NAME_BASE}-qa.azurewebsites.net"
+    echo "  Prod: https://${APP_NAME_BASE}.azurewebsites.net"
+    echo ""
+    echo -e "${RED}Production Deployment:${NC}"
+    echo "  Production deployments require a passphrase for safety."
+    echo "  The passphrase is configured in the PROD_PASSPHRASE variable."
+    echo ""
+    exit 0
+}
+
+# ============================================================
+# LIST ENVIRONMENTS
+# ============================================================
+
+list_environments() {
+    show_step "Listing Deployed Environments"
+    
+    echo ""
+    printf "%-12s %-25s %-30s %-12s\n" "Environment" "Resource Group" "App Name" "State"
+    printf "%-12s %-25s %-30s %-12s\n" "-----------" "-------------------------" "------------------------------" "------------"
+    
+    for env in dev qa prod; do
+        if [[ "$env" == "prod" ]]; then
+            app="${APP_NAME_BASE}"
+            rg="${RESOURCE_GROUP_BASE}"
+        else
+            app="${APP_NAME_BASE}-${env}"
+            rg="${RESOURCE_GROUP_BASE}-${env}"
+        fi
+        
+        if az webapp show --name "$app" --resource-group "$rg" &> /dev/null 2>&1; then
+            STATE=$(az webapp show --name "$app" --resource-group "$rg" --query "state" -o tsv 2>/dev/null)
+            printf "%-12s %-25s %-30s %-12s\n" "$env" "$rg" "$app" "$STATE"
+        else
+            printf "%-12s %-25s %-30s %-12s\n" "$env" "$rg" "$app" "Not deployed"
+        fi
+    done
+    
+    echo ""
+    echo "URLs:"
+    echo "  Dev:  https://${APP_NAME_BASE}-dev.azurewebsites.net"
+    echo "  QA:   https://${APP_NAME_BASE}-qa.azurewebsites.net"
+    echo "  Prod: https://${APP_NAME_BASE}.azurewebsites.net"
     echo ""
     exit 0
 }
@@ -207,13 +487,21 @@ show_help() {
 # ============================================================
 
 check_status() {
-    show_step "Checking Application Status"
+    show_step "Checking Application Status [$ENV_DISPLAY]"
     
     echo ""
     echo "Resource Group: $RESOURCE_GROUP"
     echo "App Name:       $APP_NAME"
+    echo "Storage:        $STORAGE_ACCOUNT"
     echo "App URL:        https://$APP_NAME.azurewebsites.net"
     echo ""
+    
+    show_substep "Checking if resource group exists..."
+    if ! az group show --name "$RESOURCE_GROUP" &> /dev/null 2>&1; then
+        show_warning "Resource group $RESOURCE_GROUP does not exist"
+        exit 0
+    fi
+    show_success "Resource group exists"
     
     show_substep "Checking if app exists..."
     if az webapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" &> /dev/null; then
@@ -223,16 +511,25 @@ check_status() {
         STATE=$(az webapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "state" -o tsv)
         echo "  State: $STATE"
         
-        # Health check
-        show_substep "Running health check..."
-        HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_NAME.azurewebsites.net/health" 2>/dev/null || echo "000")
-        
-        if [ "$HTTP_STATUS" == "200" ]; then
-            show_success "Health check passed (HTTP $HTTP_STATUS)"
-            curl -s "https://$APP_NAME.azurewebsites.net/health" | python3 -m json.tool 2>/dev/null || true
+        if [[ "$STATE" == "Running" ]]; then
+            # Health check
+            show_substep "Running health check..."
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_NAME.azurewebsites.net/health" 2>/dev/null || echo "000")
+            
+            if [ "$HTTP_STATUS" == "200" ]; then
+                show_success "Health check passed (HTTP $HTTP_STATUS)"
+                curl -s "https://$APP_NAME.azurewebsites.net/health" | python3 -m json.tool 2>/dev/null || true
+            else
+                show_warning "Health check returned HTTP $HTTP_STATUS"
+            fi
         else
-            show_warning "Health check returned HTTP $HTTP_STATUS"
+            show_warning "App is stopped. Use './deploy.sh --start --${ENVIRONMENT}' to start it."
         fi
+        
+        # Check for scheduled shutdown
+        show_substep "Checking for scheduled auto-shutdown..."
+        check_scheduled_shutdown
+        
     else
         show_warning "App does not exist"
     fi
@@ -241,11 +538,34 @@ check_status() {
 }
 
 # ============================================================
+# CHECK SCHEDULED SHUTDOWN
+# ============================================================
+
+check_scheduled_shutdown() {
+    # Check for TTL tag on the webapp
+    SHUTDOWN_TIME=$(az webapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "tags.AutoShutdownTime" -o tsv 2>/dev/null)
+    TTL_TAG=$(az webapp show --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --query "tags.TTLHours" -o tsv 2>/dev/null)
+    
+    if [[ -n "$SHUTDOWN_TIME" && "$SHUTDOWN_TIME" != "null" ]]; then
+        echo -e "${YELLOW}  ⏱  Scheduled auto-shutdown at: $SHUTDOWN_TIME UTC${NC}"
+        echo "     (TTL was set to: ${TTL_TAG} hours)"
+        
+        # Check if shutdown time has passed
+        CURRENT_TIME=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+        if [[ "$CURRENT_TIME" > "$SHUTDOWN_TIME" ]]; then
+            echo -e "${YELLOW}     Note: Shutdown time has passed. App may need manual stop.${NC}"
+        fi
+    else
+        echo "  No auto-shutdown scheduled"
+    fi
+}
+
+# ============================================================
 # VIEW LOGS
 # ============================================================
 
 view_logs() {
-    show_step "Streaming Logs from $APP_NAME"
+    show_step "Streaming Logs from $APP_NAME [$ENV_DISPLAY]"
     echo "Press Ctrl+C to stop"
     echo ""
     az webapp log tail \
@@ -259,7 +579,7 @@ view_logs() {
 # ============================================================
 
 connect_ssh() {
-    show_step "Connecting to $APP_NAME via SSH"
+    show_step "Connecting to $APP_NAME via SSH [$ENV_DISPLAY]"
     az webapp ssh \
         --name "$APP_NAME" \
         --resource-group "$RESOURCE_GROUP"
@@ -271,7 +591,12 @@ connect_ssh() {
 # ============================================================
 
 restart_app() {
-    show_step "Restarting $APP_NAME"
+    # Require passphrase for production
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
+        verify_prod_passphrase
+    fi
+    
+    show_step "Restarting $APP_NAME [$ENV_DISPLAY]"
     az webapp restart \
         --name "$APP_NAME" \
         --resource-group "$RESOURCE_GROUP"
@@ -293,32 +618,175 @@ restart_app() {
 }
 
 # ============================================================
+# STOP APP
+# ============================================================
+
+stop_app() {
+    show_step "Stopping $APP_NAME [$ENV_DISPLAY]"
+    
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
+        verify_prod_passphrase
+        echo -e "${RED}WARNING: You are about to stop the PRODUCTION environment!${NC}"
+        read -p "Type 'STOP' to confirm: " confirm
+        if [[ "$confirm" != "STOP" ]]; then
+            echo "Cancelled."
+            exit 0
+        fi
+    fi
+    
+    az webapp stop \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP"
+    show_success "App stopped"
+    
+    # Clear the TTL tag since we manually stopped
+    az webapp update \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --set tags.AutoShutdownTime="" \
+        --set tags.TTLHours="" \
+        --output none 2>/dev/null || true
+    
+    echo ""
+    echo "To start the app again, run:"
+    echo "  ./deploy.sh --start --${ENVIRONMENT}"
+    
+    exit 0
+}
+
+# ============================================================
+# START APP
+# ============================================================
+
+start_app() {
+    show_step "Starting $APP_NAME [$ENV_DISPLAY]"
+    
+    az webapp start \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP"
+    show_success "App started"
+    
+    # Clear the TTL tag since we manually started
+    az webapp update \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --set tags.AutoShutdownTime="" \
+        --set tags.TTLHours="" \
+        --output none 2>/dev/null || true
+    
+    echo ""
+    echo "Waiting 15 seconds for app to start..."
+    sleep 15
+    
+    # Health check
+    HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://$APP_NAME.azurewebsites.net/health" 2>/dev/null || echo "000")
+    if [ "$HTTP_STATUS" == "200" ]; then
+        show_success "Health check passed"
+    else
+        show_warning "Health check returned HTTP $HTTP_STATUS - app may still be starting"
+    fi
+    
+    exit 0
+}
+
+# ============================================================
 # DELETE
 # ============================================================
 
 delete_resources() {
-    show_step "Delete Azure Resources"
+    show_step "Delete Azure Resources [$ENV_DISPLAY]"
     
-    echo -e "${RED}WARNING: This will delete all Azure resources!${NC}"
+    # Require passphrase for production
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
+        verify_prod_passphrase
+    fi
+    
+    echo -e "${RED}WARNING: This will delete the ${ENV_DISPLAY} environment resources!${NC}"
     echo ""
     echo "Resources to be deleted:"
-    echo "  - Resource Group: $RESOURCE_GROUP"
+    echo "  - Resource Group: $RESOURCE_GROUP (and ALL resources inside)"
     echo "  - App Service: $APP_NAME"
     echo "  - App Service Plan: $APP_SERVICE_PLAN"
     echo "  - Storage Account: $STORAGE_ACCOUNT"
-    echo ""
-    read -p "Are you sure? Type 'DELETE' to confirm: " confirm
     
-    if [ "$confirm" == "DELETE" ]; then
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
         echo ""
-        show_substep "Deleting resource group (this may take a few minutes)..."
-        az group delete --name "$RESOURCE_GROUP" --yes
-        show_success "All resources deleted"
+        echo -e "${RED}THIS IS THE PRODUCTION ENVIRONMENT!${NC}"
+    fi
+    
+    echo ""
+    CONFIRM_TEXT="DELETE-$(echo $ENVIRONMENT | tr '[:lower:]' '[:upper:]')"
+    read -p "Type '$CONFIRM_TEXT' to confirm: " confirm
+    
+    if [ "$confirm" == "$CONFIRM_TEXT" ]; then
+        echo ""
+        
+        if [[ "$ENVIRONMENT" != "prod" ]]; then
+            # For dev/qa, delete the entire resource group (cleaner and complete isolation)
+            show_substep "Deleting resource group $RESOURCE_GROUP (this may take a few minutes)..."
+            az group delete --name "$RESOURCE_GROUP" --yes --no-wait
+            show_success "Resource group deletion initiated"
+            echo ""
+            echo "Note: Deletion happens in the background and may take 5-10 minutes."
+            echo "Check status with: az group show --name $RESOURCE_GROUP"
+        else
+            # For prod, delete individual resources to be safer
+            show_substep "Deleting web app..."
+            az webapp delete --name "$APP_NAME" --resource-group "$RESOURCE_GROUP" --keep-empty-plan 2>/dev/null || true
+            show_success "Web app deleted"
+            
+            show_substep "Deleting app service plan..."
+            az appservice plan delete --name "$APP_SERVICE_PLAN" --resource-group "$RESOURCE_GROUP" --yes 2>/dev/null || true
+            show_success "App service plan deleted"
+            
+            show_substep "Deleting storage account..."
+            az storage account delete --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" --yes 2>/dev/null || true
+            show_success "Storage account deleted"
+        fi
+        
+        show_success "All ${ENV_DISPLAY} resources deleted"
     else
         echo "Cancelled."
     fi
     
     exit 0
+}
+
+# ============================================================
+# SETUP TTL AUTO-SHUTDOWN
+# ============================================================
+
+setup_ttl_shutdown() {
+    if [[ -z "$TTL_HOURS" ]]; then
+        return
+    fi
+    
+    show_step "Setting up TTL Auto-Shutdown (${TTL_HOURS} hours)"
+    
+    # Calculate shutdown time (works on both Linux and macOS)
+    if date --version >/dev/null 2>&1; then
+        # GNU date (Linux)
+        SHUTDOWN_TIME=$(date -u -d "+${TTL_HOURS} hours" +"%Y-%m-%dT%H:%M:%SZ")
+    else
+        # BSD date (macOS)
+        SHUTDOWN_TIME=$(date -u -v+${TTL_HOURS}H +"%Y-%m-%dT%H:%M:%SZ")
+    fi
+    
+    show_substep "App will auto-stop at: $SHUTDOWN_TIME UTC"
+    
+    # Tag the web app with shutdown time
+    az webapp update \
+        --name "$APP_NAME" \
+        --resource-group "$RESOURCE_GROUP" \
+        --set tags.AutoShutdownTime="$SHUTDOWN_TIME" \
+        --set tags.TTLHours="$TTL_HOURS" \
+        --output none
+    
+    show_success "Tagged app with auto-shutdown time: $SHUTDOWN_TIME UTC"
+    
+    echo ""
+    echo -e "${YELLOW}  ⏱  REMINDER: To stop the app when TTL expires, run:${NC}"
+    echo "    ./deploy.sh --stop --${ENVIRONMENT}"
 }
 
 # ============================================================
@@ -328,9 +796,20 @@ delete_resources() {
 setup_azure() {
     show_step "Step 1: Create Resource Group"
     show_substep "Creating $RESOURCE_GROUP in $LOCATION..."
+    
+    # Check if resource group is being deleted
+    RG_STATE=$(az group show --name "$RESOURCE_GROUP" --query "properties.provisioningState" -o tsv 2>/dev/null || echo "NotFound")
+    if [[ "$RG_STATE" == "Deleting" ]]; then
+        show_error "Resource group $RESOURCE_GROUP is currently being deleted"
+        echo "  Please wait 5-10 minutes for deletion to complete, then try again."
+        echo "  Check status with: az group show --name $RESOURCE_GROUP"
+        exit 1
+    fi
+    
     az group create \
         --name "$RESOURCE_GROUP" \
         --location "$LOCATION" \
+        --tags Environment="$ENVIRONMENT" ManagedBy="deploy.sh" \
         --output none
     show_success "Resource group created"
 
@@ -342,38 +821,66 @@ setup_azure() {
         --location "$LOCATION" \
         --sku "$APP_SERVICE_SKU" \
         --is-linux \
+        --tags Environment="$ENVIRONMENT" \
         --output none
     show_success "App Service Plan created"
 
     show_step "Step 3: Create Web App"
-    show_substep "Creating $APP_NAME with Node.js 20..."
+    show_substep "Creating $APP_NAME with Node.js 22 LTS..."
     
-    # Try creating with runtime
+    # Try creating with runtime (Node 22 for express-handlebars@8.0.4 compatibility)
     if ! az webapp create \
         --name "$APP_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --plan "$APP_SERVICE_PLAN" \
-        --runtime "NODE:20-lts" \
+        --runtime "NODE:22-lts" \
+        --tags Environment="$ENVIRONMENT" \
         --output none 2>/dev/null; then
         
-        show_warning "Runtime NODE:20-lts not available, trying alternative..."
+        show_warning "Runtime NODE:22-lts not available, trying alternative..."
         
         # Create without runtime, then set it
         az webapp create \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
             --plan "$APP_SERVICE_PLAN" \
+            --tags Environment="$ENVIRONMENT" \
             --output none
         
         az webapp config set \
             --name "$APP_NAME" \
             --resource-group "$RESOURCE_GROUP" \
-            --linux-fx-version "NODE|20-lts" \
+            --linux-fx-version "NODE|22-lts" \
             --output none 2>/dev/null || true
     fi
+    
     show_success "Web App created"
 
-    show_step "Step 4: Configure Application Settings"
+    show_step "Step 4: Create Storage Account"
+    show_substep "Creating $STORAGE_ACCOUNT for ${ENV_DISPLAY}..."
+    
+    # Check if storage account exists
+    if ! az storage account show --name "$STORAGE_ACCOUNT" --resource-group "$RESOURCE_GROUP" &> /dev/null 2>&1; then
+        az storage account create \
+            --name "$STORAGE_ACCOUNT" \
+            --resource-group "$RESOURCE_GROUP" \
+            --location "$LOCATION" \
+            --sku "Standard_LRS" \
+            --kind "StorageV2" \
+            --tags Environment="$ENVIRONMENT" \
+            --output none
+        show_success "Storage account created"
+    else
+        show_warning "Storage account already exists"
+    fi
+    
+    # Get storage connection string
+    STORAGE_CONNECTION=$(az storage account show-connection-string \
+        --name "$STORAGE_ACCOUNT" \
+        --resource-group "$RESOURCE_GROUP" \
+        --query "connectionString" -o tsv)
+
+    show_step "Step 5: Configure Application Settings"
     show_substep "Setting environment variables..."
     
     SESSION_SECRET=$(openssl rand -base64 32 2>/dev/null || echo "fallback-secret-$(date +%s)-$(head -c 32 /dev/urandom | base64)")
@@ -383,6 +890,7 @@ setup_azure() {
         --resource-group "$RESOURCE_GROUP" \
         --settings \
             NODE_ENV="production" \
+            ENVIRONMENT="$ENVIRONMENT" \
             PORT="8080" \
             SESSION_SECRET="$SESSION_SECRET" \
             ADMIN_EMAIL="$ADMIN_EMAIL" \
@@ -393,11 +901,12 @@ setup_azure() {
             SMTP_PASS="$SMTP_PASS" \
             BASE_URL="https://$APP_NAME.azurewebsites.net" \
             ANALYTICS_INTERVAL_HOURS="72" \
+            AZURE_STORAGE_CONNECTION_STRING="$STORAGE_CONNECTION" \
         --output none
     show_success "Application settings configured"
 
-    show_step "Step 5: Set Startup Command"
-    show_substep "Setting startup command..."
+    show_step "Step 6: Set Startup Command"
+    show_substep "Setting startup command to startup.sh..."
     az webapp config set \
         --name "$APP_NAME" \
         --resource-group "$RESOURCE_GROUP" \
@@ -405,7 +914,7 @@ setup_azure() {
         --output none
     show_success "Startup command set"
 
-    show_step "Step 6: Enable Logging"
+    show_step "Step 7: Enable Logging"
     show_substep "Enabling application logging..."
     az webapp log config \
         --name "$APP_NAME" \
@@ -424,18 +933,36 @@ deploy_code() {
     # First sync questionnaires from Questionnaires folder to templates
     sync_questionnaires
     
-    show_step "Step 7: Create Deployment Package"
+    show_step "Step 8: Install Dependencies Locally"
     
     cd "$APP_DIR"
     show_substep "Working directory: $(pwd)"
+    
+    # Clean and reinstall node_modules for production
+    show_substep "Cleaning existing node_modules..."
+    rm -rf node_modules package-lock.json
+    
+    show_substep "Installing production dependencies (this may take a minute)..."
+    npm install --production --omit=dev 2>&1 | tail -10
+    
+    if [ ! -d "node_modules" ]; then
+        show_error "Failed to install dependencies"
+        exit 1
+    fi
+    
+    MODULE_COUNT=$(find node_modules -maxdepth 1 -type d | wc -l | tr -d ' ')
+    show_success "Installed $((MODULE_COUNT - 1)) packages"
+    
+    show_step "Step 9: Create Deployment Package"
     
     # Create temp directory for package
     TEMP_DIR=$(mktemp -d)
     PACKAGE="$TEMP_DIR/deploy.zip"
     
-    show_substep "Creating zip package..."
+    show_substep "Creating zip package (including node_modules)..."
+    show_substep "This may take a moment for large node_modules..."
+    
     zip -r "$PACKAGE" . \
-        -x "node_modules/*" \
         -x ".git/*" \
         -x "data/*" \
         -x ".env" \
@@ -443,24 +970,28 @@ deploy_code() {
         -x ".DS_Store" \
         -x "deploy*.sh" \
         -x "deploy*.ps1" \
+        -x "node_modules/.cache/*" \
         > /dev/null
     
     PACKAGE_SIZE=$(du -h "$PACKAGE" | cut -f1)
-    show_success "Package created: $PACKAGE_SIZE"
+    show_success "Package created: $PACKAGE_SIZE (includes node_modules)"
 
-    show_step "Step 8: Deploy to Azure"
-    show_substep "Uploading and deploying..."
+    show_step "Step 10: Deploy to Azure"
+    show_substep "Uploading and deploying to $APP_NAME..."
+    show_substep "This may take 1-2 minutes for large packages..."
+    
     az webapp deployment source config-zip \
         --name "$APP_NAME" \
         --resource-group "$RESOURCE_GROUP" \
         --src "$PACKAGE" \
+        --timeout 600 \
         --output none
     show_success "Code deployed"
 
     # Cleanup
     rm -rf "$TEMP_DIR"
 
-    show_step "Step 9: Restart Application"
+    show_step "Step 11: Restart Application"
     show_substep "Restarting to apply changes..."
     az webapp restart \
         --name "$APP_NAME" \
@@ -468,12 +999,17 @@ deploy_code() {
         --output none
     show_success "Application restarted"
 
-    show_step "Step 10: Verify Deployment"
-    show_substep "Waiting 15 seconds for app to start..."
-    sleep 15
+    # Setup TTL if specified
+    if [[ -n "$TTL_HOURS" ]]; then
+        setup_ttl_shutdown
+    fi
+
+    show_step "Step 12: Verify Deployment"
+    show_substep "Waiting 20 seconds for app to start..."
+    sleep 20
     
     # Health check with retries
-    MAX_RETRIES=3
+    MAX_RETRIES=5
     RETRY_COUNT=0
     
     while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -491,7 +1027,7 @@ deploy_code() {
                 show_warning "Health check returned HTTP $HTTP_STATUS after $MAX_RETRIES attempts"
                 echo ""
                 echo "The app may still be starting. Check logs with:"
-                echo "  ./deploy.sh --logs"
+                echo "  ./deploy.sh --logs --${ENVIRONMENT}"
             fi
         fi
     done
@@ -507,23 +1043,44 @@ show_summary() {
     echo -e "${GREEN}                    DEPLOYMENT COMPLETE!                       ${NC}"
     echo -e "${GREEN}══════════════════════════════════════════════════════════════${NC}"
     echo ""
+    echo -e "  Environment:     ${ENV_COLOR}${ENV_DISPLAY}${NC}"
+    echo ""
     echo "  🌐 App URL:        https://$APP_NAME.azurewebsites.net"
     echo "  🔐 Admin Login:    https://$APP_NAME.azurewebsites.net/admin/login"
+    echo "  📦 Storage:        $STORAGE_ACCOUNT"
+    echo "  🗂  Resource Group: $RESOURCE_GROUP"
     echo ""
     echo "  📧 Admin Email:    $ADMIN_EMAIL"
     echo "  🔑 Admin Password: $ADMIN_PASSWORD"
+    
+    if [[ -n "$TTL_HOURS" ]]; then
+        echo ""
+        echo -e "${YELLOW}  ⏱  Auto-Shutdown:   In ${TTL_HOURS} hour(s)${NC}"
+    fi
+    
     echo ""
-    echo -e "${CYAN}Useful commands:${NC}"
-    echo "  ./deploy.sh --logs      Stream live logs"
-    echo "  ./deploy.sh --ssh       SSH into container"
-    echo "  ./deploy.sh --restart   Restart the app"
-    echo "  ./deploy.sh --deploy    Deploy code updates"
-    echo "  ./deploy.sh --sync      Sync questionnaires only"
-    echo "  ./deploy.sh --status    Check app health"
+    echo -e "${CYAN}Useful commands for ${ENV_DISPLAY}:${NC}"
+    if [[ "$ENVIRONMENT" == "prod" ]]; then
+        echo "  ./deploy.sh --logs                Stream live logs"
+        echo "  ./deploy.sh --ssh                 SSH into container"
+        echo "  ./deploy.sh --restart             Restart the app"
+        echo "  ./deploy.sh --deploy              Deploy code updates"
+        echo "  ./deploy.sh --status              Check app health"
+        echo "  ./deploy.sh --stop                Stop the app"
+        echo "  ./deploy.sh --start               Start the app"
+    else
+        echo "  ./deploy.sh --logs --${ENVIRONMENT}      Stream live logs"
+        echo "  ./deploy.sh --ssh --${ENVIRONMENT}       SSH into container"
+        echo "  ./deploy.sh --restart --${ENVIRONMENT}   Restart the app"
+        echo "  ./deploy.sh --deploy --${ENVIRONMENT}    Deploy code updates"
+        echo "  ./deploy.sh --status --${ENVIRONMENT}    Check app health"
+        echo "  ./deploy.sh --stop --${ENVIRONMENT}      Stop the app (save costs)"
+        echo "  ./deploy.sh --start --${ENVIRONMENT}     Start the app"
+        echo "  ./deploy.sh --delete --${ENVIRONMENT}    Delete all resources"
+    fi
     echo ""
-    echo -e "${CYAN}Adding new questionnaires:${NC}"
-    echo "  1. Add .md file to Questionnaires/ folder"
-    echo "  2. Run: ./deploy.sh --deploy"
+    echo -e "${CYAN}All environments:${NC}"
+    echo "  ./deploy.sh --list-envs           List all environments"
     echo ""
 }
 
@@ -531,48 +1088,80 @@ show_summary() {
 # MAIN
 # ============================================================
 
-case "$1" in
-    --help|-h)
+# Parse arguments first
+parse_arguments "$@"
+
+# Set environment variables
+set_environment_vars
+
+# Execute command
+case "$COMMAND" in
+    help)
         show_help
         ;;
-    --sync)
+    sync)
+        show_environment_banner
         sync_questionnaires
         echo ""
-        echo "To deploy to Azure, run: ./deploy.sh --deploy"
+        echo "To deploy to Azure, run: ./deploy.sh --deploy --${ENVIRONMENT}"
         ;;
-    --status)
+    status)
+        show_environment_banner
         validate_setup
         check_status
         ;;
-    --logs)
+    logs)
+        show_environment_banner
         validate_setup
         view_logs
         ;;
-    --ssh)
+    ssh)
+        show_environment_banner
         validate_setup
         connect_ssh
         ;;
-    --restart)
+    restart)
+        show_environment_banner
         validate_setup
         restart_app
         ;;
-    --delete)
+    stop)
+        show_environment_banner
+        validate_setup
+        stop_app
+        ;;
+    start)
+        show_environment_banner
+        validate_setup
+        start_app
+        ;;
+    delete)
+        show_environment_banner
         validate_setup
         delete_resources
         ;;
-    --setup)
+    list-envs)
         validate_setup
+        list_environments
+        ;;
+    setup)
+        show_environment_banner
+        validate_setup
+        verify_prod_passphrase
         setup_azure
         show_summary
         ;;
-    --deploy)
+    deploy)
+        show_environment_banner
         validate_setup
+        verify_prod_passphrase
         deploy_code
         show_summary
         ;;
-    *)
-        # Full deployment
+    full|*)
+        show_environment_banner
         validate_setup
+        verify_prod_passphrase
         setup_azure
         deploy_code
         show_summary

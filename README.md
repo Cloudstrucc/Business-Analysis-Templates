@@ -3,7 +3,7 @@
 A collection of comprehensive, business-friendly questionnaire templates designed to streamline requirements gathering, implementation planning, and client sign-off for technology projects — plus a **Node.js web application** for sending interactive questionnaires to clients.
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-20+-green?logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/Node.js-22+-green?logo=node.js" alt="Node.js">
   <img src="https://img.shields.io/badge/Bootstrap-5.3-purple?logo=bootstrap" alt="Bootstrap">
   <img src="https://img.shields.io/badge/Azure-App%20Service-blue?logo=microsoft-azure" alt="Azure">
   <img src="https://img.shields.io/badge/License-MIT-blue" alt="MIT License">
@@ -19,6 +19,7 @@ A collection of comprehensive, business-friendly questionnaire templates designe
 - [Available Questionnaires](#available-questionnaires)
 - [Quick Start - Local Development](#quick-start---local-development)
 - [Deploy to Azure App Service](#deploy-to-azure-app-service)
+- [Multi-Environment Deployment](#multi-environment-deployment)
 - [Deployment Commands Reference](#deployment-commands-reference)
 - [Adding New Questionnaires](#adding-new-questionnaires)
 - [Environment Variables](#environment-variables)
@@ -59,7 +60,7 @@ This repository provides **two ways** to capture business requirements:
 Business-Analysis-Templates/
 │
 ├── 📁 Deployment/
-│   └── deploy.sh                 # Azure deployment script (run from here)
+│   └── deploy.sh                 # Unified deployment script (all environments)
 │
 ├── 📁 Questionnaires/            # ← ADD YOUR .MD TEMPLATES HERE
 │   ├── D365-Customer-Services.md
@@ -73,7 +74,7 @@ Business-Analysis-Templates/
 ├── 📁 ba-questionnaire-app/      # Node.js Web Application
 │   ├── app.js                    # Main application entry point
 │   ├── package.json              # Dependencies
-│   ├── startup.sh                # Azure startup script
+│   ├── startup.sh                # Azure startup script (unified)
 │   ├── .env.example              # Environment template
 │   │
 │   ├── 📁 models/
@@ -131,7 +132,7 @@ pandoc Questionnaires/D365-Customer-Services.md -o Requirements.pdf
 
 ### Prerequisites
 
-- Node.js 18+ installed (Node.js 20+ recommended)
+- Node.js 22+ installed (required for express-handlebars@8.0.4)
 - npm or yarn
 - PM2 (optional, for process management)
 
@@ -182,14 +183,7 @@ pm2 status
 
 **Default Admin Credentials:**
 - **Email:** `admin@cloudstrucc.com`
-- **Password:** `ChangeThisPassword123!`
-
-### 5. Test the Access Code Flow
-
-1. Go to http://localhost:3000
-2. Enter any code (e.g., `TEST1234`)
-3. You should see "Invalid Access Code" error page
-4. To test with a real code, log into admin and create an invite
+- **Password:** `dpg613`
 
 ---
 
@@ -201,9 +195,7 @@ pm2 status
 2. Azure account with active subscription
 3. Logged in: `az login`
 
-### First-Time Setup (Important!)
-
-Before your first deployment, fix file permissions:
+### First-Time Setup
 
 ```bash
 # Navigate to the repository root
@@ -213,70 +205,106 @@ cd ~/repos/Business-Analysis-Templates
 sudo chmod -R 755 ba-questionnaire-app/templates
 sudo chown -R $(whoami) ba-questionnaire-app/templates
 
-# Make deploy script executable
+# Make scripts executable
 chmod +x Deployment/deploy.sh
 chmod +x ba-questionnaire-app/startup.sh
 ```
 
-### One-Command Deployment
+### Quick Deploy (Production)
 
 ```bash
 cd Deployment
 ./deploy.sh
 ```
 
-That's it! The script will:
+> ⚠️ **Note:** Production deployments require a passphrase. The default is configured in `deploy.sh`.
 
-1. ✅ Create Resource Group (`cloudstrucc-rg`)
-2. ✅ Create App Service Plan (Linux, Basic B1)
-3. ✅ Create Web App (Node.js 20)
-4. ✅ Configure environment variables
-5. ✅ Set startup command
-6. ✅ Enable logging
-7. ✅ Sync questionnaires from `Questionnaires/` → `templates/`
-8. ✅ Package and deploy code
-9. ✅ Restart and verify health
+---
 
-### After Deployment
+## Multi-Environment Deployment
 
-| URL | Purpose |
-|-----|---------|
-| https://cloudstrucc-ba-forms.azurewebsites.net | Public portal |
-| https://cloudstrucc-ba-forms.azurewebsites.net/admin/login | Admin login |
+The deployment script supports **three isolated environments**, each with its own Azure resource group, storage account, and database.
 
-**Default Credentials:**
-- **Email:** `admin@cloudstrucc.com`
-- **Password:** `ChangeThisPassword123!`
+### Environment Overview
 
-### Configuration
+| Environment | Flag | Resource Group | App Name | Storage Account |
+|-------------|------|----------------|----------|-----------------|
+| **Development** | `--dev` | `cloudstrucc-rg-dev` | `cloudstrucc-ba-forms-dev` | `cloudstruccdatadev` |
+| **QA/Staging** | `--qa` | `cloudstrucc-rg-qa` | `cloudstrucc-ba-forms-qa` | `cloudstruccdataqa` |
+| **Production** | `--prod` | `cloudstrucc-rg` | `cloudstrucc-ba-forms` | `cloudstruccdata` |
 
-Edit variables at the top of `Deployment/deploy.sh`:
+### Environment URLs
+
+| Environment | URL |
+|-------------|-----|
+| Development | https://cloudstrucc-ba-forms-dev.azurewebsites.net |
+| QA/Staging | https://cloudstrucc-ba-forms-qa.azurewebsites.net |
+| Production | https://cloudstrucc-ba-forms.azurewebsites.net |
+
+### Deploy to Each Environment
 
 ```bash
-# Azure Resources
-RESOURCE_GROUP="cloudstrucc-rg"
-APP_SERVICE_PLAN="cloudstrucc-plan"
-APP_NAME="cloudstrucc-ba-forms"        # Must be globally unique!
-LOCATION="canadacentral"
-APP_SERVICE_SKU="B1"                   # B1=~$13/mo, S1=~$70/mo
+cd Deployment
 
-# Admin Credentials
-ADMIN_EMAIL="admin@cloudstrucc.com"
-ADMIN_PASSWORD="ChangeThisPassword123!"
+# Deploy to Development
+./deploy.sh --dev
 
-# SMTP (Optional - for email invites)
-SMTP_HOST="smtp.office365.com"
-SMTP_PORT="587"
-SMTP_USER=""
-SMTP_PASS=""
+# Deploy to QA
+./deploy.sh --qa
+
+# Deploy to Production (requires passphrase)
+./deploy.sh --prod
+# or simply:
+./deploy.sh
 ```
 
-### Cost Estimate
+### TTL Auto-Shutdown (Cost Savings)
 
-| Resource | SKU | Monthly Cost (CAD) |
-|----------|-----|-------------------|
-| App Service Plan | B1 (Basic) | ~$13 |
-| **Total** | | **~$13/month** |
+Set a Time-To-Live (TTL) to automatically stop environments after a specified number of hours. Great for dev/qa environments to save costs!
+
+```bash
+# Deploy to dev, auto-stop in 2 hours
+./deploy.sh --dev --ttl 2
+
+# Deploy to QA, auto-stop in 4 hours
+./deploy.sh --qa --ttl 4
+
+# Deploy to prod with TTL (requires extra confirmation)
+./deploy.sh --prod --ttl 8
+```
+
+### Production Passphrase Protection
+
+Production deployments require a passphrase to prevent accidental deployments:
+
+```bash
+# This will prompt for passphrase
+./deploy.sh --deploy --prod
+
+# Skip passphrase (for CI/CD pipelines only!)
+./deploy.sh --deploy --prod --force
+```
+
+To change the passphrase, edit `PROD_PASSPHRASE` in `Deployment/deploy.sh`:
+
+```bash
+PROD_PASSPHRASE="your-secure-passphrase-here"
+```
+
+### List All Environments
+
+```bash
+./deploy.sh --list-envs
+```
+
+Output:
+```
+Environment  Resource Group           App Name                       State
+-----------  -------------------------  ------------------------------  ------------
+dev          cloudstrucc-rg-dev         cloudstrucc-ba-forms-dev       Running
+qa           cloudstrucc-rg-qa          cloudstrucc-ba-forms-qa        Stopped
+prod         cloudstrucc-rg             cloudstrucc-ba-forms           Running
+```
 
 ---
 
@@ -288,41 +316,81 @@ Run all commands from the `Deployment/` folder:
 cd Deployment
 ```
 
+### General Commands
+
 | Command | Description |
 |---------|-------------|
-| `./deploy.sh` | Full deployment (create resources + deploy code) |
-| `./deploy.sh --deploy` | Deploy code only (resources must exist) |
-| `./deploy.sh --setup` | Create Azure resources only |
+| `./deploy.sh --help` | Show help message with all options |
+| `./deploy.sh --list-envs` | List status of all environments |
+
+### Deployment Commands
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh --dev` | Full deploy to development |
+| `./deploy.sh --qa` | Full deploy to QA |
+| `./deploy.sh --prod` | Full deploy to production (passphrase required) |
+| `./deploy.sh --deploy --dev` | Code-only deploy to dev |
+| `./deploy.sh --setup --dev` | Create Azure resources only (no code deploy) |
 | `./deploy.sh --sync` | Sync questionnaires to templates folder only |
-| `./deploy.sh --logs` | Stream live application logs |
-| `./deploy.sh --ssh` | SSH into the container |
-| `./deploy.sh --restart` | Restart the web app |
-| `./deploy.sh --status` | Check app health status |
-| `./deploy.sh --delete` | Delete all Azure resources |
-| `./deploy.sh --help` | Show help message |
+
+### TTL (Auto-Shutdown) Commands
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh --dev --ttl 2` | Deploy to dev, auto-stop in 2 hours |
+| `./deploy.sh --qa --ttl 4` | Deploy to QA, auto-stop in 4 hours |
+| `./deploy.sh --prod --ttl 8` | Deploy to prod with TTL (extra confirmation) |
+
+### Operations Commands
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh --logs --dev` | Stream live logs from dev |
+| `./deploy.sh --ssh --dev` | SSH into dev container |
+| `./deploy.sh --restart --dev` | Restart dev app |
+| `./deploy.sh --status --dev` | Check dev health status |
+| `./deploy.sh --stop --dev` | Stop dev app (save costs) |
+| `./deploy.sh --start --dev` | Start stopped dev app |
+| `./deploy.sh --delete --dev` | Delete dev environment completely |
+
+### Production Commands (Passphrase Required)
+
+| Command | Description |
+|---------|-------------|
+| `./deploy.sh` | Full deploy to production |
+| `./deploy.sh --deploy` | Code-only deploy to production |
+| `./deploy.sh --restart` | Restart production |
+| `./deploy.sh --stop` | Stop production (requires confirmation) |
+| `./deploy.sh --delete` | Delete production (requires confirmation) |
 
 ### Common Workflows
 
-**Deploy code changes:**
+**Deploy code changes to dev:**
 ```bash
-./deploy.sh --deploy
+./deploy.sh --deploy --dev
 ```
 
-**Add a new questionnaire:**
+**Test in QA before production:**
 ```bash
-# 1. Add .md file to Questionnaires/ folder
-# 2. Deploy
-./deploy.sh --deploy
+./deploy.sh --deploy --qa
+# Test at https://cloudstrucc-ba-forms-qa.azurewebsites.net
+./deploy.sh --deploy --prod
+```
+
+**Spin up dev for a few hours:**
+```bash
+./deploy.sh --dev --ttl 2
+# Work on dev...
+# App auto-stops in 2 hours, or manually:
+./deploy.sh --stop --dev
 ```
 
 **View logs when troubleshooting:**
 ```bash
-./deploy.sh --logs
-```
-
-**Restart after config changes:**
-```bash
-./deploy.sh --restart
+./deploy.sh --logs --dev
+./deploy.sh --logs --qa
+./deploy.sh --logs  # production
 ```
 
 ---
@@ -373,7 +441,12 @@ Add your `.md` file to the `Questionnaires/` folder. Use this structure:
 
 ```bash
 cd Deployment
-./deploy.sh --deploy
+
+# Deploy to dev first to test
+./deploy.sh --deploy --dev
+
+# Then deploy to production
+./deploy.sh --deploy --prod
 ```
 
 The deployment script automatically:
@@ -396,15 +469,57 @@ For auto-detection to work, your `.md` file must have:
 |----------|----------|---------|-------------|
 | `PORT` | No | `3000` (local) / `8080` (Azure) | Server port |
 | `NODE_ENV` | No | `development` | Environment mode |
+| `ENVIRONMENT` | No | `production` | Environment name (dev/qa/prod) |
 | `SESSION_SECRET` | Yes | - | Session encryption key (auto-generated on Azure) |
 | `ADMIN_EMAIL` | No | `admin@cloudstrucc.com` | Admin login email |
-| `ADMIN_PASSWORD` | No | `ChangeThisPassword123!` | Admin login password |
+| `ADMIN_PASSWORD` | No | `dpg613` | Admin login password |
 | `SMTP_HOST` | No | - | SMTP server for emails |
 | `SMTP_PORT` | No | `587` | SMTP port |
 | `SMTP_USER` | No | - | SMTP username |
 | `SMTP_PASS` | No | - | SMTP password |
 | `BASE_URL` | No | `http://localhost:3000` | App URL (for email links) |
+| `AZURE_STORAGE_CONNECTION_STRING` | No | - | Azure Storage connection (auto-configured) |
 | `ANALYTICS_INTERVAL_HOURS` | No | `72` | Analytics digest frequency |
+
+---
+
+## Configuration
+
+Edit variables at the top of `Deployment/deploy.sh`:
+
+```bash
+# Azure Resources (base names - environment suffix added automatically)
+RESOURCE_GROUP_BASE="cloudstrucc-rg"
+APP_SERVICE_PLAN_BASE="cloudstrucc-plan"
+APP_NAME_BASE="cloudstrucc-ba-forms"
+STORAGE_ACCOUNT_BASE="cloudstruccdata"
+LOCATION="canadacentral"
+APP_SERVICE_SKU="B1"
+
+# Admin Credentials
+ADMIN_EMAIL="admin@cloudstrucc.com"
+ADMIN_PASSWORD="dpg613"
+
+# Production Passphrase (change this!)
+PROD_PASSPHRASE="cloudstrucc-prod-deploy-2026"
+
+# SMTP (Optional - for email invites)
+SMTP_HOST="smtp.office365.com"
+SMTP_PORT="587"
+SMTP_USER=""
+SMTP_PASS=""
+```
+
+### Cost Estimate
+
+| Resource | SKU | Monthly Cost (CAD) |
+|----------|-----|-------------------|
+| App Service Plan (per env) | B1 (Basic) | ~$13 |
+| Storage Account (per env) | Standard LRS | ~$1 |
+| **Per Environment** | | **~$14/month** |
+| **All 3 Environments** | | **~$42/month** |
+
+> 💡 **Tip:** Use `--ttl` for dev/qa to auto-stop and save costs when not in use!
 
 ---
 
@@ -419,45 +534,56 @@ For auto-detection to work, your `.md` file must have:
 cd ~/repos/Business-Analysis-Templates
 sudo chmod -R 755 ba-questionnaire-app/templates
 sudo chown -R $(whoami) ba-questionnaire-app/templates
-./Deployment/deploy.sh --deploy
+./Deployment/deploy.sh --deploy --dev
 ```
 
-### 404 Error when entering access code on homepage
+### Resource group is being deleted
 
-**Cause:** Missing `/access` route in `routes/public.js`
+**Error:** `The resource group 'cloudstrucc-rg-dev' is in deprovisioning state`
 
-**Fix:** Ensure this route exists in `ba-questionnaire-app/routes/public.js` (after the home page route):
+**Fix:** Wait 5-10 minutes for deletion to complete, then retry:
+```bash
+# Check status
+az group show --name cloudstrucc-rg-dev
 
-```javascript
-// Access form via code (GET - from homepage form)
-router.get('/access', (req, res) => {
-  const { code } = req.query;
-  
-  if (!code) {
-    req.flash('error', 'Please enter an access code');
-    return res.redirect('/');
-  }
-
-  res.redirect('/form/' + code.toUpperCase().trim());
-});
+# Once deleted, deploy again
+./deploy.sh --dev
 ```
 
-Then redeploy: `./deploy.sh --deploy`
+### Node.js version warning (EBADENGINE)
 
-### Access code shows admin dashboard instead of error page
+**Error:** `npm warn EBADENGINE Unsupported engine { required: { node: '>=22.21.0' } }`
 
-**Cause:** Same as above - the `/access` route is missing, causing incorrect routing.
+**Cause:** Azure is running an older Node.js version
 
-**Fix:** Add the `/access` route as shown above and redeploy.
+**Fix:** The deploy script automatically configures Node.js 22 LTS. If you see this error, redeploy:
+```bash
+./deploy.sh --deploy --dev
+```
+
+### npm install permission errors on Azure
+
+**Error:** `npm error code EACCES` during startup
+
+**Cause:** Old startup.sh trying to run npm install at runtime
+
+**Fix:** Ensure you're using the latest `startup.sh` that skips npm install when node_modules exists:
+```bash
+# Check your startup.sh has this check:
+grep "node_modules/.package-lock.json" ba-questionnaire-app/startup.sh
+
+# Redeploy
+./deploy.sh --deploy --dev
+```
 
 ### App won't start on Azure
 
 ```bash
 # Check logs
-./deploy.sh --logs
+./deploy.sh --logs --dev
 
 # SSH in and run manually
-./deploy.sh --ssh
+./deploy.sh --ssh --dev
 # Then: cd /home/site/wwwroot && node app.js
 ```
 
@@ -475,7 +601,7 @@ app.set('trust proxy', 1);
 ls ba-questionnaire-app/templates/
 
 # Re-sync and deploy
-./deploy.sh --deploy
+./deploy.sh --deploy --dev
 ```
 
 ### "Cannot find module" errors
@@ -483,11 +609,12 @@ ls ba-questionnaire-app/templates/
 ```bash
 # Locally
 cd ba-questionnaire-app
+rm -rf node_modules package-lock.json
 npm install
 pm2 restart ba-forms
 
-# On Azure
-./deploy.sh --deploy
+# On Azure - redeploy (includes fresh node_modules)
+./deploy.sh --deploy --dev
 ```
 
 ### Database errors
@@ -502,11 +629,11 @@ node app.js  # or pm2 restart ba-forms
 
 **Fix (Azure):**
 ```bash
-./deploy.sh --ssh
+./deploy.sh --ssh --dev
 cd /home/site/wwwroot
 rm -f data/questionnaire.db
 exit
-./deploy.sh --restart
+./deploy.sh --restart --dev
 ```
 
 ### PM2 Commands (Local Development)
@@ -551,6 +678,28 @@ pm2 startup
                           │  SMTP Server    │
                           │  (Office 365)   │
                           └─────────────────┘
+```
+
+### Environment Isolation
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Azure Subscription                        │
+├─────────────────────┬─────────────────────┬─────────────────────┤
+│   cloudstrucc-rg-dev│   cloudstrucc-rg-qa │   cloudstrucc-rg    │
+│   ┌───────────────┐ │   ┌───────────────┐ │   ┌───────────────┐ │
+│   │ App Service   │ │   │ App Service   │ │   │ App Service   │ │
+│   │ (forms-dev)   │ │   │ (forms-qa)    │ │   │ (forms)       │ │
+│   └───────────────┘ │   └───────────────┘ │   └───────────────┘ │
+│   ┌───────────────┐ │   ┌───────────────┐ │   ┌───────────────┐ │
+│   │ Storage       │ │   │ Storage       │ │   │ Storage       │ │
+│   │ (datadev)     │ │   │ (dataqa)      │ │   │ (data)        │ │
+│   └───────────────┘ │   └───────────────┘ │   └───────────────┘ │
+│   ┌───────────────┐ │   ┌───────────────┐ │   ┌───────────────┐ │
+│   │ SQLite DB     │ │   │ SQLite DB     │ │   │ SQLite DB     │ │
+│   └───────────────┘ │   └───────────────┘ │   └───────────────┘ │
+└─────────────────────┴─────────────────────┴─────────────────────┘
+        DEV                    QA                   PROD
 ```
 
 ### Key Routes
