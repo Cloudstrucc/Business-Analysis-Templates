@@ -14,6 +14,13 @@ class EmailService {
     const secure = process.env.SMTP_SECURE === 'true';
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
+    // In your emailService.js, the "from" should be the shared mailbox
+    const mailOptions = {
+      from: process.env.SMTP_FROM,  // "Cloudstrucc Requirements" <business-requirements@cloudstrucc.com>
+      to: recipient,
+      subject: subject,
+      html: htmlContent
+    };
 
     if (!user || !pass) {
       console.warn('Email service not configured. Set SMTP_USER and SMTP_PASS environment variables.');
@@ -419,6 +426,8 @@ Cloudstrucc Inc.
       return { success: false, message: error.message };
     }
   }
+
+  
 }
 
 module.exports = new EmailService();
