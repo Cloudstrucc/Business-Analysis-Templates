@@ -1,694 +1,854 @@
+// routes/admin.js
+// Updated with PDF export, Implementation Validation, and File Attachments features
+
 const express = require('express');
 const router = express.Router();
-const { v4: uuidv4 } = require('uuid');
-const { passport, ensureAuthenticated, ensureNotAuthenticated } = require('../config/passport');
-const { run, all, get, saveDatabase } = require('../models/database');
+const path = require('path');
+const fs = require('fs');
+
+// Import modules directly
+const db = require('../models/database');
+const formLoader = require('../utils/formLoader');
 const emailService = require('../utils/emailService');
 
-// Login page
-router.get('/login', ensureNotAuthenticated, (req, res) => {
-  res.render('admin/login', { 
-    title: 'Admin Login',
-    passwordChanged: req.query.passwordChanged === '1',
-    messages: {
-      error: req.flash('error')[0],
-      success: req.flash('success')[0]
+// Middleware to check if user is authenticated
+const isAuthenticated = (req, res, next) => {
+    if (req.session && req.session.isAdmin) {
+        return next();
     }
-  });
+    req.flash('error', 'Please log in to access the admin area');
+    res.redirect('/admin/login');
+};
+
+// Apply authentication to all admin routes except login
+router.use((req, res, next) => {
+    if (req.path === '/login' || req.path === '/logout') {
+        return next();
+    }
+    return isAuthenticated(req, res, next);
 });
 
-// Login handler
-router.post('/login', ensureNotAuthenticated, passport.authenticate('local', {
-  successRedirect: '/admin/dashboard',
-  failureRedirect: '/admin/login',
-  failureFlash: true
-}));
+// Login page
+router.get('/login', (req, res) => {
+    if (req.session && req.session.isAdmin) {
+        return res.redirect('/admin/dashboard');
+    }
+    res.render('admin/login', {
+        title: 'Admin Login',
+        layout: 'admin'
+    });
+});
+
+// Login POST
+router.post('/login', (req, res) => {
+    const { email, password } = req.body;
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@cloudstrucc.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'dpg613';
+
+    if (email === adminEmail && password === adminPassword) {
+        req.session.isAdmin = true;
+        req.session.adminEmail = email;
+        req.flash('success', 'Welcome back!');
+        res.redirect('/admin/dashboard');
+    } else {
+        req.flash('error', 'Invalid credentials');
+        res.redirect('/admin/login');
+    }
+});
 
 // Logout
 router.get('/logout', (req, res) => {
-  req.logout(() => {
-    req.flash('success', 'You have been logged out');
+    req.session.destroy();
     res.redirect('/admin/login');
-  });
 });
 
 // Dashboard
-router.get('/dashboard', ensureAuthenticated, (req, res) => {
-  // Get stats
-  const totalInvites = get(`SELECT COUNT(*) as count FROM invites WHERE is_revoked = 0 AND expires_at > datetime('now')`)?.count || 0;
-  
-  const inProgress = get(`
-    SELECT COUNT(DISTINCT s.invite_id) as count 
-    FROM submissions s 
-    JOIN invites i ON s.invite_id = i.id 
-    WHERE s.status = 'in_progress' AND i.is_revoked = 0
-  `)?.count || 0;
-  
-  const completed = get(`SELECT COUNT(*) as count FROM submissions WHERE status = 'submitted'`)?.count || 0;
-  
-  const expiringSoon = get(`
-    SELECT COUNT(*) as count FROM invites 
-    WHERE is_revoked = 0 AND expires_at > datetime('now') AND expires_at < datetime('now', '+7 days')
-  `)?.count || 0;
-
-  // Recent activity
-  const recentActivity = all(`
-    SELECT s.*, i.client_name, i.client_company, f.title as form_title
-    FROM submissions s
-    JOIN invites i ON s.invite_id = i.id
-    JOIN forms f ON s.form_id = f.id
-    ORDER BY s.updated_at DESC
-    LIMIT 10
-  `);
-
-  // Expiring soon invites
-  const expiringSoonList = all(`
-    SELECT * FROM invites 
-    WHERE is_revoked = 0 AND expires_at > datetime('now') AND expires_at < datetime('now', '+7 days')
-    ORDER BY expires_at ASC
-    LIMIT 5
-  `);
-
-  res.render('admin/dashboard', {
-    title: 'Dashboard',
-    isAdmin: true,
-    isDashboard: true,
-    admin: req.user,
-    stats: { totalInvites, inProgress, completed, expiringSoon },
-    recentActivity,
-    expiringSoon: expiringSoonList,
-    messages: {
-      success: req.flash('success')[0],
-      error: req.flash('error')[0]
-    }
-  });
-});
-
-// Invites list
-router.get('/invites', ensureAuthenticated, (req, res) => {
-  const { status, search } = req.query;
-  
-  let sql = `
-    SELECT i.*, 
-      (SELECT COUNT(*) FROM invite_forms WHERE invite_id = i.id) as form_count,
-      COALESCE((SELECT MAX(progress) FROM submissions WHERE invite_id = i.id), 0) as progress,
-      CASE WHEN i.expires_at < datetime('now') THEN 1 ELSE 0 END as is_expired
-    FROM invites i
-    WHERE 1=1
-  `;
-  const params = [];
-
-  if (status === 'active') {
-    sql += ` AND i.is_revoked = 0 AND i.expires_at > datetime('now')`;
-  } else if (status === 'expired') {
-    sql += ` AND i.expires_at <= datetime('now')`;
-  } else if (status === 'revoked') {
-    sql += ` AND i.is_revoked = 1`;
-  }
-
-  if (search) {
-    sql += ` AND (i.client_name LIKE ? OR i.client_email LIKE ?)`;
-    params.push(`%${search}%`, `%${search}%`);
-  }
-
-  sql += ` ORDER BY i.created_at DESC`;
-
-  const invites = all(sql, params);
-
-  res.render('admin/invites', {
-    title: 'Manage Invites',
-    isAdmin: true,
-    isInvites: true,
-    admin: req.user,
-    invites,
-    filters: { status, search },
-    messages: {
-      success: req.flash('success')[0],
-      error: req.flash('error')[0]
-    }
-  });
-});
-
-// New invite form
-router.get('/invites/new', ensureAuthenticated, (req, res) => {
-  const forms = all(`SELECT * FROM forms WHERE is_active = 1 ORDER BY title`);
-  
-  res.render('admin/invite-new', {
-    title: 'Create Invite',
-    isAdmin: true,
-    isInvites: true,
-    admin: req.user,
-    forms,
-    messages: {
-      error: req.flash('error')[0]
-    }
-  });
-});
-
-// Create invite
-router.post('/invites/create', ensureAuthenticated, async (req, res) => {
-  try {
-    const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
-    
-    console.log('=== CREATE INVITE DEBUG ===');
-    console.log('forms from request:', forms);
-    console.log('forms type:', typeof forms);
-    console.log('req.body:', JSON.stringify(req.body, null, 2));
-    
-    if (!clientName || !clientEmail || !forms || !expiresAt) {
-      console.log('Validation failed - missing fields');
-      req.flash('error', 'Please fill in all required fields');
-      return res.redirect('/admin/invites/new');
-    }
-
-    const formIds = Array.isArray(forms) ? forms : [forms];
-    console.log('formIds array:', formIds);
-    
-    // Generate unique code
-    const code = uuidv4().substring(0, 8).toUpperCase();
-    
-    // Create invite
-    run(`
-      INSERT INTO invites (code, client_email, client_name, client_company, created_by, expires_at, submission_deadline)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `, [code, clientEmail.toLowerCase(), clientName, clientCompany || null, req.user.id, expiresAt, submissionDeadline || null]);
-    
-    // Get the invite ID by querying for the code we just inserted
-    const newInvite = get(`SELECT id FROM invites WHERE code = ?`, [code]);
-    const inviteId = newInvite ? newInvite.id : 0;
-    
-    console.log('Created invite with ID:', inviteId, '(from code lookup)');
-
-    // Link forms to invite (deduplicate first)
-    const uniqueFormIds = [...new Set(formIds.map(id => parseInt(id)))];
-    console.log('uniqueFormIds:', uniqueFormIds);
-    
-    for (const formId of uniqueFormIds) {
-      console.log('Linking form', formId, 'to invite', inviteId);
-      // Check if already exists
-      const existing = get(`SELECT id FROM invite_forms WHERE invite_id = ? AND form_id = ?`, [inviteId, formId]);
-      console.log('Existing link:', existing);
-      if (!existing) {
-        run(`INSERT INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
-        console.log('Inserted invite_forms link');
-      }
-    }
-    
-    // Verify the links were created
-    const linkedForms = all(`SELECT * FROM invite_forms WHERE invite_id = ?`, [inviteId]);
-    console.log('Linked forms after insert:', linkedForms);
-
-    // Get form details for email
-    const formDetails = uniqueFormIds.length > 0 ? all(`SELECT * FROM forms WHERE id IN (${uniqueFormIds.join(',')})`) : [];
-
-    // Send email if requested
-    if (sendEmail === 'on') {
-      emailService.initialize();
-      await emailService.sendInvite({
-        to: clientEmail,
-        clientName,
-        inviteCode: code,
-        forms: formDetails,
-        expiresAt,
-        submissionDeadline
-      });
-    }
-
-    req.flash('success', `Invite created successfully! Code: ${code}`);
-    res.redirect('/admin/invites');
-  } catch (error) {
-    console.error('Error creating invite:', error);
-    req.flash('error', 'Failed to create invite: ' + error.message);
-    res.redirect('/admin/invites/new');
-  }
-});
-
-// View invite details
-router.get('/invites/:id', ensureAuthenticated, (req, res) => {
-  const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
-  
-  if (!invite) {
-    req.flash('error', 'Invite not found');
-    return res.redirect('/admin/invites');
-  }
-
-  const forms = all(`
-    SELECT f.* FROM forms f
-    JOIN invite_forms inf ON f.id = inf.form_id
-    WHERE inf.invite_id = ?
-  `, [req.params.id]);
-
-  const submissions = all(`
-    SELECT s.*, f.title as form_title
-    FROM submissions s
-    JOIN forms f ON s.form_id = f.id
-    WHERE s.invite_id = ?
-  `, [req.params.id]);
-
-  res.render('admin/invite-detail', {
-    title: 'Invite Details',
-    isAdmin: true,
-    isInvites: true,
-    admin: req.user,
-    invite,
-    forms,
-    submissions
-  });
-});
-
-// Resend invite email
-router.post('/invites/:id/resend', ensureAuthenticated, async (req, res) => {
-  try {
-    const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
-    
-    if (!invite) {
-      return res.json({ success: false, message: 'Invite not found' });
-    }
-
-    const forms = all(`
-      SELECT f.* FROM forms f
-      JOIN invite_forms inf ON f.id = inf.form_id
-      WHERE inf.invite_id = ?
-    `, [req.params.id]);
-
-    emailService.initialize();
-    const result = await emailService.sendInvite({
-      to: invite.client_email,
-      clientName: invite.client_name,
-      inviteCode: invite.code,
-      forms,
-      expiresAt: invite.expires_at,
-      submissionDeadline: invite.submission_deadline
-    });
-
-    res.json(result);
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
-});
-
-// Revoke invite
-router.post('/invites/:id/revoke', ensureAuthenticated, (req, res) => {
-  run(`UPDATE invites SET is_revoked = 1 WHERE id = ?`, [req.params.id]);
-  req.flash('success', 'Invite revoked successfully');
-  res.redirect('/admin/invites');
-});
-
-// Re-activate invite (for revoked or expired invites)
-router.post('/invites/:id/reactivate', ensureAuthenticated, async (req, res) => {
-  try {
-    const { expiry_days = 14 } = req.body;
-    const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
-    
-    if (!invite) {
-      return res.json({ success: false, message: 'Invite not found' });
-    }
-
-    // Calculate new expiry date
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + parseInt(expiry_days));
-    const expiresAtISO = expiresAt.toISOString().slice(0, 19).replace('T', ' ');
-
-    // Update invite: clear revoked flag, set new expiry
-    run(`
-      UPDATE invites 
-      SET is_revoked = 0, 
-          expires_at = ?
-      WHERE id = ?
-    `, [expiresAtISO, req.params.id]);
-
-    // Get linked forms for email
-    const forms = all(`
-      SELECT f.* FROM forms f
-      JOIN invite_forms inf ON f.id = inf.form_id
-      WHERE inf.invite_id = ?
-    `, [req.params.id]);
-
-    // Send reactivation email
-    emailService.initialize();
-    await emailService.sendInvite({
-      to: invite.client_email,
-      clientName: invite.client_name,
-      inviteCode: invite.code,
-      forms,
-      expiresAt: expiresAtISO,
-      submissionDeadline: invite.submission_deadline
-    });
-
-    res.json({ success: true, message: 'Invite reactivated and email sent' });
-  } catch (error) {
-    console.error('Reactivate error:', error);
-    res.json({ success: false, message: error.message });
-  }
-});
-
-// Delete invite permanently (for revoked or expired invites only)
-router.post('/invites/:id/delete', ensureAuthenticated, (req, res) => {
-  try {
-    const invite = get(`SELECT * FROM invites WHERE id = ?`, [req.params.id]);
-    
-    if (!invite) {
-      req.flash('error', 'Invite not found');
-      return res.redirect('/admin/invites');
-    }
-
-    // Safety check: only allow deletion of revoked or expired invites
-    const isExpired = new Date(invite.expires_at) < new Date();
-    if (!invite.is_revoked && !isExpired) {
-      req.flash('error', 'Cannot delete an active invite. Revoke it first.');
-      return res.redirect('/admin/invites');
-    }
-
-    // Delete associated submissions first
-    run(`DELETE FROM submissions WHERE invite_id = ?`, [req.params.id]);
-    
-    // Delete invite-form links
-    run(`DELETE FROM invite_forms WHERE invite_id = ?`, [req.params.id]);
-    
-    // Delete the invite
-    run(`DELETE FROM invites WHERE id = ?`, [req.params.id]);
-
-    req.flash('success', `Invite for "${invite.client_name}" has been permanently deleted`);
-    res.redirect('/admin/invites');
-  } catch (error) {
-    console.error('Delete error:', error);
-    req.flash('error', 'Failed to delete invite: ' + error.message);
-    res.redirect('/admin/invites');
-  }
-});
-
-// Submissions list
-router.get('/submissions', ensureAuthenticated, (req, res) => {
-  const { status, form, search } = req.query;
-  
-  let sql = `
-    SELECT s.*, i.client_name, i.client_company, i.client_email, f.title as form_title
-    FROM submissions s
-    JOIN invites i ON s.invite_id = i.id
-    JOIN forms f ON s.form_id = f.id
-    WHERE 1=1
-  `;
-  const params = [];
-
-  if (status) {
-    sql += ` AND s.status = ?`;
-    params.push(status);
-  }
-
-  if (form) {
-    sql += ` AND s.form_id = ?`;
-    params.push(form);
-  }
-
-  if (search) {
-    sql += ` AND i.client_name LIKE ?`;
-    params.push(`%${search}%`);
-  }
-
-  sql += ` ORDER BY s.updated_at DESC`;
-
-  const submissions = all(sql, params);
-  const forms = all(`SELECT id, title FROM forms ORDER BY title`);
-
-  res.render('admin/submissions', {
-    title: 'Submissions',
-    isAdmin: true,
-    isSubmissions: true,
-    admin: req.user,
-    submissions,
-    forms,
-    filters: { status, form, search },
-    messages: {
-      success: req.flash('success')[0],
-      error: req.flash('error')[0]
-    }
-  });
-});
-
-// View submission details
-router.get('/submissions/:id', ensureAuthenticated, (req, res) => {
-  const submission = get(`SELECT * FROM submissions WHERE id = ?`, [req.params.id]);
-  
-  if (!submission) {
-    req.flash('error', 'Submission not found');
-    return res.redirect('/admin/submissions');
-  }
-
-  const invite = get(`SELECT * FROM invites WHERE id = ?`, [submission.invite_id]);
-  const form = get(`SELECT * FROM forms WHERE id = ?`, [submission.form_id]);
-  
-  let responses = {};
-  let responseCount = 0;
-  
-  try {
-    responses = JSON.parse(submission.data || '{}');
-    responseCount = Object.keys(responses).filter(k => responses[k] && responses[k].length > 0).length;
-  } catch (e) {}
-
-  // Group responses by section (simplified)
-  const responseSections = [];
-  const sectionMap = {};
-  
-  Object.entries(responses).forEach(([key, value]) => {
-    if (!value || (Array.isArray(value) && value.length === 0)) return;
-    
-    const parts = key.split('_');
-    const sectionName = parts[0] === 'header' ? 'Project Information' : 
-                        parts[0] === 'signoff' ? 'Sign-Off' : 
-                        parts.slice(0, 2).join(' ').replace(/_/g, ' ');
-    
-    if (!sectionMap[sectionName]) {
-      sectionMap[sectionName] = { title: sectionName, fields: [] };
-      responseSections.push(sectionMap[sectionName]);
-    }
-    
-    sectionMap[sectionName].fields.push({
-      label: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-      value: value,
-      isArray: Array.isArray(value)
-    });
-  });
-
-  res.render('admin/submission-detail', {
-    title: 'Submission Details',
-    isAdmin: true,
-    isSubmissions: true,
-    admin: req.user,
-    submission,
-    invite,
-    form,
-    responses: Object.keys(responses).length > 0,
-    responseSections,
-    responseCount
-  });
-});
-
-// Export submission as PDF
-router.get('/submissions/:id/export', ensureAuthenticated, async (req, res) => {
-  try {
-    const submission = get(`SELECT * FROM submissions WHERE id = ?`, [req.params.id]);
-    
-    if (!submission) {
-      req.flash('error', 'Submission not found');
-      return res.redirect('/admin/submissions');
-    }
-
-    const invite = get(`SELECT * FROM invites WHERE id = ?`, [submission.invite_id]);
-    const form = get(`SELECT * FROM forms WHERE id = ?`, [submission.form_id]);
-    
-    let responses = {};
+router.get('/dashboard', async (req, res) => {
     try {
-      responses = JSON.parse(submission.data || '{}');
-    } catch (e) {
-      responses = {};
+        const stats = db.getStats();
+        const recentSubmissions = db.getRecentSubmissions(5);
+        const activeInvites = db.getActiveInvites();
+
+        res.render('admin/dashboard', {
+            title: 'Dashboard',
+            layout: 'admin',
+            stats,
+            recentSubmissions,
+            activeInvites
+        });
+    } catch (error) {
+        console.error('Dashboard error:', error);
+        req.flash('error', 'Error loading dashboard');
+        res.render('admin/dashboard', {
+            title: 'Dashboard',
+            layout: 'admin',
+            stats: { activeInvites: 0, totalSubmissions: 0, completedSubmissions: 0, draftSubmissions: 0 },
+            recentSubmissions: [],
+            activeInvites: []
+        });
     }
-
-    // Generate PDF
-    const { generateSubmissionPdf } = require('../utils/pdfExport');
-    const pdfBuffer = await generateSubmissionPdf(submission, invite, form, responses);
-
-    // Generate filename
-    const clientName = invite.client_name.replace(/[^a-zA-Z0-9]/g, '-');
-    const formTitle = form.title.replace(/[^a-zA-Z0-9]/g, '-');
-    const date = new Date().toISOString().split('T')[0];
-    const filename = `${formTitle}_${clientName}_${date}.pdf`;
-
-    // Send PDF
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-    res.setHeader('Content-Length', pdfBuffer.length);
-    res.send(pdfBuffer);
-    
-  } catch (error) {
-    console.error('PDF export error:', error);
-    req.flash('error', 'Failed to export PDF: ' + error.message);
-    res.redirect('/admin/submissions/' + req.params.id);
-  }
 });
 
 // Forms management
-router.get('/forms', ensureAuthenticated, (req, res) => {
-  const forms = all(`
-    SELECT f.*,
-      (SELECT COUNT(*) FROM invite_forms WHERE form_id = f.id) as invite_count,
-      (SELECT COUNT(*) FROM submissions WHERE form_id = f.id) as submission_count
-    FROM forms f
-    ORDER BY f.title
-  `);
+router.get('/forms', async (req, res) => {
+    try {
+        const forms = formLoader.getAllForms();
 
-  res.render('admin/forms', {
-    title: 'Manage Forms',
-    isAdmin: true,
-    isForms: true,
-    admin: req.user,
-    forms,
-    messages: {
-      success: req.flash('success')[0],
-      error: req.flash('error')[0]
+        res.render('admin/forms', {
+            title: 'Manage Forms',
+            layout: 'admin',
+            forms
+        });
+    } catch (error) {
+        console.error('Forms error:', error);
+        req.flash('error', 'Error loading forms');
+        res.redirect('/admin/dashboard');
     }
-  });
 });
 
-// Reload forms from markdown files
-router.post('/forms/reload', ensureAuthenticated, (req, res) => {
-  try {
-    const formLoader = require('../utils/formLoader');
-    formLoader.loadAllForms();
-    req.flash('success', 'Forms reloaded successfully');
-  } catch (error) {
-    req.flash('error', 'Failed to reload forms: ' + error.message);
-  }
-  res.redirect('/admin/forms');
+// Reload forms
+router.post('/forms/reload', async (req, res) => {
+    try {
+        formLoader.reloadForms();
+        req.flash('success', 'Forms reloaded successfully');
+    } catch (error) {
+        console.error('Reload forms error:', error);
+        req.flash('error', 'Error reloading forms');
+    }
+    res.redirect('/admin/forms');
 });
 
-// Toggle form active status
-router.post('/forms/:id/toggle', ensureAuthenticated, (req, res) => {
-  const { active } = req.body;
-  run(`UPDATE forms SET is_active = ? WHERE id = ?`, [active ? 1 : 0, req.params.id]);
-  res.json({ success: true });
+// Invites list
+router.get('/invites', async (req, res) => {
+    try {
+        const invites = db.getAllInvites();
+
+        res.render('admin/invites', {
+            title: 'Manage Invites',
+            layout: 'admin',
+            invites
+        });
+    } catch (error) {
+        console.error('Invites error:', error);
+        req.flash('error', 'Error loading invites');
+        res.redirect('/admin/dashboard');
+    }
 });
 
-// Preview form
-router.get('/forms/:id/preview', ensureAuthenticated, (req, res) => {
-  const form = get(`SELECT * FROM forms WHERE id = ?`, [req.params.id]);
-  
-  if (!form) {
-    req.flash('error', 'Form not found');
-    return res.redirect('/admin/forms');
-  }
-
-  const MarkdownFormParser = require('../utils/markdownParser');
-  const parser = new MarkdownFormParser();
-  const fs = require('fs');
-  const path = require('path');
-  
-  // Handle both "filename.md" and "templates/filename.md" formats
-  let filePath;
-  if (form.markdown_file.startsWith('templates/')) {
-    filePath = path.join(__dirname, '..', form.markdown_file);
-  } else {
-    filePath = path.join(__dirname, '..', 'templates', form.markdown_file);
-  }
-  
-  console.log('Preview form - looking for file:', filePath);
-  
-  if (!fs.existsSync(filePath)) {
-    console.log('File not found:', filePath);
-    req.flash('error', 'Form template file not found: ' + form.markdown_file);
-    return res.redirect('/admin/forms');
-  }
-
-  const formStructure = parser.parseFile(filePath);
-  const formHtml = parser.generateFormHtml(formStructure);
-
-  res.render('forms/questionnaire', {
-    title: form.title + ' (Preview)',
-    isAdmin: true,
-    admin: req.user,
-    form,
-    invite: { client_name: 'Preview User', client_company: 'Preview Company' },
-    inviteCode: 'PREVIEW',
-    formHtml,
-    progress: 0,
-    savedData: {},
-    savedDataJson: '{}'
-  });
-});
-
-// Settings page
-router.get('/settings', ensureAuthenticated, (req, res) => {
-  res.render('admin/settings', {
-    title: 'Settings',
-    isAdmin: true,
-    isSettings: true,
-    admin: req.user,
-    messages: {
-      success: req.flash('success')[0],
-      error: req.flash('error')[0]
-    }
-  });
-});
-
-// Change password
-router.post('/settings/password', ensureAuthenticated, async (req, res) => {
-  try {
-    const { currentPassword, newPassword, confirmPassword } = req.body;
-    
-    // Validation
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      req.flash('error', 'All fields are required');
-      return res.redirect('/admin/settings');
-    }
-
-    if (newPassword.length < 8) {
-      req.flash('error', 'New password must be at least 8 characters long');
-      return res.redirect('/admin/settings');
-    }
-
-    if (newPassword !== confirmPassword) {
-      req.flash('error', 'New passwords do not match');
-      return res.redirect('/admin/settings');
-    }
-
-    // Get current admin from database
-    const admin = get(`SELECT * FROM admins WHERE id = ?`, [req.user.id]);
-    
-    if (!admin) {
-      req.flash('error', 'Admin account not found');
-      return res.redirect('/admin/settings');
-    }
-
-    // Verify current password
-    const bcrypt = require('bcryptjs');
-    const isValidPassword = await bcrypt.compare(currentPassword, admin.password);
-    
-    if (!isValidPassword) {
-      req.flash('error', 'Current password is incorrect');
-      return res.redirect('/admin/settings');
-    }
-
-    // Hash new password and update
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
-    run(`UPDATE admins SET password = ? WHERE id = ?`, [hashedPassword, req.user.id]);
-
-    // Log out and destroy session, then redirect to login
-    req.logout((err) => {
-      if (err) {
-        console.error('Logout error:', err);
-      }
-      req.session.destroy((err) => {
-        if (err) {
-          console.error('Session destroy error:', err);
+// New invite form
+router.get('/invites/new', async (req, res) => {
+    try {
+        // First, sync forms from formLoader to database if needed
+        const loadedForms = formLoader.getAllForms();
+        console.log('Forms from formLoader:', loadedForms.length);
+        
+        for (const form of loadedForms) {
+            const existing = db.getFormBySlug(form.slug);
+            if (!existing) {
+                console.log('Creating form in DB:', form.slug, form.title);
+                db.createForm({
+                    slug: form.slug,
+                    title: form.title,
+                    description: form.description || '',
+                    markdownFile: form.filename || form.relativePath || ''
+                });
+            }
         }
-        res.clearCookie('connect.sid'); // Clear the session cookie
-        res.redirect('/admin/login?passwordChanged=1');
-      });
-    });
-  } catch (error) {
-    console.error('Password change error:', error);
-    req.flash('error', 'Failed to change password: ' + error.message);
-    res.redirect('/admin/settings');
-  }
+        
+        // Now get forms from database (with numeric IDs)
+        const forms = db.getAllForms();
+        console.log('Forms from database:', forms.length, forms.map(f => ({ id: f.id, slug: f.slug })));
+
+        res.render('admin/invite-new', {
+            title: 'Create Invite',
+            layout: 'admin',
+            forms
+        });
+    } catch (error) {
+        console.error('New invite error:', error);
+        req.flash('error', 'Error loading form');
+        res.redirect('/admin/invites');
+    }
+});
+
+// Create invite POST - matches your form action="/admin/invites/create"
+router.post('/invites/create', async (req, res) => {
+    try {
+        const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
+
+        console.log('Creating invite for:', clientName);
+        console.log('Selected forms from request:', forms);
+
+        // Generate access code
+        const accessCode = generateAccessCode();
+
+        // Create invite
+        const invite = db.createInvite({
+            code: accessCode,
+            clientEmail,
+            clientName,
+            clientCompany: clientCompany || null,
+            expiresAt: expiresAt,
+            submissionDeadline: submissionDeadline || null
+        });
+
+        console.log('Created invite:', invite);
+
+        // Add forms to invite
+        if (forms) {
+            const formIds = Array.isArray(forms) ? forms : [forms];
+            console.log('Form IDs to add:', formIds);
+            for (const formId of formIds) {
+                const parsedId = parseInt(formId);
+                console.log('Adding form ID:', parsedId, 'to invite ID:', invite.id);
+                db.addFormToInvite(invite.id, parsedId);
+            }
+            
+            // Verify forms were added
+            const addedForms = db.getInviteForms(invite.id);
+            console.log('Forms after adding:', addedForms);
+        }
+
+        // Send email if requested
+        if (sendEmail === 'on' && clientEmail) {
+            try {
+                const inviteForms = db.getInviteForms(invite.id);
+                await emailService.sendInvite({
+                    to: clientEmail,
+                    clientName,
+                    inviteCode: accessCode,
+                    forms: inviteForms,
+                    expiresAt: expiresAt,
+                    submissionDeadline: submissionDeadline
+                });
+                req.flash('success', `Invite created and email sent to ${clientEmail}. Access code: ${accessCode}`);
+            } catch (emailError) {
+                console.error('Email error:', emailError);
+                req.flash('warning', `Invite created but email failed to send. Access code: ${accessCode}`);
+            }
+        } else {
+            req.flash('success', `Invite created successfully! Access code: ${accessCode}`);
+        }
+
+        res.redirect('/admin/invites');
+    } catch (error) {
+        console.error('Create invite error:', error);
+        req.flash('error', 'Error creating invite: ' + error.message);
+        res.redirect('/admin/invites/new');
+    }
+});
+
+// Delete invite
+router.post('/invites/:id/delete', async (req, res) => {
+    try {
+        db.deleteInvite(req.params.id);
+        req.flash('success', 'Invite deleted');
+    } catch (error) {
+        console.error('Delete invite error:', error);
+        req.flash('error', 'Error deleting invite');
+    }
+    res.redirect('/admin/invites');
+});
+
+// View invite details
+router.get('/invites/:id', async (req, res) => {
+    try {
+        const invite = db.getInviteById(req.params.id);
+        
+        if (!invite) {
+            req.flash('error', 'Invite not found');
+            return res.redirect('/admin/invites');
+        }
+        
+        const forms = db.getInviteForms(req.params.id);
+        const submissions = db.getAllSubmissions().filter(s => s.invite_id == req.params.id);
+        
+        res.render('admin/invite-detail', {
+            title: `Invite: ${invite.client_name}`,
+            layout: 'admin',
+            invite,
+            forms,
+            submissions
+        });
+    } catch (error) {
+        console.error('Invite detail error:', error);
+        req.flash('error', 'Error loading invite');
+        res.redirect('/admin/invites');
+    }
+});
+
+// Revoke invite
+router.post('/invites/:id/revoke', async (req, res) => {
+    try {
+        db.revokeInvite(req.params.id);
+        req.flash('success', 'Invite revoked');
+    } catch (error) {
+        console.error('Revoke invite error:', error);
+        req.flash('error', 'Error revoking invite');
+    }
+    res.redirect('/admin/invites');
+});
+
+// Submissions list
+router.get('/submissions', async (req, res) => {
+    try {
+        const submissions = db.getAllSubmissions();
+
+        res.render('admin/submissions', {
+            title: 'Submissions',
+            layout: 'admin',
+            submissions
+        });
+    } catch (error) {
+        console.error('Submissions error:', error);
+        req.flash('error', 'Error loading submissions');
+        res.redirect('/admin/dashboard');
+    }
+});
+
+// =============================================================
+// SUBMISSION DETAIL VIEW
+// =============================================================
+router.get('/submissions/:id', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+
+        // Parse the submission data
+        let parsedData = {};
+        try {
+            parsedData = typeof submission.data === 'string' 
+                ? JSON.parse(submission.data) 
+                : (submission.data || {});
+        } catch (e) {
+            console.error('Error parsing submission data:', e);
+        }
+
+        // Parse validation data
+        let validationData = {};
+        try {
+            validationData = submission.validation_data 
+                ? (typeof submission.validation_data === 'string' 
+                    ? JSON.parse(submission.validation_data) 
+                    : submission.validation_data)
+                : {};
+        } catch (e) {
+            console.error('Error parsing validation data:', e);
+        }
+
+        // Get attachments for this submission
+        const attachments = db.getSubmissionAttachments(req.params.id);
+
+        res.render('admin/submission-detail', {
+            title: `Submission: ${submission.clientName || 'Unknown'}`,
+            layout: 'admin',
+            submission,
+            parsedData,
+            validationData,
+            attachments,
+            dataJson: JSON.stringify(parsedData, null, 2)
+        });
+    } catch (error) {
+        console.error('Submission detail error:', error);
+        req.flash('error', 'Error loading submission');
+        res.redirect('/admin/submissions');
+    }
+});
+
+// =============================================================
+// PDF EXPORT
+// =============================================================
+router.get('/submissions/:id/export-pdf', async (req, res) => {
+    try {
+        let PDFDocument;
+        try {
+            PDFDocument = require('pdfkit');
+        } catch (e) {
+            req.flash('error', 'PDF export requires pdfkit. Run: npm install pdfkit');
+            return res.redirect(`/admin/submissions/${req.params.id}`);
+        }
+
+        const submission = db.getSubmissionById(req.params.id);
+
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+
+        let parsedData = {};
+        try {
+            parsedData = typeof submission.data === 'string' 
+                ? JSON.parse(submission.data) 
+                : (submission.data || {});
+        } catch (e) {
+            console.error('Error parsing submission data:', e);
+        }
+
+        const doc = new PDFDocument({
+            size: 'LETTER',
+            margins: { top: 50, bottom: 50, left: 50, right: 50 }
+        });
+
+        const filename = `submission-${submission.clientName || submission.id}-${Date.now()}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').text('Questionnaire Submission', { align: 'center' });
+        doc.moveDown();
+
+        // Metadata
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Client: ${submission.clientName || 'N/A'}`);
+        doc.text(`Company: ${submission.companyName || 'N/A'}`);
+        doc.text(`Email: ${submission.clientEmail || 'N/A'}`);
+        doc.text(`Form: ${submission.formName || 'N/A'}`);
+        doc.text(`Status: ${submission.status || 'in_progress'}`);
+        doc.text(`Submitted: ${submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'In Progress'}`);
+        doc.moveDown();
+
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+
+        // Responses
+        doc.fontSize(14).font('Helvetica-Bold').text('Responses:', { underline: true });
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).font('Helvetica');
+        
+        for (const [key, value] of Object.entries(parsedData)) {
+            if (key.startsWith('_') || key === 'metadata') continue;
+
+            const label = key
+                .replace(/_/g, ' ')
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+
+            if (doc.y > 700) doc.addPage();
+
+            doc.font('Helvetica-Bold').text(label + ':', { continued: false });
+            
+            let displayValue = '';
+            if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value, null, 2);
+            } else if (value === true || value === 'true' || value === 'yes' || value === 'Yes') {
+                displayValue = 'Yes';
+            } else if (value === false || value === 'false' || value === 'no' || value === 'No') {
+                displayValue = 'No';
+            } else {
+                displayValue = String(value || 'N/A');
+            }
+
+            doc.font('Helvetica').text(displayValue, { indent: 20 });
+            doc.moveDown(0.5);
+        }
+
+        // Footer
+        doc.moveDown(2);
+        doc.fontSize(8).fillColor('gray');
+        doc.text(`Generated on ${new Date().toLocaleString()} by Cloudstrucc BA Forms`, { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('PDF export error:', error);
+        req.flash('error', 'Error generating PDF');
+        res.redirect(`/admin/submissions/${req.params.id}`);
+    }
+});
+
+// =============================================================
+// IMPLEMENTATION VALIDATION PAGE
+// =============================================================
+router.get('/submissions/:id/validation', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+
+        let parsedData = {};
+        try {
+            parsedData = typeof submission.data === 'string' 
+                ? JSON.parse(submission.data) 
+                : (submission.data || {});
+        } catch (e) {
+            console.error('Error parsing submission data:', e);
+        }
+
+        let validationData = {};
+        try {
+            validationData = submission.validation_data 
+                ? (typeof submission.validation_data === 'string' 
+                    ? JSON.parse(submission.validation_data) 
+                    : submission.validation_data)
+                : {};
+        } catch (e) {
+            console.error('Error parsing validation data:', e);
+        }
+
+        res.render('admin/submission-validation', {
+            title: `Validation: ${submission.clientName || 'Unknown'}`,
+            layout: 'admin',
+            submission,
+            parsedData,
+            validationData
+        });
+    } catch (error) {
+        console.error('Validation page error:', error);
+        req.flash('error', 'Error loading validation page');
+        res.redirect('/admin/submissions');
+    }
+});
+
+// Save validation data
+router.post('/submissions/:id/validation', async (req, res) => {
+    try {
+        const { validationData } = req.body;
+
+        let parsedValidation = {};
+        try {
+            parsedValidation = typeof validationData === 'string' 
+                ? JSON.parse(validationData) 
+                : (validationData || {});
+        } catch (e) {
+            console.error('Error parsing validation data:', e);
+        }
+
+        db.updateSubmissionValidation(req.params.id, parsedValidation);
+        req.flash('success', 'Validation saved successfully');
+        res.redirect(`/admin/submissions/${req.params.id}/validation`);
+    } catch (error) {
+        console.error('Save validation error:', error);
+        req.flash('error', 'Error saving validation');
+        res.redirect(`/admin/submissions/${req.params.id}/validation`);
+    }
+});
+
+// Export validation as PDF
+router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
+    try {
+        let PDFDocument;
+        try {
+            PDFDocument = require('pdfkit');
+        } catch (e) {
+            req.flash('error', 'PDF export requires pdfkit. Run: npm install pdfkit');
+            return res.redirect(`/admin/submissions/${req.params.id}/validation`);
+        }
+
+        const submission = db.getSubmissionById(req.params.id);
+
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+
+        let parsedData = {};
+        try {
+            parsedData = typeof submission.data === 'string' 
+                ? JSON.parse(submission.data) 
+                : (submission.data || {});
+        } catch (e) {}
+
+        let validationData = {};
+        try {
+            validationData = submission.validation_data 
+                ? (typeof submission.validation_data === 'string' 
+                    ? JSON.parse(submission.validation_data) 
+                    : submission.validation_data)
+                : {};
+        } catch (e) {}
+
+        const doc = new PDFDocument({
+            size: 'LETTER',
+            margins: { top: 50, bottom: 50, left: 50, right: 50 }
+        });
+
+        const filename = `validation-${submission.clientName || submission.id}-${Date.now()}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').text('Implementation Validation Report', { align: 'center' });
+        doc.moveDown();
+
+        // Metadata
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Client: ${submission.clientName || 'N/A'}`);
+        doc.text(`Company: ${submission.companyName || 'N/A'}`);
+        doc.text(`Form: ${submission.formName || 'N/A'}`);
+        doc.text(`Validation Date: ${new Date().toLocaleString()}`);
+        doc.moveDown();
+
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+
+        // Validation results
+        doc.fontSize(14).font('Helvetica-Bold').text('Validation Results:', { underline: true });
+        doc.moveDown(0.5);
+
+        doc.fontSize(10).font('Helvetica');
+
+        let totalItems = 0;
+        let metCount = 0;
+        let notMetCount = 0;
+
+        for (const [key, value] of Object.entries(parsedData)) {
+            if (key.startsWith('_') || key === 'metadata') continue;
+
+            totalItems++;
+
+            const label = key
+                .replace(/_/g, ' ')
+                .replace(/([A-Z])/g, ' $1')
+                .replace(/^./, str => str.toUpperCase())
+                .trim();
+
+            if (doc.y > 650) doc.addPage();
+
+            const fieldValidation = validationData[key] || {};
+            const isMet = fieldValidation.met === 'yes';
+            const comment = fieldValidation.comment || '';
+
+            if (isMet) metCount++;
+            else if (fieldValidation.met === 'no') notMetCount++;
+
+            doc.font('Helvetica-Bold').text(label + ':', { continued: false });
+            
+            let displayValue = '';
+            if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value, null, 2);
+            } else {
+                displayValue = String(value || 'N/A');
+            }
+            doc.font('Helvetica').text(`Response: ${displayValue}`, { indent: 20 });
+            
+            const statusColor = isMet ? 'green' : 'red';
+            const statusText = isMet ? 'REQUIREMENT MET' : 'REQUIREMENT NOT MET';
+            doc.fillColor(statusColor).text(statusText, { indent: 20 });
+            doc.fillColor('black');
+
+            if (comment) {
+                doc.font('Helvetica-Oblique').text(`Comment: ${comment}`, { indent: 20 });
+            }
+
+            doc.moveDown(0.5);
+        }
+
+        // Summary
+        doc.addPage();
+        doc.fontSize(16).font('Helvetica-Bold').text('Summary', { align: 'center' });
+        doc.moveDown();
+        
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Total Requirements: ${totalItems}`);
+        doc.fillColor('green').text(`Requirements Met: ${metCount}`);
+        doc.fillColor('red').text(`Requirements Not Met: ${notMetCount}`);
+        doc.fillColor('black');
+        
+        const percentage = totalItems > 0 ? Math.round((metCount / totalItems) * 100) : 0;
+        doc.moveDown();
+        doc.fontSize(14).font('Helvetica-Bold').text(`Completion Rate: ${percentage}%`);
+
+        doc.moveDown(2);
+        doc.fontSize(8).fillColor('gray');
+        doc.text(`Generated on ${new Date().toLocaleString()} by Cloudstrucc BA Forms`, { align: 'center' });
+
+        doc.end();
+
+    } catch (error) {
+        console.error('Validation PDF export error:', error);
+        req.flash('error', 'Error generating validation PDF');
+        res.redirect(`/admin/submissions/${req.params.id}/validation`);
+    }
+});
+
+// =============================================================
+// FILE ATTACHMENTS (URL-based)
+// =============================================================
+router.post('/submissions/:id/attachments', async (req, res) => {
+    try {
+        const { fileName, fileUrl, description } = req.body;
+
+        if (!fileName || !fileUrl) {
+            return res.status(400).json({ error: 'File name and URL are required' });
+        }
+
+        try {
+            new URL(fileUrl);
+        } catch (e) {
+            return res.status(400).json({ error: 'Invalid URL format' });
+        }
+
+        const attachment = db.addSubmissionAttachment(req.params.id, {
+            fileName,
+            fileUrl,
+            description,
+            addedBy: req.session.adminEmail || 'admin',
+            addedAt: new Date().toISOString()
+        });
+
+        res.json({ success: true, attachment });
+    } catch (error) {
+        console.error('Add attachment error:', error);
+        res.status(500).json({ error: 'Error adding attachment' });
+    }
+});
+
+router.delete('/submissions/:id/attachments/:attachmentId', async (req, res) => {
+    try {
+        db.deleteSubmissionAttachment(req.params.id, req.params.attachmentId);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Delete attachment error:', error);
+        res.status(500).json({ error: 'Error deleting attachment' });
+    }
+});
+
+// Delete submission
+router.post('/submissions/:id/delete', async (req, res) => {
+    try {
+        db.deleteSubmission(req.params.id);
+        req.flash('success', 'Submission deleted');
+    } catch (error) {
+        console.error('Delete submission error:', error);
+        req.flash('error', 'Error deleting submission');
+    }
+    res.redirect('/admin/submissions');
+});
+
+// Helper function to generate access code
+function generateAccessCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+}
+
+// =============================================================
+// SETTINGS PAGE
+// =============================================================
+router.get('/settings', async (req, res) => {
+    try {
+        res.render('admin/settings', {
+            title: 'Settings',
+            layout: 'admin',
+            settings: {
+                adminEmail: process.env.ADMIN_EMAIL || 'admin@cloudstrucc.com',
+                smtpHost: process.env.SMTP_HOST || 'smtp.office365.com',
+                smtpPort: process.env.SMTP_PORT || '587',
+                smtpFrom: process.env.SMTP_FROM || '',
+                baseUrl: process.env.BASE_URL || 'http://localhost:3000',
+                analyticsInterval: process.env.ANALYTICS_INTERVAL_HOURS || '72'
+            }
+        });
+    } catch (error) {
+        console.error('Settings error:', error);
+        req.flash('error', 'Error loading settings');
+        res.redirect('/admin/dashboard');
+    }
+});
+
+// =============================================================
+// VIEW USER'S VALIDATION DATA
+// =============================================================
+router.get('/submissions/:id/user-validation', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+        
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+        
+        // Parse submission data
+        let parsedData = {};
+        try {
+            parsedData = typeof submission.data === 'string' 
+                ? JSON.parse(submission.data) 
+                : (submission.data || {});
+        } catch (e) {}
+        
+        // Get user validation data
+        let userValidationData = {};
+        try {
+            userValidationData = db.getSubmissionUserValidation(req.params.id);
+        } catch (e) {}
+        
+        // Get admin validation data
+        let adminValidationData = {};
+        try {
+            adminValidationData = db.getSubmissionValidation(req.params.id);
+        } catch (e) {}
+        
+        res.render('admin/user-validation-view', {
+            title: `Client Validation: ${submission.clientName}`,
+            layout: 'admin',
+            submission,
+            parsedData,
+            userValidationData,
+            adminValidationData
+        });
+    } catch (error) {
+        console.error('User validation view error:', error);
+        req.flash('error', 'Error loading validation data');
+        res.redirect(`/admin/submissions/${req.params.id}`);
+    }
+});
+
+// =============================================================
+// VALIDATION WORKFLOW - Send back to user for validation
+// =============================================================
+router.post('/submissions/:id/send-for-validation', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+        
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+        
+        // Update submission status to allow user validation
+        db.updateSubmissionValidationStatus(req.params.id, 'pending_user_validation');
+        
+        // Send email notification to user if email service is configured
+        if (submission.clientEmail) {
+            try {
+                const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+                await emailService.sendValidationRequest({
+                    to: submission.clientEmail,
+                    clientName: submission.clientName,
+                    formTitle: submission.formName,
+                    validationLink: `${baseUrl}/validate/${submission.inviteCode}/${submission.id}`
+                });
+                req.flash('success', `Validation request sent to ${submission.clientEmail}`);
+            } catch (emailError) {
+                console.error('Email error:', emailError);
+                req.flash('warning', 'Submission opened for validation but email notification failed');
+            }
+        } else {
+            req.flash('success', 'Submission opened for user validation');
+        }
+        
+        res.redirect(`/admin/submissions/${req.params.id}`);
+    } catch (error) {
+        console.error('Send for validation error:', error);
+        req.flash('error', 'Error sending for validation');
+        res.redirect(`/admin/submissions/${req.params.id}`);
+    }
 });
 
 module.exports = router;

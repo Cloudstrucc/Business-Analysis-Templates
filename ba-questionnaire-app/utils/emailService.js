@@ -14,13 +14,6 @@ class EmailService {
     const secure = process.env.SMTP_SECURE === 'true';
     const user = process.env.SMTP_USER;
     const pass = process.env.SMTP_PASS;
-    // In your emailService.js, the "from" should be the shared mailbox
-    const mailOptions = {
-      from: process.env.SMTP_FROM,  // "Cloudstrucc Requirements" <business-requirements@cloudstrucc.com>
-      to: recipient,
-      subject: subject,
-      html: htmlContent
-    };
 
     if (!user || !pass) {
       console.warn('Email service not configured. Set SMTP_USER and SMTP_PASS environment variables.');
@@ -427,7 +420,100 @@ Cloudstrucc Inc.
     }
   }
 
-  
+  /**
+   * Send invite email (alternative method name for compatibility)
+   */
+  async sendInviteEmail({ to, clientName, accessCode, baseUrl }) {
+    return this.sendInvite({
+      to,
+      clientName,
+      inviteCode: accessCode,
+      forms: [],
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
+    });
+  }
+
+  /**
+   * Send validation request email to client
+   */
+  async sendValidationRequest({ to, clientName, formTitle, validationLink }) {
+    if (!this.transporter) {
+      console.log('Email service not available. Would send validation request to:', to);
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #0d1f3c 0%, #1a365d 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h2 { color: #fff; margin: 0; font-size: 24px; }
+    .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+    .highlight-box { background: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0; }
+    .btn { display: inline-block; background: #27ae60; color: #fff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
+    .btn:hover { background: #219a52; }
+    .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; }
+    .footer a { color: #00a8e8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📋 Validation Required</h2>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${clientName}</strong>,</p>
+      
+      <p>Your submission for <strong>${formTitle}</strong> is ready for validation.</p>
+      
+      <div class="highlight-box">
+        <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please review your submission and confirm that each requirement has been met or indicate any issues.</p>
+      </div>
+      
+      <p>This validation step helps ensure that all requirements have been properly addressed before moving forward with implementation.</p>
+      
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${validationLink}" class="btn">✓ Validate Requirements</a>
+      </p>
+      
+      <p><strong>What you'll need to do:</strong></p>
+      <ul>
+        <li>Review each requirement from your submission</li>
+        <li>Indicate whether each requirement has been met</li>
+        <li>Add any comments or clarifications as needed</li>
+        <li>Submit your validation for admin review</li>
+      </ul>
+      
+      <p>If you have any questions, please contact our team.</p>
+      
+      <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>Cloudstrucc Inc. | Cloud Solutions & Digital Transformation</p>
+      <p><a href="https://www.cloudstrucc.com">www.cloudstrucc.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to,
+        subject: `Action Required: Validate Your ${formTitle} Submission`,
+        html
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to send validation request:', error);
+      return { success: false, message: error.message };
+    }
+  }
 }
 
 module.exports = new EmailService();

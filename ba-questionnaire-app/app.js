@@ -15,6 +15,7 @@ const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
 const formLoader = require('./utils/formLoader');
 const emailService = require('./utils/emailService');
+const validationRoutes = require('./routes/validation');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -204,7 +205,7 @@ app.use((req, res, next) => {
 // Routes
 app.use('/', publicRoutes);
 app.use('/admin', adminRoutes);
-
+app.use('/validate', validationRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({

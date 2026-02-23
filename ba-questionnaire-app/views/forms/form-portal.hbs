@@ -1,0 +1,186 @@
+{{!-- views/form/portal.hbs --}}
+{{!-- User's form portal showing available forms and submissions --}}
+
+<div class="container py-4">
+    {{!-- Welcome Header --}}
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-10">
+            <div class="card bg-primary text-white">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="mb-2">
+                                <i class="bi bi-person-check me-2"></i>
+                                Welcome, {{invite.client_name}}!
+                            </h2>
+                            <p class="mb-0 opacity-75">
+                                {{#if invite.client_company}}{{invite.client_company}} | {{/if}}
+                                Access Code: <code class="text-white bg-dark bg-opacity-25 px-2 py-1 rounded">{{invite.code}}</code>
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <small class="opacity-75 d-block">Link expires:</small>
+                            <strong>{{formatDate invite.expires_at}}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {{!-- Submissions Section --}}
+    {{#if submissions.length}}
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-10">
+            <h4 class="mb-3">
+                <i class="bi bi-file-earmark-check me-2"></i>
+                Your Submissions
+            </h4>
+            
+            <div class="row g-3">
+                {{#each submissions}}
+                <div class="col-md-6">
+                    <div class="card h-100 {{#eq this.status 'waiting_for_validation'}}border-warning border-2{{/eq}}">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <h5 class="card-title mb-0">{{this.formName}}</h5>
+                                {{#eq this.status 'waiting_for_validation'}}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-hourglass-split me-1"></i>
+                                        Waiting for Validation
+                                    </span>
+                                {{else}}
+                                    {{#eq this.status 'submitted'}}
+                                        {{#eq this.validation_status 'user_submitted'}}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-circle me-1"></i>
+                                                Validation Complete
+                                            </span>
+                                        {{else}}
+                                            <span class="badge bg-success">
+                                                <i class="bi bi-check-lg me-1"></i>
+                                                Submitted
+                                            </span>
+                                        {{/eq}}
+                                    {{else}}
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-pencil me-1"></i>
+                                            In Progress
+                                        </span>
+                                    {{/eq}}
+                                {{/eq}}
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="progress" style="height: 8px;">
+                                    <div class="progress-bar" style="width: {{this.progress}}%"></div>
+                                </div>
+                                <small class="text-muted">{{this.progress}}% complete</small>
+                            </div>
+                            
+                            <p class="card-text small text-muted mb-3">
+                                {{#if this.submitted_at}}
+                                    Submitted: {{formatDate this.submitted_at}}
+                                {{else}}
+                                    Last saved: {{formatDate this.updated_at}}
+                                {{/if}}
+                            </p>
+                            
+                            <div class="d-flex gap-2 flex-wrap">
+                                {{#eq this.status 'submitted'}}
+                                    {{!-- View submission --}}
+                                    <a href="/validate/submission/{{../invite.code}}/{{this.id}}" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i> View
+                                    </a>
+                                    
+                                    {{!-- Export PDF --}}
+                                    <a href="/validate/submission/{{../invite.code}}/{{this.id}}/export-pdf" class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-file-pdf me-1"></i> PDF
+                                    </a>
+                                {{else}}
+                                    {{#eq this.status 'waiting_for_validation'}}
+                                        {{!-- View submission --}}
+                                        <a href="/validate/submission/{{../invite.code}}/{{this.id}}" class="btn btn-outline-primary btn-sm">
+                                            <i class="bi bi-eye me-1"></i> View
+                                        </a>
+                                        
+                                        {{!-- Export PDF --}}
+                                        <a href="/validate/submission/{{../invite.code}}/{{this.id}}/export-pdf" class="btn btn-outline-secondary btn-sm">
+                                            <i class="bi bi-file-pdf me-1"></i> PDF
+                                        </a>
+                                        
+                                        {{!-- Validation button --}}
+                                        <a href="/validate/submission/{{../invite.code}}/{{this.id}}/validate" class="btn btn-warning btn-sm">
+                                            <i class="bi bi-check2-square me-1"></i> Validate Requirements
+                                        </a>
+                                    {{else}}
+                                        {{!-- Continue editing --}}
+                                        <a href="/form/{{../invite.code}}/{{this.formSlug}}" class="btn btn-primary btn-sm">
+                                            <i class="bi bi-pencil me-1"></i> Continue
+                                        </a>
+                                    {{/eq}}
+                                {{/eq}}
+                            </div>
+                        </div>
+                        
+                        {{!-- Validation required banner --}}
+                        {{#eq this.status 'waiting_for_validation'}}
+                        <div class="card-footer bg-warning bg-opacity-25 border-warning">
+                            <small class="text-dark">
+                                <i class="bi bi-exclamation-triangle me-1"></i>
+                                <strong>Action Required:</strong> Please validate your requirements
+                            </small>
+                        </div>
+                        {{/eq}}
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- Available Forms Section --}}
+    {{#if availableForms.length}}
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <h4 class="mb-3">
+                <i class="bi bi-file-text me-2"></i>
+                {{#if submissions.length}}Other {{/if}}Available Forms
+            </h4>
+            
+            <div class="row g-3">
+                {{#each availableForms}}
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{this.title}}</h5>
+                            {{#if this.description}}
+                            <p class="card-text text-muted small">{{this.description}}</p>
+                            {{/if}}
+                            <a href="/form/{{../invite.code}}/{{this.slug}}" class="btn btn-primary">
+                                <i class="bi bi-play-fill me-1"></i> Start Questionnaire
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {{/each}}
+            </div>
+        </div>
+    </div>
+    {{/if}}
+
+    {{!-- No forms available --}}
+    {{#unless availableForms.length}}
+        {{#unless submissions.length}}
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No forms are currently available. Please contact the administrator.
+                </div>
+            </div>
+        </div>
+        {{/unless}}
+    {{/unless}}
+</div>
