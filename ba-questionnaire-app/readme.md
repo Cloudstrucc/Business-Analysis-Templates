@@ -1,4 +1,4 @@
-# Business Analysis Templates & Questionnaire Portal
+# dBusiness Analysis Templates & Questionnaire Portal
 
 A collection of comprehensive, business-friendly questionnaire templates designed to streamline requirements gathering, implementation planning, and client sign-off for technology projects — plus a **Node.js web application** for sending interactive questionnaires to clients.
 
@@ -35,22 +35,22 @@ Technology implementations often fail not because of technical challenges, but b
 
 This repository provides **two ways** to capture business requirements:
 
-| Option | Best For | Description |
-|--------|----------|-------------|
-| **📄 Markdown Templates** | Internal use, documentation | Download and edit locally, convert to Word/PDF |
-| **🌐 Web Portal** | Client-facing engagements | Send branded questionnaires via email, track progress |
+| Option                          | Best For                    | Description                                           |
+| ------------------------------- | --------------------------- | ----------------------------------------------------- |
+| **📄 Markdown Templates** | Internal use, documentation | Download and edit locally, convert to Word/PDF        |
+| **🌐 Web Portal**         | Client-facing engagements   | Send branded questionnaires via email, track progress |
 
 ### Web Portal Features
 
-| Feature | Description |
-|---------|-------------|
-| 🎨 **Branded Experience** | Bootstrap 5 UI with Cloudstrucc branding |
-| 📧 **Email Invites** | Send invite links via Office 365 / SMTP |
-| 🔑 **Access Codes** | Unique 8-character codes for each client |
-| 💾 **Auto-Save** | Progress saved automatically on every change |
-| ⏱️ **Expiration** | Invite links and submissions have configurable deadlines |
-| 📊 **Admin Dashboard** | Track progress, view submissions, manage clients |
-| 🔄 **Auto-Discovery** | Drop new `.md` files in Questionnaires folder - auto-detected |
+| Feature                        | Description                                                     |
+| ------------------------------ | --------------------------------------------------------------- |
+| 🎨**Branded Experience** | Bootstrap 5 UI with Cloudstrucc branding                        |
+| 📧**Email Invites**      | Send invite links via Office 365 / SMTP                         |
+| 🔑**Access Codes**       | Unique 8-character codes for each client                        |
+| 💾**Auto-Save**          | Progress saved automatically on every change                    |
+| ⏱️**Expiration**       | Invite links and submissions have configurable deadlines        |
+| 📊**Admin Dashboard**    | Track progress, view submissions, manage clients                |
+| 🔄**Auto-Discovery**     | Drop new `.md` files in Questionnaires folder - auto-detected |
 
 ---
 
@@ -106,15 +106,15 @@ Business-Analysis-Templates/
 
 ## Available Questionnaires
 
-| Template | Description |
-|----------|-------------|
-| **D365 Customer Service** | Cases, queues, SLAs, knowledge management, entitlements |
-| **D365 Omnichannel** | Voice, chat, SMS, unified routing, contact center |
-| **D365 Sales Professional** | Leads, opportunities, pipeline, email integration |
-| **Power Platform Governance** | Environments, DLP policies, CoE toolkit, ALM |
-| **Power Apps Model-Driven** | Tables, forms, views, business rules, security roles |
-| **Power Pages** | Portals, authentication, web roles, accessibility |
-| **E-Commerce (Canadian)** | Tech stack, inventory, payments, fulfillment, shipping |
+| Template                            | Description                                             |
+| ----------------------------------- | ------------------------------------------------------- |
+| **D365 Customer Service**     | Cases, queues, SLAs, knowledge management, entitlements |
+| **D365 Omnichannel**          | Voice, chat, SMS, unified routing, contact center       |
+| **D365 Sales Professional**   | Leads, opportunities, pipeline, email integration       |
+| **Power Platform Governance** | Environments, DLP policies, CoE toolkit, ALM            |
+| **Power Apps Model-Driven**   | Tables, forms, views, business rules, security roles    |
+| **Power Pages**               | Portals, authentication, web roles, accessibility       |
+| **E-Commerce (Canadian)**     | Tech stack, inventory, payments, fulfillment, shipping  |
 
 ### Using Templates as Standalone Files
 
@@ -155,11 +155,13 @@ cp .env.example .env
 ### 3. Start the Server
 
 **Option A: Direct (for development)**
+
 ```bash
 node app.js
 ```
 
 **Option B: With PM2 (recommended for local testing)**
+
 ```bash
 # Install PM2 globally if not installed
 npm install -g pm2
@@ -176,12 +178,13 @@ pm2 status
 
 ### 4. Access the Application
 
-| URL | Purpose |
-|-----|---------|
-| http://localhost:3000 | Public landing page |
-| http://localhost:3000/admin/login | Admin dashboard |
+| URL                               | Purpose             |
+| --------------------------------- | ------------------- |
+| http://localhost:3000             | Public landing page |
+| http://localhost:3000/admin/login | Admin dashboard     |
 
 **Default Admin Credentials:**
+
 - **Email:** `admin@cloudstrucc.com`
 - **Password:** `dpg613`
 
@@ -227,19 +230,19 @@ The deployment script supports **three isolated environments**, each with its ow
 
 ### Environment Overview
 
-| Environment | Flag | Resource Group | App Name | Storage Account |
-|-------------|------|----------------|----------|-----------------|
-| **Development** | `--dev` | `cloudstrucc-rg-dev` | `cloudstrucc-ba-forms-dev` | `cloudstruccdatadev` |
-| **QA/Staging** | `--qa` | `cloudstrucc-rg-qa` | `cloudstrucc-ba-forms-qa` | `cloudstruccdataqa` |
-| **Production** | `--prod` | `cloudstrucc-rg` | `cloudstrucc-ba-forms` | `cloudstruccdata` |
+| Environment           | Flag       | Resource Group         | App Name                     | Storage Account        |
+| --------------------- | ---------- | ---------------------- | ---------------------------- | ---------------------- |
+| **Development** | `--dev`  | `cloudstrucc-rg-dev` | `cloudstrucc-ba-forms-dev` | `cloudstruccdatadev` |
+| **QA/Staging**  | `--qa`   | `cloudstrucc-rg-qa`  | `cloudstrucc-ba-forms-qa`  | `cloudstruccdataqa`  |
+| **Production**  | `--prod` | `cloudstrucc-rg`     | `cloudstrucc-ba-forms`     | `cloudstruccdata`    |
 
 ### Environment URLs
 
-| Environment | URL |
-|-------------|-----|
+| Environment | URL                                                |
+| ----------- | -------------------------------------------------- |
 | Development | https://cloudstrucc-ba-forms-dev.azurewebsites.net |
-| QA/Staging | https://cloudstrucc-ba-forms-qa.azurewebsites.net |
-| Production | https://cloudstrucc-ba-forms.azurewebsites.net |
+| QA/Staging  | https://cloudstrucc-ba-forms-qa.azurewebsites.net  |
+| Production  | https://cloudstrucc-ba-forms.azurewebsites.net     |
 
 ### Deploy to Each Environment
 
@@ -298,6 +301,7 @@ PROD_PASSPHRASE="your-secure-passphrase-here"
 ```
 
 Output:
+
 ```
 Environment  Resource Group           App Name                       State
 -----------  -------------------------  ------------------------------  ------------
@@ -318,60 +322,62 @@ cd Deployment
 
 ### General Commands
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.sh --help` | Show help message with all options |
-| `./deploy.sh --list-envs` | List status of all environments |
+| Command                     | Description                        |
+| --------------------------- | ---------------------------------- |
+| `./deploy.sh --help`      | Show help message with all options |
+| `./deploy.sh --list-envs` | List status of all environments    |
 
 ### Deployment Commands
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.sh --dev` | Full deploy to development |
-| `./deploy.sh --qa` | Full deploy to QA |
-| `./deploy.sh --prod` | Full deploy to production (passphrase required) |
-| `./deploy.sh --deploy --dev` | Code-only deploy to dev |
-| `./deploy.sh --setup --dev` | Create Azure resources only (no code deploy) |
-| `./deploy.sh --sync` | Sync questionnaires to templates folder only |
+| Command                        | Description                                     |
+| ------------------------------ | ----------------------------------------------- |
+| `./deploy.sh --dev`          | Full deploy to development                      |
+| `./deploy.sh --qa`           | Full deploy to QA                               |
+| `./deploy.sh --prod`         | Full deploy to production (passphrase required) |
+| `./deploy.sh --deploy --dev` | Code-only deploy to dev                         |
+| `./deploy.sh --setup --dev`  | Create Azure resources only (no code deploy)    |
+| `./deploy.sh --sync`         | Sync questionnaires to templates folder only    |
 
 ### TTL (Auto-Shutdown) Commands
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.sh --dev --ttl 2` | Deploy to dev, auto-stop in 2 hours |
-| `./deploy.sh --qa --ttl 4` | Deploy to QA, auto-stop in 4 hours |
+| Command                        | Description                                  |
+| ------------------------------ | -------------------------------------------- |
+| `./deploy.sh --dev --ttl 2`  | Deploy to dev, auto-stop in 2 hours          |
+| `./deploy.sh --qa --ttl 4`   | Deploy to QA, auto-stop in 4 hours           |
 | `./deploy.sh --prod --ttl 8` | Deploy to prod with TTL (extra confirmation) |
 
 ### Operations Commands
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.sh --logs --dev` | Stream live logs from dev |
-| `./deploy.sh --ssh --dev` | SSH into dev container |
-| `./deploy.sh --restart --dev` | Restart dev app |
-| `./deploy.sh --status --dev` | Check dev health status |
-| `./deploy.sh --stop --dev` | Stop dev app (save costs) |
-| `./deploy.sh --start --dev` | Start stopped dev app |
-| `./deploy.sh --delete --dev` | Delete dev environment completely |
+| Command                         | Description                       |
+| ------------------------------- | --------------------------------- |
+| `./deploy.sh --logs --dev`    | Stream live logs from dev         |
+| `./deploy.sh --ssh --dev`     | SSH into dev container            |
+| `./deploy.sh --restart --dev` | Restart dev app                   |
+| `./deploy.sh --status --dev`  | Check dev health status           |
+| `./deploy.sh --stop --dev`    | Stop dev app (save costs)         |
+| `./deploy.sh --start --dev`   | Start stopped dev app             |
+| `./deploy.sh --delete --dev`  | Delete dev environment completely |
 
 ### Production Commands (Passphrase Required)
 
-| Command | Description |
-|---------|-------------|
-| `./deploy.sh` | Full deploy to production |
-| `./deploy.sh --deploy` | Code-only deploy to production |
-| `./deploy.sh --restart` | Restart production |
-| `./deploy.sh --stop` | Stop production (requires confirmation) |
-| `./deploy.sh --delete` | Delete production (requires confirmation) |
+| Command                   | Description                               |
+| ------------------------- | ----------------------------------------- |
+| `./deploy.sh`           | Full deploy to production                 |
+| `./deploy.sh --deploy`  | Code-only deploy to production            |
+| `./deploy.sh --restart` | Restart production                        |
+| `./deploy.sh --stop`    | Stop production (requires confirmation)   |
+| `./deploy.sh --delete`  | Delete production (requires confirmation) |
 
 ### Common Workflows
 
 **Deploy code changes to dev:**
+
 ```bash
 ./deploy.sh --deploy --dev
 ```
 
 **Test in QA before production:**
+
 ```bash
 ./deploy.sh --deploy --qa
 # Test at https://cloudstrucc-ba-forms-qa.azurewebsites.net
@@ -379,6 +385,7 @@ cd Deployment
 ```
 
 **Spin up dev for a few hours:**
+
 ```bash
 ./deploy.sh --dev --ttl 2
 # Work on dev...
@@ -387,6 +394,7 @@ cd Deployment
 ```
 
 **View logs when troubleshooting:**
+
 ```bash
 ./deploy.sh --logs --dev
 ./deploy.sh --logs --qa
@@ -450,6 +458,7 @@ cd Deployment
 ```
 
 The deployment script automatically:
+
 - Copies all `.md` files from `Questionnaires/` to `ba-questionnaire-app/templates/`
 - Deploys the updated code
 - The app discovers and loads new templates on startup
@@ -457,6 +466,7 @@ The deployment script automatically:
 ### Template Requirements
 
 For auto-detection to work, your `.md` file must have:
+
 - At least one `# Title` heading
 - At least one markdown table with `|---|`
 - NOT be named `README.md`, `LICENSE.md`, etc.
@@ -465,21 +475,21 @@ For auto-detection to work, your `.md` file must have:
 
 ## Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `PORT` | No | `3000` (local) / `8080` (Azure) | Server port |
-| `NODE_ENV` | No | `development` | Environment mode |
-| `ENVIRONMENT` | No | `production` | Environment name (dev/qa/prod) |
-| `SESSION_SECRET` | Yes | - | Session encryption key (auto-generated on Azure) |
-| `ADMIN_EMAIL` | No | `admin@cloudstrucc.com` | Admin login email |
-| `ADMIN_PASSWORD` | No | `dpg613` | Admin login password |
-| `SMTP_HOST` | No | - | SMTP server for emails |
-| `SMTP_PORT` | No | `587` | SMTP port |
-| `SMTP_USER` | No | - | SMTP username |
-| `SMTP_PASS` | No | - | SMTP password |
-| `BASE_URL` | No | `http://localhost:3000` | App URL (for email links) |
-| `AZURE_STORAGE_CONNECTION_STRING` | No | - | Azure Storage connection (auto-configured) |
-| `ANALYTICS_INTERVAL_HOURS` | No | `72` | Analytics digest frequency |
+| Variable                            | Required | Default                             | Description                                      |
+| ----------------------------------- | -------- | ----------------------------------- | ------------------------------------------------ |
+| `PORT`                            | No       | `3000` (local) / `8080` (Azure) | Server port                                      |
+| `NODE_ENV`                        | No       | `development`                     | Environment mode                                 |
+| `ENVIRONMENT`                     | No       | `production`                      | Environment name (dev/qa/prod)                   |
+| `SESSION_SECRET`                  | Yes      | -                                   | Session encryption key (auto-generated on Azure) |
+| `ADMIN_EMAIL`                     | No       | `admin@cloudstrucc.com`           | Admin login email                                |
+| `ADMIN_PASSWORD`                  | No       | `dpg613`                          | Admin login password                             |
+| `SMTP_HOST`                       | No       | -                                   | SMTP server for emails                           |
+| `SMTP_PORT`                       | No       | `587`                             | SMTP port                                        |
+| `SMTP_USER`                       | No       | -                                   | SMTP username                                    |
+| `SMTP_PASS`                       | No       | -                                   | SMTP password                                    |
+| `BASE_URL`                        | No       | `http://localhost:3000`           | App URL (for email links)                        |
+| `AZURE_STORAGE_CONNECTION_STRING` | No       | -                                   | Azure Storage connection (auto-configured)       |
+| `ANALYTICS_INTERVAL_HOURS`        | No       | `72`                              | Analytics digest frequency                       |
 
 ---
 
@@ -512,12 +522,12 @@ SMTP_PASS=""
 
 ### Cost Estimate
 
-| Resource | SKU | Monthly Cost (CAD) |
-|----------|-----|-------------------|
-| App Service Plan (per env) | B1 (Basic) | ~$13 |
-| Storage Account (per env) | Standard LRS | ~$1 |
-| **Per Environment** | | **~$14/month** |
-| **All 3 Environments** | | **~$42/month** |
+| Resource                     | SKU          | Monthly Cost (CAD)   |
+| ---------------------------- | ------------ | -------------------- |
+| App Service Plan (per env)   | B1 (Basic)   | ~$13                 |
+| Storage Account (per env)    | Standard LRS | ~$1                  |
+| **Per Environment**    |              | **~$14/month** |
+| **All 3 Environments** |              | **~$42/month** |
 
 > 💡 **Tip:** Use `--ttl` for dev/qa to auto-stop and save costs when not in use!
 
@@ -530,6 +540,7 @@ SMTP_PASS=""
 **Error:** `cp: .../templates/xxx.md: Permission denied`
 
 **Fix:**
+
 ```bash
 cd ~/repos/Business-Analysis-Templates
 sudo chmod -R 755 ba-questionnaire-app/templates
@@ -542,6 +553,7 @@ sudo chown -R $(whoami) ba-questionnaire-app/templates
 **Error:** `The resource group 'cloudstrucc-rg-dev' is in deprovisioning state`
 
 **Fix:** Wait 5-10 minutes for deletion to complete, then retry:
+
 ```bash
 # Check status
 az group show --name cloudstrucc-rg-dev
@@ -557,6 +569,7 @@ az group show --name cloudstrucc-rg-dev
 **Cause:** Azure is running an older Node.js version
 
 **Fix:** The deploy script automatically configures Node.js 22 LTS. If you see this error, redeploy:
+
 ```bash
 ./deploy.sh --deploy --dev
 ```
@@ -568,6 +581,7 @@ az group show --name cloudstrucc-rg-dev
 **Cause:** Old startup.sh trying to run npm install at runtime
 
 **Fix:** Ensure you're using the latest `startup.sh` that skips npm install when node_modules exists:
+
 ```bash
 # Check your startup.sh has this check:
 grep "node_modules/.package-lock.json" ba-questionnaire-app/startup.sh
@@ -590,6 +604,7 @@ grep "node_modules/.package-lock.json" ba-questionnaire-app/startup.sh
 ### Login doesn't work (redirects back to login)
 
 This is usually a session/cookie issue. Make sure `app.js` has:
+
 ```javascript
 app.set('trust proxy', 1);
 ```
@@ -620,6 +635,7 @@ pm2 restart ba-forms
 ### Database errors
 
 **Fix (local):**
+
 ```bash
 cd ba-questionnaire-app
 cp data/questionnaire.db data/questionnaire.db.backup
@@ -628,6 +644,7 @@ node app.js  # or pm2 restart ba-forms
 ```
 
 **Fix (Azure):**
+
 ```bash
 ./deploy.sh --ssh --dev
 cd /home/site/wwwroot
@@ -704,18 +721,18 @@ pm2 startup
 
 ### Key Routes
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/` | GET | Public homepage with access code form |
-| `/access` | GET | Handles access code submission, redirects to `/form/:code` |
-| `/form/:code` | GET | Client questionnaire dashboard |
-| `/form/:code/:slug` | GET | Specific questionnaire form |
-| `/admin/login` | GET/POST | Admin authentication |
-| `/admin/dashboard` | GET | Admin dashboard |
-| `/admin/invites` | GET | Manage invites |
-| `/admin/invites/new` | GET/POST | Create new invite |
-| `/admin/submissions` | GET | View all submissions |
-| `/admin/forms` | GET | Manage form templates |
+| Route                  | Method   | Description                                                  |
+| ---------------------- | -------- | ------------------------------------------------------------ |
+| `/`                  | GET      | Public homepage with access code form                        |
+| `/access`            | GET      | Handles access code submission, redirects to `/form/:code` |
+| `/form/:code`        | GET      | Client questionnaire dashboard                               |
+| `/form/:code/:slug`  | GET      | Specific questionnaire form                                  |
+| `/admin/login`       | GET/POST | Admin authentication                                         |
+| `/admin/dashboard`   | GET      | Admin dashboard                                              |
+| `/admin/invites`     | GET      | Manage invites                                               |
+| `/admin/invites/new` | GET/POST | Create new invite                                            |
+| `/admin/submissions` | GET      | View all submissions                                         |
+| `/admin/forms`       | GET      | Manage form templates                                        |
 
 ---
 
