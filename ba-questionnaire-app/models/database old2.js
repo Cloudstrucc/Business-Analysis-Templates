@@ -115,20 +115,6 @@ async function initDatabase() {
     )
   `);
 
-  // Create audit log table for tracking all actions
-  db.run(`
-    CREATE TABLE IF NOT EXISTS submission_audit_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      submission_id INTEGER NOT NULL,
-      action TEXT NOT NULL,
-      actor TEXT NOT NULL,
-      actor_type TEXT DEFAULT 'admin',
-      details TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
-    )
-  `);
-
   // Add validation_data column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE submissions ADD COLUMN validation_data TEXT`);
@@ -406,7 +392,7 @@ function getSubmissionValidation(id) {
 }
 
 // Validation workflow status management
-function updateSubmissionValidationStatus(id, validationStatus, actor = 'admin@cloudstrucc.com', filteredFields = null) {
+function updateSubmissionValidationStatus(id, validationStatus) {
   // Add validation_status column if it doesn't exist
   try {
     run(`ALTER TABLE submissions ADD COLUMN validation_status TEXT DEFAULT 'none'`);
@@ -414,48 +400,20 @@ function updateSubmissionValidationStatus(id, validationStatus, actor = 'admin@c
     // Column likely already exists
   }
   
-  // Add filtered_fields column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN filtered_fields TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  
-  // Add admin_comments column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN admin_comments TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  
   // Map validation status to main status
   let mainStatus = null;
-  let auditAction = validationStatus;
-  
   if (validationStatus === 'pending_user_validation') {
     mainStatus = 'waiting_for_validation';
-    auditAction = 'sent_for_validation';
   } else if (validationStatus === 'user_submitted') {
     mainStatus = 'submitted';
-    auditAction = 'user_validated';
   }
   
   // Update both validation_status and optionally the main status
   if (mainStatus) {
-    if (filteredFields) {
-      const filteredJson = typeof filteredFields === 'string' ? filteredFields : JSON.stringify(filteredFields);
-      run(`UPDATE submissions SET validation_status = ?, status = ?, filtered_fields = ? WHERE id = ?`, [validationStatus, mainStatus, filteredJson, id]);
-    } else {
-      run(`UPDATE submissions SET validation_status = ?, status = ? WHERE id = ?`, [validationStatus, mainStatus, id]);
-    }
+    run(`UPDATE submissions SET validation_status = ?, status = ? WHERE id = ?`, [validationStatus, mainStatus, id]);
   } else {
     run(`UPDATE submissions SET validation_status = ? WHERE id = ?`, [validationStatus, id]);
   }
-  
-  // Add audit log entry
-  const details = filteredFields ? { filteredFieldCount: Array.isArray(filteredFields) ? filteredFields.length : 0 } : {};
-  addAuditLog(id, auditAction, actor, 'admin', details);
-  
   saveDatabase();
 }
 
@@ -464,20 +422,8 @@ function getSubmissionValidationStatus(id) {
   return submission?.validation_status || 'none';
 }
 
-function getSubmissionFilteredFields(id) {
-  const submission = get(`SELECT filtered_fields FROM submissions WHERE id = ?`, [id]);
-  if (submission && submission.filtered_fields) {
-    try {
-      return JSON.parse(submission.filtered_fields);
-    } catch (e) {
-      return null;
-    }
-  }
-  return null;
-}
-
 // User validation data (separate from admin validation)
-function updateSubmissionUserValidation(id, userValidationData, actor = 'user') {
+function updateSubmissionUserValidation(id, userValidationData) {
   // Add user_validation_data column if it doesn't exist
   try {
     run(`ALTER TABLE submissions ADD COLUMN user_validation_data TEXT`);
@@ -485,52 +431,9 @@ function updateSubmissionUserValidation(id, userValidationData, actor = 'user') 
     // Column likely already exists
   }
   const validationJson = typeof userValidationData === 'string' ? userValidationData : JSON.stringify(userValidationData);
-  
-  // Count met/not met
-  let metCount = 0, notMetCount = 0;
-  const data = typeof userValidationData === 'string' ? JSON.parse(userValidationData) : userValidationData;
-  Object.values(data).forEach(v => {
-    if (v.met === 'yes') metCount++;
-    else if (v.met === 'no') notMetCount++;
-  });
-  
   // When user submits validation, set validation_status to user_submitted and status back to submitted
   run(`UPDATE submissions SET user_validation_data = ?, validation_status = 'user_submitted', status = 'submitted' WHERE id = ?`, [validationJson, id]);
-  
-  // Add audit log entry
-  addAuditLog(id, 'user_validated', actor, 'user', { metCount, notMetCount });
-  
   saveDatabase();
-}
-
-// Admin comments/replies to user validation
-function updateSubmissionAdminComments(id, adminComments, actor = 'admin@cloudstrucc.com') {
-  // Add admin_comments column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN admin_comments TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  const commentsJson = typeof adminComments === 'string' ? adminComments : JSON.stringify(adminComments);
-  run(`UPDATE submissions SET admin_comments = ? WHERE id = ?`, [commentsJson, id]);
-  
-  // Add audit log entry
-  const commentCount = Object.keys(typeof adminComments === 'string' ? JSON.parse(adminComments) : adminComments).length;
-  addAuditLog(id, 'admin_commented', actor, 'admin', { commentCount });
-  
-  saveDatabase();
-}
-
-function getSubmissionAdminComments(id) {
-  const submission = get(`SELECT admin_comments FROM submissions WHERE id = ?`, [id]);
-  if (submission && submission.admin_comments) {
-    try {
-      return JSON.parse(submission.admin_comments);
-    } catch (e) {
-      return {};
-    }
-  }
-  return {};
 }
 
 function getSubmissionUserValidation(id) {
@@ -543,37 +446,6 @@ function getSubmissionUserValidation(id) {
     }
   }
   return {};
-}
-
-// ============================================================
-// AUDIT LOG
-// ============================================================
-function addAuditLog(submissionId, action, actor, actorType = 'admin', details = {}) {
-  const detailsJson = typeof details === 'string' ? details : JSON.stringify(details);
-  run(`
-    INSERT INTO submission_audit_log (submission_id, action, actor, actor_type, details)
-    VALUES (?, ?, ?, ?, ?)
-  `, [submissionId, action, actor, actorType, detailsJson]);
-  saveDatabase();
-}
-
-function getAuditLog(submissionId) {
-  const logs = all(`
-    SELECT * FROM submission_audit_log 
-    WHERE submission_id = ? 
-    ORDER BY created_at DESC
-  `, [submissionId]);
-  
-  return logs.map(log => {
-    let details = {};
-    try {
-      details = log.details ? JSON.parse(log.details) : {};
-    } catch (e) {}
-    return {
-      ...log,
-      details
-    };
-  });
 }
 
 // ============================================================
@@ -684,20 +556,14 @@ module.exports = {
   updateSubmissionData,
   submitSubmission,
   deleteSubmission,
-  // Validation
+  // Validation (NEW)
   updateSubmissionValidation,
   getSubmissionValidation,
   updateSubmissionValidationStatus,
   getSubmissionValidationStatus,
-  getSubmissionFilteredFields,
   updateSubmissionUserValidation,
   getSubmissionUserValidation,
-  updateSubmissionAdminComments,
-  getSubmissionAdminComments,
-  // Audit Log
-  addAuditLog,
-  getAuditLog,
-  // Attachments
+  // Attachments (NEW)
   addSubmissionAttachment,
   getSubmissionAttachments,
   deleteSubmissionAttachment,

@@ -132,10 +132,33 @@ router.get('/submission/:code/:submissionId/validate', async (req, res) => {
             console.error('Error parsing submission data:', e);
         }
         
+        // Get filtered fields (if admin selected specific fields)
+        let filteredFields = null;
+        try {
+            filteredFields = db.getSubmissionFilteredFields(submissionId);
+        } catch (e) {}
+        
+        // If filtered fields exist, filter the parsedData to only show those fields
+        if (filteredFields && Array.isArray(filteredFields) && filteredFields.length > 0) {
+            const filteredData = {};
+            filteredFields.forEach(field => {
+                if (parsedData.hasOwnProperty(field)) {
+                    filteredData[field] = parsedData[field];
+                }
+            });
+            parsedData = filteredData;
+        }
+        
         // Get existing user validation data
         let userValidationData = {};
         try {
             userValidationData = db.getSubmissionUserValidation(submissionId);
+        } catch (e) {}
+        
+        // Get admin comments/replies
+        let adminComments = {};
+        try {
+            adminComments = db.getSubmissionAdminComments(submissionId);
         } catch (e) {}
         
         res.render('user/submission-validation', {
@@ -145,7 +168,9 @@ router.get('/submission/:code/:submissionId/validate', async (req, res) => {
             invite,
             parsedData,
             userValidationData,
-            code
+            adminComments,
+            code,
+            isFiltered: filteredFields && filteredFields.length > 0
         });
     } catch (error) {
         console.error('User validation page error:', error);
@@ -193,8 +218,8 @@ router.post('/submission/:code/:submissionId/validate', async (req, res) => {
             console.error('Error parsing validation data:', e);
         }
         
-        // Save user validation
-        db.updateSubmissionUserValidation(submissionId, parsedValidation);
+        // Save user validation (with actor = client email)
+        db.updateSubmissionUserValidation(submissionId, parsedValidation, invite.client_email || 'user');
         
         req.flash('success', 'Your validation has been submitted successfully!');
         res.redirect(`/validate/submission/${code}/${submissionId}`);

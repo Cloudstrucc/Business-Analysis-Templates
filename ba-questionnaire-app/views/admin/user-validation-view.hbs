@@ -1,7 +1,7 @@
 {{!-- views/admin/user-validation-view.hbs --}}
-{{!-- Admin view of client's validation responses --}}
+{{!-- Admin view of client's validation responses with filters, audit log, and admin replies --}}
 
-<div class="container-fluid py-4">
+<div class="container py-4">
     {{!-- Header --}}
     <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
         <div>
@@ -23,10 +23,14 @@
         </div>
         
         <div class="d-flex gap-2 flex-wrap">
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#auditHistoryModal">
+                <i class="bi bi-clock-history me-1"></i> History
+            </button>
             <a href="/admin/submissions/{{submission.id}}/validation" class="btn btn-success">
                 <i class="bi bi-check2-square me-1"></i> Admin Validation
             </a>
-            <form action="/admin/submissions/{{submission.id}}/send-for-validation" method="POST" class="d-inline">
+            <form action="/admin/submissions/{{submission.id}}/send-for-validation" method="POST" class="d-inline" id="sendBackForm">
+                <input type="hidden" name="filteredFields" id="filteredFieldsInput" value="">
                 <button type="submit" class="btn btn-warning">
                     <i class="bi bi-arrow-repeat me-1"></i> Send Back for Re-validation
                 </button>
@@ -65,24 +69,153 @@
         </div>
     </div>
 
+    {{!-- Selection Info Bar --}}
+    <div class="alert alert-info d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Select fields</strong> to include when sending back for re-validation. Unselected fields will be hidden from the client.
+        </div>
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-sm btn-outline-primary" id="selectAll">Select All</button>
+            <button class="btn btn-sm btn-outline-secondary" id="selectNone">Select None</button>
+            <button class="btn btn-sm btn-outline-danger" id="selectNotMet">Select Not Met Only</button>
+        </div>
+    </div>
+
     {{!-- Validation Data Table --}}
     <div class="card">
-        <div class="card-header bg-info text-white">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">
                 <i class="bi bi-clipboard-data me-2"></i>
                 Client's Validation Responses
             </h5>
+            <div>
+                <span class="badge bg-light text-dark" id="selectedCount">0 of 0 selected</span>
+            </div>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover mb-0">
+                <table class="table table-hover mb-0" id="validationTable">
                     <thead class="table-light">
                         <tr>
-                            <th style="width: 5%;">#</th>
-                            <th style="width: 25%;">Requirement</th>
-                            <th style="width: 25%;">Original Response</th>
-                            <th style="width: 15%;">Client Validation</th>
-                            <th style="width: 30%;">Client Comments</th>
+                            <th style="width: 3%;">
+                                <input type="checkbox" class="form-check-input field-select" id="selectAllCheckbox" checked>
+                            </th>
+                            <th style="width: 4%;" class="sortable" data-sort="index">#</th>
+                            <th style="width: 18%;" class="sortable" data-sort="requirement">Requirement</th>
+                            <th style="width: 14%;" class="sortable" data-sort="response">Original Response</th>
+                            <th style="width: 10%;" class="sortable" data-sort="validation">Client Validation</th>
+                            <th style="width: 18%;">Client Comments</th>
+                            <th style="width: 18%;">Admin Reply</th>
+                        </tr>
+                    </thead>
+                    {{!-- Filter Row --}}
+                    <thead class="filter-row">
+                        <tr>
+                            <th></th>
+                            <th></th>
+                            <th>
+                                <div class="filter-dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary w-100 filter-toggle" data-column="requirement">
+                                        <i class="bi bi-funnel me-1"></i> Filter <span class="filter-count badge bg-primary ms-1" style="display:none;">0</span>
+                                    </button>
+                                    <div class="filter-menu" data-column="requirement">
+                                        <div class="filter-search">
+                                            <input type="text" class="form-control form-control-sm" placeholder="Contains..." data-filter-search="requirement">
+                                        </div>
+                                        <div class="filter-options" data-options="requirement">
+                                            {{!-- Populated by JavaScript --}}
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button class="btn btn-sm btn-link" data-select-all="requirement">Select All</button>
+                                            <button class="btn btn-sm btn-link" data-clear="requirement">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="filter-dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary w-100 filter-toggle" data-column="response">
+                                        <i class="bi bi-funnel me-1"></i> Filter <span class="filter-count badge bg-primary ms-1" style="display:none;">0</span>
+                                    </button>
+                                    <div class="filter-menu" data-column="response">
+                                        <div class="filter-search">
+                                            <input type="text" class="form-control form-control-sm" placeholder="Contains..." data-filter-search="response">
+                                        </div>
+                                        <div class="filter-options" data-options="response">
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="yes" checked> <span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>
+                                            </label>
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="no" checked> <span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>
+                                            </label>
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="other" checked> <span class="text-muted">Other</span>
+                                            </label>
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button class="btn btn-sm btn-link" data-select-all="response">Select All</button>
+                                            <button class="btn btn-sm btn-link" data-clear="response">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="filter-dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary w-100 filter-toggle" data-column="validation">
+                                        <i class="bi bi-funnel me-1"></i> Filter <span class="filter-count badge bg-primary ms-1" style="display:none;">0</span>
+                                    </button>
+                                    <div class="filter-menu" data-column="validation">
+                                        <div class="filter-search">
+                                            <input type="text" class="form-control form-control-sm" placeholder="Contains..." data-filter-search="validation">
+                                        </div>
+                                        <div class="filter-options" data-options="validation">
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="met" checked> <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Met</span>
+                                            </label>
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="not-met" checked> <span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>Not Met</span>
+                                            </label>
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="pending" checked> <span class="text-muted">Pending</span>
+                                            </label>
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button class="btn btn-sm btn-link" data-select-all="validation">Select All</button>
+                                            <button class="btn btn-sm btn-link" data-clear="validation">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <div class="filter-dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary w-100 filter-toggle" data-column="comments">
+                                        <i class="bi bi-funnel me-1"></i> Filter <span class="filter-count badge bg-primary ms-1" style="display:none;">0</span>
+                                    </button>
+                                    <div class="filter-menu" data-column="comments">
+                                        <div class="filter-search">
+                                            <input type="text" class="form-control form-control-sm" placeholder="Contains..." data-filter-search="comments">
+                                        </div>
+                                        <div class="filter-options" data-options="comments">
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="has-comment" checked> <i class="bi bi-chat-left-text me-1"></i> Has Comment
+                                            </label>
+                                            <label class="filter-option">
+                                                <input type="checkbox" value="no-comment" checked> <i class="bi bi-chat-left me-1"></i> No Comment
+                                            </label>
+                                        </div>
+                                        <div class="filter-actions">
+                                            <button class="btn btn-sm btn-link" data-select-all="comments">Select All</button>
+                                            <button class="btn btn-sm btn-link" data-clear="comments">Clear</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </th>
+                            <th>
+                                <button class="btn btn-sm btn-outline-danger w-100" id="clearAllFilters">
+                                    <i class="bi bi-x-lg me-1"></i> Clear All
+                                </button>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="validationTableBody">
@@ -91,27 +224,331 @@
                 </table>
             </div>
         </div>
+        <div class="card-footer bg-light">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span class="text-muted">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Admin replies will be visible to the client when sent back for re-validation
+                </span>
+                <button type="button" class="btn btn-primary" id="saveAdminReplies">
+                    <i class="bi bi-save me-1"></i> Save Admin Replies
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{!-- Audit History Modal --}}
+<div class="modal fade" id="auditHistoryModal" tabindex="-1" aria-labelledby="auditHistoryModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title" id="auditHistoryModalLabel">
+                    <i class="bi bi-clock-history me-2"></i>
+                    Validation History
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="audit-timeline" id="auditTimeline">
+                    {{#each auditLog}}
+                    <div class="audit-item action-{{this.action}}">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="audit-action {{this.action}}">{{this.action}}</span>
+                                <span class="audit-actor ms-2">{{this.actor}}</span>
+                            </div>
+                            <span class="audit-time">{{this.created_at}}</span>
+                        </div>
+                        {{#if this.details.metCount}}
+                        <p class="text-muted small mt-1 mb-0">
+                            Client submitted validation: {{this.details.metCount}} met, {{this.details.notMetCount}} not met
+                        </p>
+                        {{/if}}
+                        {{#if this.details.filteredFieldCount}}
+                        <p class="text-muted small mt-1 mb-0">
+                            Sent {{this.details.filteredFieldCount}} fields for validation
+                        </p>
+                        {{/if}}
+                        {{#if this.details.commentCount}}
+                        <p class="text-muted small mt-1 mb-0">
+                            Added replies to {{this.details.commentCount}} client comments
+                        </p>
+                        {{/if}}
+                    </div>
+                    {{else}}
+                    <p class="text-muted text-center py-4">No audit history available yet.</p>
+                    {{/each}}
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
     </div>
 </div>
 
 <style>
+/* Filter dropdowns */
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-toggle {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  white-space: nowrap;
+}
+
+.filter-toggle.active {
+  background-color: var(--cs-accent, #3498db);
+  border-color: var(--cs-accent, #3498db);
+  color: white;
+}
+
+.filter-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 1000;
+  min-width: 220px;
+  max-width: 300px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  padding: 0.5rem;
+  margin-top: 2px;
+}
+
+.filter-menu.show {
+  display: block;
+}
+
+.filter-search {
+  margin-bottom: 0.5rem;
+}
+
+.filter-search input {
+  font-size: 0.8rem;
+}
+
+.filter-options {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #e9ecef;
+  border-radius: 4px;
+  padding: 0.25rem;
+  background: #f8f9fa;
+}
+
+.filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  margin-bottom: 2px;
+}
+
+.filter-option:hover {
+  background-color: #e9ecef;
+}
+
+.filter-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.filter-option.hidden {
+  display: none;
+}
+
+.filter-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e9ecef;
+}
+
+.filter-actions button {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+}
+
+.filter-count {
+  font-size: 0.65rem;
+  padding: 0.15rem 0.4rem;
+}
+
+.filter-row th {
+  padding: 0.25rem 0.5rem;
+  background: #f8f9fa;
+}
+
+/* Sortable table headers */
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+}
+
+.sortable:hover {
+  background-color: #e9ecef;
+}
+
+.sortable::after {
+  content: '⇅';
+  position: absolute;
+  right: 8px;
+  opacity: 0.3;
+  font-size: 0.8em;
+}
+
+.sortable.asc::after {
+  content: '↑';
+  opacity: 1;
+}
+
+.sortable.desc::after {
+  content: '↓';
+  opacity: 1;
+}
+
+/* Validation row colors */
 .validation-row.validated-yes {
-    background-color: rgba(25, 135, 84, 0.1) !important;
+  background-color: rgba(25, 135, 84, 0.1) !important;
 }
+
 .validation-row.validated-no {
-    background-color: rgba(220, 53, 69, 0.1) !important;
+  background-color: rgba(220, 53, 69, 0.1) !important;
 }
+
+/* Admin reply textarea */
+.admin-reply {
+  background-color: #f8f9fa;
+  border: 1px dashed #ced4da;
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 0.85rem;
+  min-height: 60px;
+  width: 100%;
+  resize: vertical;
+}
+
+.admin-reply:focus {
+  outline: none;
+  border-color: var(--cs-accent, #3498db);
+  background-color: #fff;
+}
+
+.admin-reply::placeholder {
+  color: #adb5bd;
+  font-style: italic;
+}
+
+/* Client comment styling */
+.client-comment {
+  background-color: #fff3cd;
+  border-left: 3px solid #f39c12;
+  padding: 0.5rem;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Selection checkbox */
+.field-select {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+/* Audit timeline */
+.audit-timeline {
+  position: relative;
+  padding-left: 30px;
+}
+
+.audit-timeline::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #dee2e6;
+}
+
+.audit-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+}
+
+.audit-item:last-child {
+  padding-bottom: 0;
+}
+
+.audit-item::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--cs-accent, #3498db);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 2px var(--cs-accent, #3498db);
+}
+
+.audit-item.action-submitted::before { background: #27ae60; box-shadow: 0 0 0 2px #27ae60; }
+.audit-item.action-sent_for_validation::before { background: #f39c12; box-shadow: 0 0 0 2px #f39c12; }
+.audit-item.action-user_validated::before { background: #17a2b8; box-shadow: 0 0 0 2px #17a2b8; }
+.audit-item.action-admin_commented::before { background: #6f42c1; box-shadow: 0 0 0 2px #6f42c1; }
+
+.audit-time {
+  font-size: 0.75rem;
+  color: #6c757d;
+}
+
+.audit-actor {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.audit-action {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 50px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.audit-action.submitted { background: #d4edda; color: #155724; }
+.audit-action.sent_for_validation { background: #fff3cd; color: #856404; }
+.audit-action.user_validated { background: #d1ecf1; color: #0c5460; }
+.audit-action.admin_commented { background: #e2d9f3; color: #4a235a; }
 </style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const parsedData = {{{json parsedData}}};
     const userValidationData = {{{json userValidationData}}};
+    const adminComments = {{{json adminComments}}};
+    const submissionId = '{{submission.id}}';
     
     const tbody = document.getElementById('validationTableBody');
     let rowNum = 0;
     let total = 0, met = 0, notMet = 0, pending = 0;
     
+    // Build table rows
     for (const [key, value] of Object.entries(parsedData)) {
         if (key.startsWith('_') || key === 'metadata') continue;
         
@@ -127,41 +564,66 @@ document.addEventListener('DOMContentLoaded', function() {
         const fieldValidation = userValidationData[key] || {};
         const isMet = fieldValidation.met === 'yes';
         const isNotMet = fieldValidation.met === 'no';
-        const comment = fieldValidation.comment || '';
+        const clientComment = fieldValidation.comment || '';
+        const adminReply = adminComments[key] || '';
         
         if (isMet) met++;
         else if (isNotMet) notMet++;
         else pending++;
         
+        // Determine response type for filtering
+        let responseType = 'other';
         let displayValue = '';
         if (typeof value === 'boolean') {
+            responseType = value ? 'yes' : 'no';
             displayValue = value 
                 ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>' 
                 : '<span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>';
         } else if (typeof value === 'object' && value !== null) {
             displayValue = '<pre class="mb-0 bg-light p-2 rounded small" style="white-space: pre-wrap; max-height: 100px; overflow-y: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
         } else if (value) {
+            const strValue = String(value).toLowerCase();
+            if (strValue === 'yes' || strValue === 'true') responseType = 'yes';
+            else if (strValue === 'no' || strValue === 'false') responseType = 'no';
             displayValue = '<span class="text-break">' + String(value).substring(0, 150) + (String(value).length > 150 ? '...' : '') + '</span>';
         } else {
             displayValue = '<span class="text-muted fst-italic">No response</span>';
         }
         
+        let validationType = 'pending';
         let statusBadge = '<span class="text-muted">-</span>';
         if (isMet) {
+            validationType = 'met';
             statusBadge = '<span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Met</span>';
         } else if (isNotMet) {
+            validationType = 'not-met';
             statusBadge = '<span class="badge bg-danger"><i class="bi bi-x-lg me-1"></i>Not Met</span>';
         }
         
         const row = document.createElement('tr');
         row.className = 'validation-row' + (isMet ? ' validated-yes' : '') + (isNotMet ? ' validated-no' : '');
+        row.dataset.field = key;
+        row.dataset.validation = validationType;
+        row.dataset.response = responseType;
+        row.dataset.requirement = label;
+        row.dataset.hasComment = clientComment ? 'has-comment' : 'no-comment';
         
         row.innerHTML = `
+            <td>
+                <input type="checkbox" class="form-check-input field-select row-select" checked>
+            </td>
             <td class="text-muted">${rowNum}</td>
             <td><strong>${label}</strong></td>
             <td>${displayValue}</td>
             <td class="text-center">${statusBadge}</td>
-            <td>${comment ? '<span class="small">' + comment + '</span>' : '<span class="text-muted fst-italic">No comment</span>'}</td>
+            <td>
+                ${clientComment 
+                    ? '<div class="client-comment"><i class="bi bi-chat-left-quote me-1"></i>' + clientComment + '</div>' 
+                    : '<span class="text-muted fst-italic">No comment</span>'}
+            </td>
+            <td>
+                <textarea class="admin-reply" placeholder="Reply to client comment..." data-field="${key}">${adminReply}</textarea>
+            </td>
         `;
         
         tbody.appendChild(row);
@@ -172,5 +634,386 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('metCount').textContent = met;
     document.getElementById('notMetCount').textContent = notMet;
     document.getElementById('pendingCount').textContent = pending;
+    
+    // Populate requirement filter options
+    populateRequirementOptions();
+    
+    function populateRequirementOptions() {
+        const optionsContainer = document.querySelector('[data-options="requirement"]');
+        const rows = document.querySelectorAll('#validationTableBody tr');
+        
+        optionsContainer.innerHTML = '';
+        rows.forEach(row => {
+            const reqText = row.dataset.requirement || '';
+            if (reqText) {
+                const label = document.createElement('label');
+                label.className = 'filter-option';
+                label.innerHTML = `<input type="checkbox" value="${reqText}" checked> <span>${reqText}</span>`;
+                optionsContainer.appendChild(label);
+            }
+        });
+        
+        // Add event listeners to new checkboxes
+        optionsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', applyFilters);
+        });
+    }
+    
+    // =====================================================
+    // FILTER DROPDOWN FUNCTIONALITY
+    // =====================================================
+    
+    const filterToggles = document.querySelectorAll('.filter-toggle');
+    const filterMenus = document.querySelectorAll('.filter-menu');
+    
+    filterToggles.forEach(toggle => {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const column = this.dataset.column;
+            const menu = document.querySelector(`.filter-menu[data-column="${column}"]`);
+            
+            filterMenus.forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            
+            menu.classList.toggle('show');
+        });
+    });
+    
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.filter-dropdown')) {
+            filterMenus.forEach(m => m.classList.remove('show'));
+        }
+    });
+    
+    filterMenus.forEach(menu => {
+        menu.addEventListener('click', e => e.stopPropagation());
+    });
+    
+    // Contains search within filter options
+    document.querySelectorAll('[data-filter-search]').forEach(searchInput => {
+        searchInput.addEventListener('input', function() {
+            const column = this.dataset.filterSearch;
+            const searchText = this.value.toLowerCase();
+            const options = document.querySelectorAll(`[data-options="${column}"] .filter-option`);
+            
+            options.forEach(opt => {
+                const text = opt.textContent.toLowerCase();
+                opt.classList.toggle('hidden', searchText && !text.includes(searchText));
+            });
+        });
+    });
+    
+    // Select All / Clear buttons within each filter
+    document.querySelectorAll('[data-select-all]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const column = this.dataset.selectAll;
+            const checkboxes = document.querySelectorAll(`[data-options="${column}"] input[type="checkbox"]`);
+            checkboxes.forEach(cb => cb.checked = true);
+            applyFilters();
+        });
+    });
+    
+    document.querySelectorAll('[data-clear]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const column = this.dataset.clear;
+            const checkboxes = document.querySelectorAll(`[data-options="${column}"] input[type="checkbox"]`);
+            checkboxes.forEach(cb => cb.checked = false);
+            const searchInput = document.querySelector(`[data-filter-search="${column}"]`);
+            if (searchInput) searchInput.value = '';
+            applyFilters();
+        });
+    });
+    
+    // Listen for checkbox changes in filters
+    document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(cb => {
+        cb.addEventListener('change', applyFilters);
+    });
+    
+    // Clear all filters
+    document.getElementById('clearAllFilters').addEventListener('click', function() {
+        document.querySelectorAll('.filter-options input[type="checkbox"]').forEach(cb => cb.checked = true);
+        document.querySelectorAll('[data-filter-search]').forEach(input => input.value = '');
+        filterToggles.forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.filter-count').forEach(badge => badge.style.display = 'none');
+        applyFilters();
+    });
+    
+    // =====================================================
+    // APPLY FILTERS
+    // =====================================================
+    
+    function applyFilters() {
+        const rows = document.querySelectorAll('#validationTableBody tr');
+        
+        const filters = {
+            requirement: getSelectedValues('requirement'),
+            response: getSelectedValues('response'),
+            validation: getSelectedValues('validation'),
+            comments: getSelectedValues('comments')
+        };
+        
+        const containsSearch = {
+            requirement: document.querySelector('[data-filter-search="requirement"]')?.value.toLowerCase() || '',
+            response: document.querySelector('[data-filter-search="response"]')?.value.toLowerCase() || '',
+            validation: document.querySelector('[data-filter-search="validation"]')?.value.toLowerCase() || '',
+            comments: document.querySelector('[data-filter-search="comments"]')?.value.toLowerCase() || ''
+        };
+        
+        rows.forEach(row => {
+            let show = true;
+            
+            const reqText = row.dataset.requirement || '';
+            const response = row.dataset.response;
+            const validation = row.dataset.validation;
+            const hasComment = row.dataset.hasComment;
+            const commentText = row.querySelector('.client-comment')?.textContent.toLowerCase() || '';
+            
+            if (filters.requirement.length > 0 && !filters.requirement.includes(reqText)) {
+                show = false;
+            }
+            if (containsSearch.requirement && !reqText.toLowerCase().includes(containsSearch.requirement)) {
+                show = false;
+            }
+            
+            if (filters.response.length > 0 && !filters.response.includes(response)) {
+                show = false;
+            }
+            
+            if (filters.validation.length > 0 && !filters.validation.includes(validation)) {
+                show = false;
+            }
+            
+            if (filters.comments.length > 0 && !filters.comments.includes(hasComment)) {
+                show = false;
+            }
+            if (containsSearch.comments && !commentText.includes(containsSearch.comments)) {
+                show = false;
+            }
+            
+            row.style.display = show ? '' : 'none';
+        });
+        
+        updateFilterIndicators();
+        updateSelectedCount();
+    }
+    
+    function getSelectedValues(column) {
+        const checkboxes = document.querySelectorAll(`[data-options="${column}"] input[type="checkbox"]:checked`);
+        return Array.from(checkboxes).map(cb => cb.value);
+    }
+    
+    function updateFilterIndicators() {
+        ['requirement', 'response', 'validation', 'comments'].forEach(column => {
+            const allCheckboxes = document.querySelectorAll(`[data-options="${column}"] input[type="checkbox"]`);
+            const checkedCheckboxes = document.querySelectorAll(`[data-options="${column}"] input[type="checkbox"]:checked`);
+            const searchInput = document.querySelector(`[data-filter-search="${column}"]`);
+            const hasSearch = searchInput?.value.length > 0;
+            
+            const toggle = document.querySelector(`.filter-toggle[data-column="${column}"]`);
+            const badge = toggle.querySelector('.filter-count');
+            
+            const isFiltered = checkedCheckboxes.length < allCheckboxes.length || hasSearch;
+            
+            if (isFiltered) {
+                toggle.classList.add('active');
+                badge.style.display = 'inline';
+                badge.textContent = checkedCheckboxes.length;
+            } else {
+                toggle.classList.remove('active');
+                badge.style.display = 'none';
+            }
+        });
+    }
+    
+    // =====================================================
+    // SORTABLE COLUMNS
+    // =====================================================
+    
+    const sortableHeaders = document.querySelectorAll('.sortable');
+    let currentSort = { column: null, direction: 'asc' };
+    
+    sortableHeaders.forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+            
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'asc';
+            }
+            
+            sortableHeaders.forEach(h => h.classList.remove('asc', 'desc'));
+            this.classList.add(currentSort.direction);
+            
+            sortTable(column, currentSort.direction);
+        });
+    });
+    
+    function sortTable(column, direction) {
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        rows.sort((a, b) => {
+            let aVal, bVal;
+            
+            switch(column) {
+                case 'index':
+                    aVal = parseInt(a.querySelector('td:nth-child(2)').textContent);
+                    bVal = parseInt(b.querySelector('td:nth-child(2)').textContent);
+                    break;
+                case 'requirement':
+                    aVal = a.dataset.requirement.toLowerCase();
+                    bVal = b.dataset.requirement.toLowerCase();
+                    break;
+                case 'response':
+                    aVal = a.dataset.response;
+                    bVal = b.dataset.response;
+                    break;
+                case 'validation':
+                    const order = { 'not-met': 0, 'pending': 1, 'met': 2 };
+                    aVal = order[a.dataset.validation] ?? 1;
+                    bVal = order[b.dataset.validation] ?? 1;
+                    break;
+                default:
+                    aVal = 0;
+                    bVal = 0;
+            }
+            
+            if (typeof aVal === 'string') {
+                return direction === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            }
+            return direction === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+        
+        rows.forEach(row => tbody.appendChild(row));
+    }
+    
+    // =====================================================
+    // SELECTION FUNCTIONALITY
+    // =====================================================
+    
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    selectAllCheckbox.addEventListener('change', function() {
+        document.querySelectorAll('#validationTableBody tr:not([style*="display: none"]) .row-select').forEach(cb => {
+            cb.checked = this.checked;
+        });
+        updateSelectedCount();
+    });
+    
+    tbody.addEventListener('change', function(e) {
+        if (e.target.classList.contains('row-select')) {
+            updateSelectedCount();
+        }
+    });
+    
+    document.getElementById('selectAll').addEventListener('click', function() {
+        document.querySelectorAll('#validationTableBody tr:not([style*="display: none"]) .row-select').forEach(cb => cb.checked = true);
+        selectAllCheckbox.checked = true;
+        updateSelectedCount();
+    });
+    
+    document.getElementById('selectNone').addEventListener('click', function() {
+        document.querySelectorAll('.row-select').forEach(cb => cb.checked = false);
+        selectAllCheckbox.checked = false;
+        updateSelectedCount();
+    });
+    
+    document.getElementById('selectNotMet').addEventListener('click', function() {
+        document.querySelectorAll('.row-select').forEach(cb => {
+            const row = cb.closest('tr');
+            cb.checked = row.dataset.validation === 'not-met';
+        });
+        updateSelectedCount();
+    });
+    
+    function updateSelectedCount() {
+        const visible = document.querySelectorAll('#validationTableBody tr:not([style*="display: none"])');
+        const selected = document.querySelectorAll('#validationTableBody tr:not([style*="display: none"]) .row-select:checked');
+        document.getElementById('selectedCount').textContent = `${selected.length} of ${visible.length} selected`;
+        
+        // Update filtered fields for form submission
+        const selectedFields = [];
+        document.querySelectorAll('.row-select:checked').forEach(cb => {
+            const row = cb.closest('tr');
+            if (row.dataset.field) {
+                selectedFields.push(row.dataset.field);
+            }
+        });
+        document.getElementById('filteredFieldsInput').value = JSON.stringify(selectedFields);
+    }
+    
+    // Initial count
+    updateSelectedCount();
+    
+    // =====================================================
+    // SAVE ADMIN REPLIES
+    // =====================================================
+    
+    document.getElementById('saveAdminReplies').addEventListener('click', async function() {
+        const replies = {};
+        document.querySelectorAll('.admin-reply').forEach(textarea => {
+            if (textarea.value.trim()) {
+                replies[textarea.dataset.field] = textarea.value.trim();
+            }
+        });
+        
+        const btn = this;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
+        
+        try {
+            const response = await fetch(`/admin/submissions/${submissionId}/admin-comments`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ comments: replies })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                btn.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saved!';
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-success');
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            btn.innerHTML = '<i class="bi bi-x-lg me-1"></i> Error';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-danger');
+        }
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.classList.remove('btn-success', 'btn-danger');
+            btn.classList.add('btn-primary');
+            btn.disabled = false;
+        }, 2000);
+    });
+    
+    // =====================================================
+    // SEND BACK FORM VALIDATION
+    // =====================================================
+    
+    document.getElementById('sendBackForm').addEventListener('submit', function(e) {
+        const selectedFields = JSON.parse(document.getElementById('filteredFieldsInput').value || '[]');
+        
+        if (selectedFields.length === 0) {
+            e.preventDefault();
+            alert('Please select at least one field to send for re-validation.');
+            return false;
+        }
+        
+        if (!confirm(`Send ${selectedFields.length} field(s) back to client for re-validation?`)) {
+            e.preventDefault();
+            return false;
+        }
+    });
 });
 </script>

@@ -1,0 +1,366 @@
+{{!-- views/user/submission-validation.hbs --}}
+{{!-- User-facing validation form --}}
+
+<div class="container py-4">
+    {{!-- Header --}}
+    <div class="row justify-content-center mb-4">
+        <div class="col-lg-10">
+            <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-2">
+                            <li class="breadcrumb-item"><a href="/form/{{code}}">My Forms</a></li>
+                            <li class="breadcrumb-item"><a href="/validate/submission/{{code}}/{{submission.id}}">Submission</a></li>
+                            <li class="breadcrumb-item active">Validate</li>
+                        </ol>
+                    </nav>
+                    <h2 class="mb-1">
+                        <i class="bi bi-check2-square me-2"></i>
+                        Validate Requirements
+                    </h2>
+                    <p class="text-muted mb-0">
+                        Review and confirm each requirement for {{submission.formName}}
+                    </p>
+                </div>
+                
+                <a href="/validate/submission/{{code}}/{{submission.id}}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to Submission
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            {{!-- Instructions --}}
+            <div class="alert alert-info mb-4">
+                <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Instructions</h5>
+                <p class="mb-0">Please review each requirement below and indicate whether it has been met. Add any comments or clarifications as needed. Once you submit your validation, the administrator will review it.</p>
+            </div>
+
+            {{#if isFiltered}}
+            {{!-- Filtered notice --}}
+            <div class="alert alert-warning mb-4">
+                <i class="bi bi-funnel me-2"></i>
+                <strong>Note:</strong> The administrator has requested re-validation for specific requirements only. Please review and update your responses for the items shown below.
+            </div>
+            {{/if}}
+
+            {{!-- Summary Cards --}}
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-light text-center py-3">
+                        <h6 class="text-muted mb-1">Total</h6>
+                        <h3 class="mb-0" id="totalCount">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white text-center py-3">
+                        <h6 class="mb-1">Met</h6>
+                        <h3 class="mb-0" id="metCount">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white text-center py-3">
+                        <h6 class="mb-1">Not Met</h6>
+                        <h3 class="mb-0" id="notMetCount">0</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-secondary text-white text-center py-3">
+                        <h6 class="mb-1">Pending</h6>
+                        <h3 class="mb-0" id="pendingCount">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Progress --}}
+            <div class="mb-4">
+                <div class="d-flex justify-content-between mb-1">
+                    <span>Validation Progress</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div class="progress" style="height: 20px;">
+                    <div class="progress-bar bg-success" id="progressBarMet" style="width: 0%"></div>
+                    <div class="progress-bar bg-danger" id="progressBarNotMet" style="width: 0%"></div>
+                </div>
+            </div>
+
+            {{!-- Validation Form --}}
+            <form id="validationForm" method="POST" action="/validate/submission/{{code}}/{{submission.id}}/validate">
+                <div class="card">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-clipboard-check me-2"></i>
+                            Requirements Checklist
+                        </h5>
+                        <button type="button" class="btn btn-sm btn-light" id="markAllMet">
+                            <i class="bi bi-check-all me-1"></i> Mark All Met
+                        </button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 5%;">#</th>
+                                        <th style="width: 25%;">Requirement</th>
+                                        <th style="width: 20%;">Your Response</th>
+                                        <th style="width: 12%; text-align: center;">Status</th>
+                                        <th style="width: 20%;">Your Comments</th>
+                                        <th style="width: 18%;">Admin Notes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="validationTableBody">
+                                    {{!-- Populated by JavaScript --}}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="text-muted" id="saveStatus">
+                                <i class="bi bi-info-circle me-1"></i>
+                                Please validate all requirements before submitting
+                            </span>
+                            <div>
+                                <a href="/validate/submission/{{code}}/{{submission.id}}" class="btn btn-outline-secondary me-2">
+                                    Cancel
+                                </a>
+                                <button type="submit" class="btn btn-success btn-lg" id="submitBtn">
+                                    <i class="bi bi-send me-1"></i>
+                                    Submit Validation
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <input type="hidden" name="validationData" id="validationDataInput" value="">
+            </form>
+
+            {{!-- Warning --}}
+            <div class="alert alert-warning mt-4">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>Important:</strong> Once you submit your validation, you will not be able to make changes until the administrator sends it back for review.
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.validation-row.validated-yes {
+    background-color: rgba(25, 135, 84, 0.1) !important;
+}
+.validation-row.validated-no {
+    background-color: rgba(220, 53, 69, 0.1) !important;
+}
+.comment-input {
+    min-height: 60px;
+    font-size: 0.9rem;
+}
+.admin-note {
+    background-color: #e7f3ff;
+    border-left: 3px solid #0d6efd;
+    padding: 0.5rem;
+    border-radius: 0 4px 4px 0;
+    font-size: 0.85rem;
+    color: #0d4482;
+}
+.admin-note i {
+    color: #0d6efd;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const parsedData = {{{json parsedData}}};
+    const userValidationData = {{{json userValidationData}}};
+    const adminComments = {{{json adminComments}}};
+    
+    const tbody = document.getElementById('validationTableBody');
+    let rowNum = 0;
+    
+    // Build table rows
+    for (const [key, value] of Object.entries(parsedData)) {
+        if (key.startsWith('_') || key === 'metadata') continue;
+        
+        rowNum++;
+        
+        const label = key
+            .replace(/_/g, ' ')
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/^./, str => str.toUpperCase())
+            .trim();
+        
+        const fieldValidation = userValidationData[key] || {};
+        const isMet = fieldValidation.met === 'yes';
+        const isNotMet = fieldValidation.met === 'no';
+        const comment = fieldValidation.comment || '';
+        const adminNote = adminComments[key] || '';
+        
+        let displayValue = '';
+        if (typeof value === 'boolean') {
+            displayValue = value 
+                ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>' 
+                : '<span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>';
+        } else if (typeof value === 'object' && value !== null) {
+            displayValue = '<pre class="mb-0 bg-light p-2 rounded small" style="white-space: pre-wrap; max-height: 80px; overflow-y: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+        } else if (value) {
+            displayValue = '<span class="text-break small">' + String(value).substring(0, 150) + (String(value).length > 150 ? '...' : '') + '</span>';
+        } else {
+            displayValue = '<span class="text-muted fst-italic">No response</span>';
+        }
+        
+        const row = document.createElement('tr');
+        row.className = 'validation-row' + (isMet ? ' validated-yes' : '') + (isNotMet ? ' validated-no' : '');
+        row.dataset.field = key;
+        
+        row.innerHTML = `
+            <td class="text-muted">${rowNum}</td>
+            <td><strong>${label}</strong></td>
+            <td>${displayValue}</td>
+            <td class="text-center">
+                <div class="btn-group" role="group">
+                    <input type="radio" class="btn-check validation-check" name="val_${key}" 
+                           id="yes_${key}" value="yes" ${isMet ? 'checked' : ''}>
+                    <label class="btn btn-outline-success btn-sm" for="yes_${key}">
+                        <i class="bi bi-check-lg"></i> Met
+                    </label>
+                    <input type="radio" class="btn-check validation-check" name="val_${key}" 
+                           id="no_${key}" value="no" ${isNotMet ? 'checked' : ''}>
+                    <label class="btn btn-outline-danger btn-sm" for="no_${key}">
+                        <i class="bi bi-x-lg"></i> Not Met
+                    </label>
+                </div>
+            </td>
+            <td>
+                <textarea class="form-control comment-input" data-field="${key}" 
+                          placeholder="Add comments (optional)...">${comment}</textarea>
+            </td>
+            <td>
+                ${adminNote 
+                    ? '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>' 
+                    : '<span class="text-muted fst-italic small">No notes</span>'}
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    }
+    
+    // Update stats
+    function updateStats() {
+        const rows = document.querySelectorAll('.validation-row');
+        let total = rows.length;
+        let met = 0;
+        let notMet = 0;
+        let pending = 0;
+
+        rows.forEach(row => {
+            const yesRadio = row.querySelector('input[value="yes"]');
+            const noRadio = row.querySelector('input[value="no"]');
+            
+            row.classList.remove('validated-yes', 'validated-no');
+            
+            if (yesRadio && yesRadio.checked) {
+                met++;
+                row.classList.add('validated-yes');
+            } else if (noRadio && noRadio.checked) {
+                notMet++;
+                row.classList.add('validated-no');
+            } else {
+                pending++;
+            }
+        });
+
+        document.getElementById('totalCount').textContent = total;
+        document.getElementById('metCount').textContent = met;
+        document.getElementById('notMetCount').textContent = notMet;
+        document.getElementById('pendingCount').textContent = pending;
+
+        const validated = met + notMet;
+        const percentValidated = total > 0 ? Math.round((validated / total) * 100) : 0;
+        const percentMet = total > 0 ? Math.round((met / total) * 100) : 0;
+        const percentNotMet = total > 0 ? Math.round((notMet / total) * 100) : 0;
+        
+        document.getElementById('progressPercent').textContent = percentValidated + '% complete';
+        document.getElementById('progressBarMet').style.width = percentMet + '%';
+        document.getElementById('progressBarNotMet').style.width = percentNotMet + '%';
+        
+        // Update submit button state
+        const submitBtn = document.getElementById('submitBtn');
+        const saveStatus = document.getElementById('saveStatus');
+        
+        if (pending === 0) {
+            submitBtn.disabled = false;
+            saveStatus.innerHTML = '<i class="bi bi-check-circle text-success me-1"></i> All requirements validated - ready to submit';
+        } else {
+            submitBtn.disabled = false; // Allow partial submission
+            saveStatus.innerHTML = '<i class="bi bi-exclamation-circle text-warning me-1"></i> ' + pending + ' requirement(s) still pending';
+        }
+    }
+
+    // Initial count
+    updateStats();
+
+    // Update on change
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('validation-check')) {
+            updateStats();
+        }
+    });
+
+    // Mark all as met
+    document.getElementById('markAllMet').addEventListener('click', function() {
+        document.querySelectorAll('input[value="yes"]').forEach(input => {
+            input.checked = true;
+        });
+        updateStats();
+    });
+
+    // Build JSON before submit
+    document.getElementById('validationForm').addEventListener('submit', function(e) {
+        const validation = {};
+        
+        document.querySelectorAll('.validation-row').forEach(row => {
+            const field = row.dataset.field;
+            const yesRadio = row.querySelector('input[value="yes"]');
+            const noRadio = row.querySelector('input[value="no"]');
+            const commentInput = row.querySelector('.comment-input');
+            
+            let met = null;
+            if (yesRadio && yesRadio.checked) met = 'yes';
+            else if (noRadio && noRadio.checked) met = 'no';
+            
+            const comment = commentInput ? commentInput.value.trim() : '';
+            
+            validation[field] = { met, comment };
+        });
+        
+        document.getElementById('validationDataInput').value = JSON.stringify(validation);
+        
+        // Show loading
+        const submitBtn = document.getElementById('submitBtn');
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Submitting...';
+        submitBtn.disabled = true;
+    });
+
+    // Warn before leaving
+    let hasChanges = false;
+    document.addEventListener('change', function() { hasChanges = true; });
+    document.querySelectorAll('.comment-input').forEach(input => {
+        input.addEventListener('input', function() { hasChanges = true; });
+    });
+    
+    window.addEventListener('beforeunload', function(e) {
+        if (hasChanges) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+    
+    document.getElementById('validationForm').addEventListener('submit', function() {
+        hasChanges = false;
+    });
+});
+</script>

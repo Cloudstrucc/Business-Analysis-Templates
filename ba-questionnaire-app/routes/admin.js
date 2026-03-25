@@ -794,18 +794,62 @@ router.get('/submissions/:id/user-validation', async (req, res) => {
             adminValidationData = db.getSubmissionValidation(req.params.id);
         } catch (e) {}
         
+        // Get admin comments/replies
+        let adminComments = {};
+        try {
+            adminComments = db.getSubmissionAdminComments(req.params.id);
+        } catch (e) {}
+        
+        // Get audit log
+        let auditLog = [];
+        try {
+            auditLog = db.getAuditLog(req.params.id);
+        } catch (e) {}
+        
         res.render('admin/user-validation-view', {
             title: `Client Validation: ${submission.clientName}`,
             layout: 'admin',
             submission,
             parsedData,
             userValidationData,
-            adminValidationData
+            adminValidationData,
+            adminComments,
+            auditLog
         });
     } catch (error) {
         console.error('User validation view error:', error);
         req.flash('error', 'Error loading validation data');
         res.redirect(`/admin/submissions/${req.params.id}`);
+    }
+});
+
+// =============================================================
+// GET AUDIT LOG (JSON endpoint for modal)
+// =============================================================
+router.get('/submissions/:id/audit-log', async (req, res) => {
+    try {
+        const auditLog = db.getAuditLog(req.params.id);
+        res.json({ success: true, auditLog });
+    } catch (error) {
+        console.error('Audit log error:', error);
+        res.status(500).json({ success: false, error: 'Error fetching audit log' });
+    }
+});
+
+// =============================================================
+// SAVE ADMIN COMMENTS/REPLIES
+// =============================================================
+router.post('/submissions/:id/admin-comments', async (req, res) => {
+    try {
+        const { comments } = req.body;
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        
+        db.updateSubmissionAdminComments(req.params.id, comments, adminEmail);
+        
+        res.json({ success: true, message: 'Admin comments saved' });
+    } catch (error) {
+        console.error('Save admin comments error:', error);
+        res.status(500).json({ success: false, error: 'Error saving comments' });
     }
 });
 
@@ -821,8 +865,22 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
             return res.redirect('/admin/submissions');
         }
         
-        // Update submission status to allow user validation
-        db.updateSubmissionValidationStatus(req.params.id, 'pending_user_validation');
+        // Get filtered fields from request body (if any)
+        let filteredFields = null;
+        if (req.body.filteredFields) {
+            try {
+                filteredFields = typeof req.body.filteredFields === 'string' 
+                    ? JSON.parse(req.body.filteredFields) 
+                    : req.body.filteredFields;
+            } catch (e) {
+                console.error('Error parsing filtered fields:', e);
+            }
+        }
+        
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        
+        // Update submission status to allow user validation (with filtered fields)
+        db.updateSubmissionValidationStatus(req.params.id, 'pending_user_validation', adminEmail, filteredFields);
         
         // Send email notification to user if email service is configured
         if (submission.clientEmail) {
@@ -832,7 +890,7 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
                     to: submission.clientEmail,
                     clientName: submission.clientName,
                     formTitle: submission.formName,
-                    validationLink: `${baseUrl}/validate/${submission.inviteCode}/${submission.id}`
+                    validationLink: `${baseUrl}/validate/submission/${submission.inviteCode}/${submission.id}/validate`
                 });
                 req.flash('success', `Validation request sent to ${submission.clientEmail}`);
             } catch (emailError) {
