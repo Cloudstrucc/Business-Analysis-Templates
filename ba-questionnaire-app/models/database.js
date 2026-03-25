@@ -2,6 +2,7 @@ const initSqlJs = require('sql.js');
 const fs = require('fs');
 const path = require('path');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const DB_PATH = path.join(__dirname, '..', 'data', 'questionnaire.db');
 const DATA_DIR = path.join(__dirname, '..', 'data');
@@ -129,12 +130,70 @@ async function initDatabase() {
     )
   `);
 
+  // Create submission_approvals table for approval workflow
+  db.run(`
+    CREATE TABLE IF NOT EXISTS submission_approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_id INTEGER NOT NULL UNIQUE,
+      
+      client_name TEXT NOT NULL,
+      client_email TEXT NOT NULL,
+      client_access_code TEXT UNIQUE,
+      client_approved_at DATETIME,
+      client_comments TEXT,
+      
+      sponsor_name TEXT NOT NULL,
+      sponsor_email TEXT NOT NULL,
+      sponsor_access_code TEXT UNIQUE,
+      sponsor_approved_at DATETIME,
+      sponsor_comments TEXT,
+      
+      executive_name TEXT NOT NULL,
+      executive_email TEXT NOT NULL,
+      executive_access_code TEXT UNIQUE,
+      executive_approved_at DATETIME,
+      executive_comments TEXT,
+      
+      initiated_by TEXT,
+      initiated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      completed_at DATETIME,
+      status TEXT DEFAULT 'pending',
+      
+      FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
+    )
+  `);
+
   // Add validation_data column if it doesn't exist (migration)
   try {
     db.run(`ALTER TABLE submissions ADD COLUMN validation_data TEXT`);
   } catch (e) {
     // Column likely already exists
   }
+
+  // Add user_validation_data column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN user_validation_data TEXT`);
+  } catch (e) {}
+
+  // Add validation_status column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN validation_status TEXT DEFAULT 'none'`);
+  } catch (e) {}
+
+  // Add filtered_fields column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN filtered_fields TEXT`);
+  } catch (e) {}
+
+  // Add admin_comments column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN admin_comments TEXT`);
+  } catch (e) {}
+
+  // Add approval_status column if it doesn't exist
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN approval_status TEXT DEFAULT 'none'`);
+  } catch (e) {}
 
   // Create default admin if not exists
   const adminEmail = process.env.ADMIN_EMAIL || 'admin@cloudstrucc.com';
@@ -250,13 +309,12 @@ function getInviteById(id) {
 }
 
 function createInvite(data) {
-  const { code, clientEmail, clientName, clientCompany, expiresAt, submissionDeadline, createdBy } = data;
+  const { code, clientEmail, clientName, clientCompany, createdBy, expiresAt, submissionDeadline } = data;
   const id = run(`
-    INSERT INTO invites (code, client_email, client_name, client_company, expires_at, submission_deadline, created_by)
+    INSERT INTO invites (code, client_email, client_name, client_company, created_by, expires_at, submission_deadline)
     VALUES (?, ?, ?, ?, ?, ?, ?)
-  `, [code, clientEmail, clientName, clientCompany || null, expiresAt, submissionDeadline || null, createdBy || null]);
-  
-  console.log('Created invite with ID:', id, 'Code:', code);
+  `, [code, clientEmail, clientName, clientCompany || null, createdBy || null, expiresAt, submissionDeadline || null]);
+  saveDatabase();
   return { id, code };
 }
 
@@ -272,7 +330,6 @@ function revokeInvite(id) {
 }
 
 function addFormToInvite(inviteId, formId) {
-  console.log('Adding form', formId, 'to invite', inviteId);
   run(`INSERT OR IGNORE INTO invite_forms (invite_id, form_id) VALUES (?, ?)`, [inviteId, formId]);
   saveDatabase();
 }
@@ -280,19 +337,18 @@ function addFormToInvite(inviteId, formId) {
 function getInviteForms(inviteId) {
   return all(`
     SELECT f.* FROM forms f
-    JOIN invite_forms if ON f.id = if.form_id
-    WHERE if.invite_id = ?
+    INNER JOIN invite_forms inf ON f.id = inf.form_id
+    WHERE inf.invite_id = ?
   `, [inviteId]);
 }
 
 function markInviteAccessed(code) {
-  const now = new Date().toISOString();
   const invite = getInviteByCode(code);
   if (invite) {
     if (!invite.first_accessed_at) {
-      run(`UPDATE invites SET first_accessed_at = ?, last_accessed_at = ? WHERE code = ?`, [now, now, code]);
+      run(`UPDATE invites SET first_accessed_at = CURRENT_TIMESTAMP, last_accessed_at = CURRENT_TIMESTAMP WHERE code = ?`, [code]);
     } else {
-      run(`UPDATE invites SET last_accessed_at = ? WHERE code = ?`, [now, code]);
+      run(`UPDATE invites SET last_accessed_at = CURRENT_TIMESTAMP WHERE code = ?`, [code]);
     }
     saveDatabase();
   }
@@ -303,46 +359,49 @@ function markInviteAccessed(code) {
 // ============================================================
 function getAllSubmissions() {
   return all(`
-    SELECT s.*, 
-           i.client_name as clientName, 
-           i.client_email as clientEmail,
-           i.client_company as companyName,
-           i.code as inviteCode,
-           f.title as formName,
-           f.slug as formSlug
+    SELECT 
+      s.*,
+      i.client_name as clientName,
+      i.client_email as clientEmail,
+      i.client_company as companyName,
+      i.code as inviteCode,
+      f.title as formName,
+      f.slug as formSlug
     FROM submissions s
     LEFT JOIN invites i ON s.invite_id = i.id
     LEFT JOIN forms f ON s.form_id = f.id
-    ORDER BY COALESCE(s.submitted_at, s.updated_at) DESC
+    ORDER BY s.updated_at DESC
   `);
 }
 
 function getRecentSubmissions(limit = 5) {
   return all(`
-    SELECT s.*, 
-           i.client_name as clientName, 
-           i.client_email as clientEmail,
-           i.client_company as companyName,
-           i.code as inviteCode,
-           f.title as formName,
-           f.slug as formSlug
+    SELECT 
+      s.*,
+      i.client_name as clientName,
+      i.client_email as clientEmail,
+      i.client_company as companyName,
+      i.code as inviteCode,
+      f.title as formName,
+      f.slug as formSlug
     FROM submissions s
     LEFT JOIN invites i ON s.invite_id = i.id
     LEFT JOIN forms f ON s.form_id = f.id
-    ORDER BY COALESCE(s.submitted_at, s.updated_at) DESC
+    ORDER BY s.updated_at DESC
     LIMIT ?
   `, [limit]);
 }
 
 function getSubmissionById(id) {
   return get(`
-    SELECT s.*, 
-           i.client_name as clientName, 
-           i.client_email as clientEmail,
-           i.client_company as companyName,
-           i.code as inviteCode,
-           f.title as formName,
-           f.slug as formSlug
+    SELECT 
+      s.*,
+      i.client_name as clientName,
+      i.client_email as clientEmail,
+      i.client_company as companyName,
+      i.code as inviteCode,
+      f.title as formName,
+      f.slug as formSlug
     FROM submissions s
     LEFT JOIN invites i ON s.invite_id = i.id
     LEFT JOIN forms f ON s.form_id = f.id
@@ -356,40 +415,36 @@ function getSubmissionByInviteAndForm(inviteId, formId) {
 
 function createSubmission(inviteId, formId, data = '{}') {
   const id = run(`
-    INSERT INTO submissions (invite_id, form_id, data, status, progress)
-    VALUES (?, ?, ?, 'in_progress', 0)
+    INSERT INTO submissions (invite_id, form_id, data, progress, status)
+    VALUES (?, ?, ?, 0, 'in_progress')
   `, [inviteId, formId, typeof data === 'string' ? data : JSON.stringify(data)]);
   saveDatabase();
-  return { id };
+  return id;
 }
 
-function updateSubmissionData(id, data, progress = null) {
-  const dataJson = typeof data === 'string' ? data : JSON.stringify(data);
-  if (progress !== null) {
-    run(`UPDATE submissions SET data = ?, progress = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [dataJson, progress, id]);
-  } else {
-    run(`UPDATE submissions SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [dataJson, id]);
-  }
+function updateSubmissionData(id, data, progress) {
+  const dataString = typeof data === 'string' ? data : JSON.stringify(data);
+  run(`UPDATE submissions SET data = ?, progress = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, 
+    [dataString, progress, id]);
   saveDatabase();
 }
 
 function submitSubmission(id) {
-  run(`UPDATE submissions SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP, progress = 100 WHERE id = ?`, [id]);
+  run(`UPDATE submissions SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [id]);
   saveDatabase();
 }
 
 function deleteSubmission(id) {
-  run(`DELETE FROM attachments WHERE submissionId = ?`, [id]);
   run(`DELETE FROM submissions WHERE id = ?`, [id]);
   saveDatabase();
 }
 
 // ============================================================
-// VALIDATION (NEW)
+// VALIDATION (Admin)
 // ============================================================
 function updateSubmissionValidation(id, validationData) {
   const validationJson = typeof validationData === 'string' ? validationData : JSON.stringify(validationData);
-  run(`UPDATE submissions SET validation_data = ? WHERE id = ?`, [validationJson, id]);
+  run(`UPDATE submissions SET validation_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`, [validationJson, id]);
   saveDatabase();
 }
 
@@ -405,48 +460,22 @@ function getSubmissionValidation(id) {
   return {};
 }
 
-// Validation workflow status management
-function updateSubmissionValidationStatus(id, validationStatus, actor = 'admin@cloudstrucc.com', filteredFields = null) {
-  // Add validation_status column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN validation_status TEXT DEFAULT 'none'`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  
-  // Add filtered_fields column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN filtered_fields TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  
-  // Add admin_comments column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN admin_comments TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
-  
-  // Map validation status to main status
-  let mainStatus = null;
-  let auditAction = validationStatus;
-  
+// Validation status tracking
+function updateSubmissionValidationStatus(id, validationStatus, actor = 'admin', filteredFields = null) {
+  // Update status to waiting_for_validation when sending to client
+  let auditAction = 'validation_status_updated';
   if (validationStatus === 'pending_user_validation') {
-    mainStatus = 'waiting_for_validation';
+    run(`UPDATE submissions SET status = 'waiting_for_validation' WHERE id = ?`, [id]);
     auditAction = 'sent_for_validation';
-  } else if (validationStatus === 'user_submitted') {
-    mainStatus = 'submitted';
-    auditAction = 'user_validated';
   }
   
-  // Update both validation_status and optionally the main status
-  if (mainStatus) {
-    if (filteredFields) {
-      const filteredJson = typeof filteredFields === 'string' ? filteredFields : JSON.stringify(filteredFields);
-      run(`UPDATE submissions SET validation_status = ?, status = ?, filtered_fields = ? WHERE id = ?`, [validationStatus, mainStatus, filteredJson, id]);
+  // Store filtered fields if provided
+  if (filteredFields !== null) {
+    const filteredJson = typeof filteredFields === 'string' ? filteredFields : JSON.stringify(filteredFields);
+    if (filteredFields && (Array.isArray(filteredFields) ? filteredFields.length > 0 : true)) {
+      run(`UPDATE submissions SET validation_status = ?, filtered_fields = ? WHERE id = ?`, [validationStatus, filteredJson, id]);
     } else {
-      run(`UPDATE submissions SET validation_status = ?, status = ? WHERE id = ?`, [validationStatus, mainStatus, id]);
+      run(`UPDATE submissions SET validation_status = ? WHERE id = ?`, [validationStatus, id]);
     }
   } else {
     run(`UPDATE submissions SET validation_status = ? WHERE id = ?`, [validationStatus, id]);
@@ -478,12 +507,6 @@ function getSubmissionFilteredFields(id) {
 
 // User validation data (separate from admin validation)
 function updateSubmissionUserValidation(id, userValidationData, actor = 'user') {
-  // Add user_validation_data column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN user_validation_data TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
   const validationJson = typeof userValidationData === 'string' ? userValidationData : JSON.stringify(userValidationData);
   
   // Count met/not met
@@ -505,12 +528,6 @@ function updateSubmissionUserValidation(id, userValidationData, actor = 'user') 
 
 // Admin comments/replies to user validation
 function updateSubmissionAdminComments(id, adminComments, actor = 'admin@cloudstrucc.com') {
-  // Add admin_comments column if it doesn't exist
-  try {
-    run(`ALTER TABLE submissions ADD COLUMN admin_comments TEXT`);
-  } catch (e) {
-    // Column likely already exists
-  }
   const commentsJson = typeof adminComments === 'string' ? adminComments : JSON.stringify(adminComments);
   run(`UPDATE submissions SET admin_comments = ? WHERE id = ?`, [commentsJson, id]);
   
@@ -546,6 +563,185 @@ function getSubmissionUserValidation(id) {
 }
 
 // ============================================================
+// APPROVAL WORKFLOW
+// ============================================================
+function generateAccessCode() {
+  return crypto.randomBytes(16).toString('hex');
+}
+
+function createApproval(submissionId, data) {
+  const { clientName, clientEmail, sponsorName, sponsorEmail, executiveName, executiveEmail, initiatedBy } = data;
+  
+  const clientAccessCode = generateAccessCode();
+  const sponsorAccessCode = generateAccessCode();
+  const executiveAccessCode = generateAccessCode();
+  
+  const id = run(`
+    INSERT INTO submission_approvals (
+      submission_id, 
+      client_name, client_email, client_access_code,
+      sponsor_name, sponsor_email, sponsor_access_code,
+      executive_name, executive_email, executive_access_code,
+      initiated_by, status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
+  `, [
+    submissionId,
+    clientName, clientEmail, clientAccessCode,
+    sponsorName, sponsorEmail, sponsorAccessCode,
+    executiveName, executiveEmail, executiveAccessCode,
+    initiatedBy
+  ]);
+  
+  // Update submission approval status
+  run(`UPDATE submissions SET approval_status = 'pending_approval' WHERE id = ?`, [submissionId]);
+  
+  // Add audit log
+  addAuditLog(submissionId, 'approval_initiated', initiatedBy, 'admin', {
+    stakeholders: [
+      { role: 'client', name: clientName, email: clientEmail },
+      { role: 'sponsor', name: sponsorName, email: sponsorEmail },
+      { role: 'executive', name: executiveName, email: executiveEmail }
+    ]
+  });
+  
+  saveDatabase();
+  
+  return {
+    id,
+    clientAccessCode,
+    sponsorAccessCode,
+    executiveAccessCode
+  };
+}
+
+function getApprovalBySubmissionId(submissionId) {
+  return get(`SELECT * FROM submission_approvals WHERE submission_id = ?`, [submissionId]);
+}
+
+function getApprovalByAccessCode(accessCode) {
+  const approval = get(`
+    SELECT * FROM submission_approvals 
+    WHERE client_access_code = ? OR sponsor_access_code = ? OR executive_access_code = ?
+  `, [accessCode, accessCode, accessCode]);
+  
+  if (approval) {
+    // Determine which role this access code belongs to
+    if (approval.client_access_code === accessCode) {
+      approval.accessRole = 'client';
+      approval.accessName = approval.client_name;
+      approval.accessEmail = approval.client_email;
+    } else if (approval.sponsor_access_code === accessCode) {
+      approval.accessRole = 'sponsor';
+      approval.accessName = approval.sponsor_name;
+      approval.accessEmail = approval.sponsor_email;
+    } else if (approval.executive_access_code === accessCode) {
+      approval.accessRole = 'executive';
+      approval.accessName = approval.executive_name;
+      approval.accessEmail = approval.executive_email;
+    }
+  }
+  
+  return approval;
+}
+
+function canApprove(approval, role) {
+  switch (role) {
+    case 'client':
+      return !approval.client_approved_at;
+    case 'sponsor':
+      return approval.client_approved_at && !approval.sponsor_approved_at;
+    case 'executive':
+      return approval.sponsor_approved_at && !approval.executive_approved_at;
+    default:
+      return false;
+  }
+}
+
+function submitApproval(accessCode, comments = '') {
+  const approval = getApprovalByAccessCode(accessCode);
+  if (!approval) return { success: false, error: 'Invalid access code' };
+  
+  const role = approval.accessRole;
+  
+  // Check if it's their turn
+  if (!canApprove(approval, role)) {
+    if (role === 'sponsor' && !approval.client_approved_at) {
+      return { success: false, error: 'Waiting for client approval' };
+    }
+    if (role === 'executive' && !approval.sponsor_approved_at) {
+      return { success: false, error: 'Waiting for sponsor approval' };
+    }
+    return { success: false, error: 'Already approved or not your turn' };
+  }
+  
+  // Update the appropriate approval field
+  const now = new Date().toISOString();
+  let updateSql = '';
+  let auditAction = '';
+  
+  switch (role) {
+    case 'client':
+      updateSql = `UPDATE submission_approvals SET client_approved_at = ?, client_comments = ? WHERE id = ?`;
+      auditAction = 'client_approved';
+      break;
+    case 'sponsor':
+      updateSql = `UPDATE submission_approvals SET sponsor_approved_at = ?, sponsor_comments = ? WHERE id = ?`;
+      auditAction = 'sponsor_approved';
+      break;
+    case 'executive':
+      updateSql = `UPDATE submission_approvals SET executive_approved_at = ?, executive_comments = ? WHERE id = ?`;
+      auditAction = 'executive_approved';
+      break;
+  }
+  
+  run(updateSql, [now, comments, approval.id]);
+  
+  // Add audit log
+  addAuditLog(approval.submission_id, auditAction, approval.accessEmail, 'stakeholder', {
+    role: role,
+    name: approval.accessName,
+    comments: comments || null
+  });
+  
+  // Check if all approvals are complete
+  const updatedApproval = getApprovalBySubmissionId(approval.submission_id);
+  if (updatedApproval.client_approved_at && updatedApproval.sponsor_approved_at && updatedApproval.executive_approved_at) {
+    // All approved - mark as complete
+    run(`UPDATE submission_approvals SET status = 'completed', completed_at = ? WHERE id = ?`, [now, approval.id]);
+    run(`UPDATE submissions SET approval_status = 'approved' WHERE id = ?`, [approval.submission_id]);
+    
+    // Add completion audit log
+    addAuditLog(approval.submission_id, 'approval_completed', 'system', 'system', {
+      completedAt: now
+    });
+  }
+  
+  saveDatabase();
+  
+  return { success: true, role: role, isComplete: updatedApproval.client_approved_at && updatedApproval.sponsor_approved_at && updatedApproval.executive_approved_at };
+}
+
+function getApprovalStatus(submissionId) {
+  const approval = getApprovalBySubmissionId(submissionId);
+  if (!approval) return null;
+  
+  let approvedCount = 0;
+  if (approval.client_approved_at) approvedCount++;
+  if (approval.sponsor_approved_at) approvedCount++;
+  if (approval.executive_approved_at) approvedCount++;
+  
+  return {
+    ...approval,
+    approvedCount,
+    totalCount: 3,
+    isComplete: approvedCount === 3,
+    nextApprover: !approval.client_approved_at ? 'client' : 
+                  !approval.sponsor_approved_at ? 'sponsor' : 
+                  !approval.executive_approved_at ? 'executive' : null
+  };
+}
+
+// ============================================================
 // AUDIT LOG
 // ============================================================
 function addAuditLog(submissionId, action, actor, actorType = 'admin', details = {}) {
@@ -577,7 +773,7 @@ function getAuditLog(submissionId) {
 }
 
 // ============================================================
-// ATTACHMENTS (NEW)
+// ATTACHMENTS
 // ============================================================
 function addSubmissionAttachment(submissionId, data) {
   const { fileName, fileUrl, description, addedBy, addedAt } = data;
@@ -694,6 +890,13 @@ module.exports = {
   getSubmissionUserValidation,
   updateSubmissionAdminComments,
   getSubmissionAdminComments,
+  // Approval Workflow
+  createApproval,
+  getApprovalBySubmissionId,
+  getApprovalByAccessCode,
+  canApprove,
+  submitApproval,
+  getApprovalStatus,
   // Audit Log
   addAuditLog,
   getAuditLog,

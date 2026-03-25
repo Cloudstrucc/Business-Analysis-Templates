@@ -35,25 +35,23 @@ class EmailService {
     console.log('Email service initialized');
   }
 
+  isConfigured() {
+    return this.transporter !== null;
+  }
+
   /**
    * Send invite email to client
    */
-  async sendInvite({ to, clientName, inviteCode, forms, expiresAt, submissionDeadline }) {
+  async sendInvite({ to, clientName, inviteLink, forms, expiresAt, submissionDeadline }) {
     if (!this.transporter) {
       console.log('Email service not available. Would send invite to:', to);
       return { success: false, message: 'Email service not configured' };
     }
 
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-    const inviteLink = `${baseUrl}/form/${inviteCode}`;
-    
-    const formList = forms.map(f => `<li>${f.title}</li>`).join('');
+    const formList = forms.map(f => `<li>${f}</li>`).join('');
     const expiryDate = new Date(expiresAt).toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     });
-    const deadlineDate = submissionDeadline ? new Date(submissionDeadline).toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-    }) : null;
 
     const html = `
 <!DOCTYPE html>
@@ -64,16 +62,11 @@ class EmailService {
     body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { background: linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 100%); padding: 30px; text-align: center; }
-    .header img { max-width: 180px; }
     .header h1 { color: #00a8e8; margin: 15px 0 0; font-size: 24px; }
     .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; }
     .btn { display: inline-block; background: #00a8e8; color: #fff; padding: 14px 28px; text-decoration: none; border-radius: 5px; font-weight: 600; margin: 20px 0; }
-    .btn:hover { background: #0090c9; }
-    .code-box { background: #f5f5f5; border: 2px dashed #00a8e8; padding: 15px; text-align: center; margin: 20px 0; border-radius: 8px; }
-    .code { font-family: monospace; font-size: 24px; color: #0d1f3c; font-weight: bold; letter-spacing: 2px; }
     .forms-list { background: #f9f9f9; padding: 15px 20px; border-radius: 5px; margin: 20px 0; }
     .forms-list ul { margin: 10px 0; padding-left: 20px; }
-    .deadline { background: #fff3cd; border-left: 4px solid #ffc107; padding: 12px 15px; margin: 20px 0; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
     .footer a { color: #00a8e8; }
   </style>
@@ -87,7 +80,7 @@ class EmailService {
     <div class="content">
       <p>Hello <strong>${clientName}</strong>,</p>
       
-      <p>You have been invited to complete a business analysis requirements questionnaire as part of your project with Cloudstrucc Inc.</p>
+      <p>You have been invited to complete a business analysis requirements questionnaire.</p>
       
       <div class="forms-list">
         <strong>Questionnaire(s) to complete:</strong>
@@ -100,27 +93,9 @@ class EmailService {
         <a href="${inviteLink}" class="btn">Access Questionnaire</a>
       </p>
       
-      <div class="code-box">
-        <p style="margin: 0 0 5px; color: #666; font-size: 14px;">Your Access Code:</p>
-        <span class="code">${inviteCode}</span>
-        <p style="margin: 5px 0 0; font-size: 12px; color: #888;">Use this code to return to your questionnaire at any time</p>
-      </div>
+      <p><strong>This link expires:</strong> ${expiryDate}</p>
       
-      <p><strong>Direct Link:</strong> <a href="${inviteLink}">${inviteLink}</a></p>
-      
-      ${deadlineDate ? `
-      <div class="deadline">
-        <strong>⏰ Submission Deadline:</strong> ${deadlineDate}
-      </div>
-      ` : ''}
-      
-      <p><strong>Link Expires:</strong> ${expiryDate}</p>
-      
-      <p>Your progress is automatically saved, so you can complete the questionnaire across multiple sessions using the same access code.</p>
-      
-      <p>If you have any questions, please don't hesitate to reach out.</p>
-      
-      <p>Best regards,<br><strong>Cloudstrucc Inc.</strong></p>
+      <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
     </div>
     <div class="footer">
       <p>Cloudstrucc Inc. | Cloud Solutions & Digital Transformation</p>
@@ -131,44 +106,27 @@ class EmailService {
 </html>
     `;
 
-    const textVersion = `
-Hello ${clientName},
-
-You have been invited to complete a business analysis requirements questionnaire.
-
-Access your questionnaire here: ${inviteLink}
-
-Your Access Code: ${inviteCode}
-
-${deadlineDate ? `Submission Deadline: ${deadlineDate}` : ''}
-Link Expires: ${expiryDate}
-
-Best regards,
-Cloudstrucc Inc.
-    `;
-
     try {
       await this.transporter.sendMail({
         from: process.env.SMTP_FROM || process.env.SMTP_USER,
         to,
-        subject: 'Cloudstrucc - Business Analysis Requirements Questionnaire',
-        text: textVersion,
+        subject: `Cloudstrucc - Questionnaire Invitation`,
         html
       });
       return { success: true };
     } catch (error) {
-      console.error('Failed to send invite email:', error);
+      console.error('Failed to send invite:', error);
       return { success: false, message: error.message };
     }
   }
 
   /**
-   * Send submission confirmation to client
+   * Send confirmation email to client after submission
    */
   async sendClientConfirmation({ to, clientName, formTitle }) {
     if (!this.transporter) {
       console.log('Email service not available. Would send confirmation to:', to);
-      return { success: false };
+      return { success: false, message: 'Email service not configured' };
     }
 
     const html = `
@@ -182,8 +140,7 @@ Cloudstrucc Inc.
     .header { background: linear-gradient(135deg, #0d1f3c 0%, #1a3a5c 100%); padding: 30px; text-align: center; }
     .header h1 { color: #00a8e8; margin: 0; font-size: 24px; }
     .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; }
-    .success-box { background: #d4edda; border: 1px solid #c3e6cb; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
-    .success-box .icon { font-size: 48px; }
+    .success-icon { font-size: 48px; text-align: center; color: #27ae60; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 14px; }
   </style>
 </head>
@@ -193,20 +150,13 @@ Cloudstrucc Inc.
       <h1>Cloudstrucc Inc.</h1>
     </div>
     <div class="content">
-      <div class="success-box">
-        <div class="icon">✅</div>
-        <h2 style="color: #155724; margin: 10px 0;">Submission Received!</h2>
-      </div>
+      <p class="success-icon">✓</p>
       
       <p>Hello <strong>${clientName}</strong>,</p>
       
       <p>Thank you for completing the <strong>${formTitle}</strong> requirements questionnaire!</p>
       
-      <p>Your responses have been successfully submitted and our team will review them shortly. We'll be in touch soon to discuss the next steps for your project.</p>
-      
-      <p>If you have any questions or need to make any changes to your submission, please don't hesitate to contact us.</p>
-      
-      <p>We appreciate your time and look forward to working with you!</p>
+      <p>Your responses have been successfully submitted and our team will review them shortly.</p>
       
       <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
     </div>
@@ -300,141 +250,7 @@ Cloudstrucc Inc.
   }
 
   /**
-   * Send analytics digest to admin
-   */
-  async sendAnalyticsDigest(analyticsData) {
-    if (!this.transporter) {
-      console.log('Email service not available. Would send analytics digest');
-      return { success: false };
-    }
-
-    const responseEmail = process.env.RESPONSE_EMAIL || 'responses@cloudstrucc.com';
-    const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
-
-    const invitesHtml = analyticsData.activeInvites.map(inv => `
-      <tr>
-        <td>${inv.client_name}</td>
-        <td>${inv.client_company || '-'}</td>
-        <td>${inv.form_count} form(s)</td>
-        <td>${inv.progress || 0}%</td>
-        <td>${inv.last_accessed_at ? new Date(inv.last_accessed_at).toLocaleDateString() : 'Never'}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="5">No active invites</td></tr>';
-
-    const recentSubmissionsHtml = analyticsData.recentSubmissions.map(sub => `
-      <tr>
-        <td>${sub.client_name}</td>
-        <td>${sub.form_title}</td>
-        <td>${new Date(sub.submitted_at).toLocaleDateString()}</td>
-      </tr>
-    `).join('') || '<tr><td colspan="3">No recent submissions</td></tr>';
-
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <style>
-    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
-    .container { max-width: 700px; margin: 0 auto; padding: 20px; }
-    .header { background: #0d1f3c; padding: 20px; text-align: center; color: #fff; }
-    .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; }
-    .stats { display: flex; justify-content: space-around; margin: 20px 0; }
-    .stat-box { text-align: center; padding: 15px; background: #f8f9fa; border-radius: 8px; min-width: 100px; }
-    .stat-number { font-size: 28px; font-weight: bold; color: #00a8e8; }
-    .stat-label { font-size: 12px; color: #666; }
-    table { width: 100%; border-collapse: collapse; margin: 15px 0; }
-    th, td { padding: 10px; text-align: left; border-bottom: 1px solid #eee; }
-    th { background: #f8f9fa; font-weight: 600; }
-    .btn { display: inline-block; background: #00a8e8; color: #fff; padding: 10px 20px; text-decoration: none; border-radius: 5px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h2 style="margin: 0;">📊 BA Questionnaire Analytics</h2>
-      <p style="margin: 5px 0 0; opacity: 0.8;">${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-    </div>
-    <div class="content">
-      <div class="stats">
-        <div class="stat-box">
-          <div class="stat-number">${analyticsData.totalInvites}</div>
-          <div class="stat-label">Active Invites</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-number">${analyticsData.inProgress}</div>
-          <div class="stat-label">In Progress</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-number">${analyticsData.completedThisPeriod}</div>
-          <div class="stat-label">Completed (72h)</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-number">${analyticsData.expiringSoon}</div>
-          <div class="stat-label">Expiring Soon</div>
-        </div>
-      </div>
-      
-      <h3>Active Invites & Progress</h3>
-      <table>
-        <tr>
-          <th>Client</th>
-          <th>Company</th>
-          <th>Forms</th>
-          <th>Progress</th>
-          <th>Last Activity</th>
-        </tr>
-        ${invitesHtml}
-      </table>
-      
-      <h3>Recent Submissions</h3>
-      <table>
-        <tr>
-          <th>Client</th>
-          <th>Form</th>
-          <th>Submitted</th>
-        </tr>
-        ${recentSubmissionsHtml}
-      </table>
-      
-      <p style="text-align: center; margin-top: 25px;">
-        <a href="${baseUrl}/admin/dashboard" class="btn">Go to Admin Dashboard</a>
-      </p>
-    </div>
-  </div>
-</body>
-</html>
-    `;
-
-    try {
-      await this.transporter.sendMail({
-        from: process.env.SMTP_FROM || process.env.SMTP_USER,
-        to: responseEmail,
-        subject: `BA Questionnaire Analytics - ${new Date().toLocaleDateString()}`,
-        html
-      });
-      return { success: true };
-    } catch (error) {
-      console.error('Failed to send analytics digest:', error);
-      return { success: false, message: error.message };
-    }
-  }
-
-  /**
-   * Send invite email (alternative method name for compatibility)
-   */
-  async sendInviteEmail({ to, clientName, accessCode, baseUrl }) {
-    return this.sendInvite({
-      to,
-      clientName,
-      inviteCode: accessCode,
-      forms: [],
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
-    });
-  }
-
-  /**
-   * Send validation request email to client
+   * Send validation request to client
    */
   async sendValidationRequest({ to, clientName, formTitle, validationLink }) {
     if (!this.transporter) {
@@ -455,7 +271,6 @@ Cloudstrucc Inc.
     .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
     .highlight-box { background: #fff3cd; border-left: 4px solid #f39c12; padding: 15px; margin: 20px 0; border-radius: 0 5px 5px 0; }
     .btn { display: inline-block; background: #27ae60; color: #fff; padding: 14px 30px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
-    .btn:hover { background: #219a52; }
     .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; }
     .footer a { color: #00a8e8; }
   </style>
@@ -474,21 +289,9 @@ Cloudstrucc Inc.
         <p style="margin: 0;"><strong>⚠️ Action Required:</strong> Please review your submission and confirm that each requirement has been met or indicate any issues.</p>
       </div>
       
-      <p>This validation step helps ensure that all requirements have been properly addressed before moving forward with implementation.</p>
-      
       <p style="text-align: center; margin: 30px 0;">
         <a href="${validationLink}" class="btn">✓ Validate Requirements</a>
       </p>
-      
-      <p><strong>What you'll need to do:</strong></p>
-      <ul>
-        <li>Review each requirement from your submission</li>
-        <li>Indicate whether each requirement has been met</li>
-        <li>Add any comments or clarifications as needed</li>
-        <li>Submit your validation for admin review</li>
-      </ul>
-      
-      <p>If you have any questions, please contact our team.</p>
       
       <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
     </div>
@@ -511,6 +314,180 @@ Cloudstrucc Inc.
       return { success: true };
     } catch (error) {
       console.error('Failed to send validation request:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Send approval request to stakeholder
+   */
+  async sendApprovalRequest({ to, stakeholderName, role, formTitle, clientName, approvalLink }) {
+    if (!this.transporter) {
+      console.log('Email service not available. Would send approval request to:', to);
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const roleColor = role === 'Client' ? '#3498db' : role === 'Project Sponsor' ? '#f39c12' : '#95a5a6';
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h2 { color: #fff; margin: 0; font-size: 24px; }
+    .header p { color: rgba(255,255,255,0.8); margin: 10px 0 0; }
+    .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+    .role-badge { display: inline-block; background: ${roleColor}; color: #fff; padding: 6px 16px; border-radius: 20px; font-size: 14px; font-weight: 600; margin: 10px 0; }
+    .info-box { background: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
+    .info-box p { margin: 8px 0; }
+    .btn { display: inline-block; background: #9b59b6; color: #fff; padding: 16px 40px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 16px; }
+    .btn:hover { background: #8e44ad; }
+    .steps { background: #fff3cd; border-radius: 8px; padding: 15px 20px; margin: 20px 0; }
+    .steps h4 { margin: 0 0 10px; color: #856404; }
+    .steps ol { margin: 0; padding-left: 20px; }
+    .steps li { margin: 5px 0; }
+    .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; border-radius: 0 0 8px 8px; }
+    .footer a { color: #9b59b6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>🏆 Approval Request</h2>
+      <p>Project Closure Approval Required</p>
+    </div>
+    <div class="content">
+      <p>Hello <strong>${stakeholderName}</strong>,</p>
+      
+      <p>You have been identified as a key stakeholder for the following project and your approval is required:</p>
+      
+      <div class="info-box">
+        <p><strong>Project:</strong> ${formTitle}</p>
+        <p><strong>Client:</strong> ${clientName}</p>
+        <p><strong>Your Role:</strong> <span class="role-badge">${role}</span></p>
+      </div>
+      
+      <div class="steps">
+        <h4>📋 What you'll need to do:</h4>
+        <ol>
+          <li>Review the implementation validation summary</li>
+          <li>Verify that requirements have been met</li>
+          <li>Add any comments or observations</li>
+          <li>Click "Approve" to sign off on the project</li>
+        </ol>
+      </div>
+      
+      <p style="text-align: center; margin: 30px 0;">
+        <a href="${approvalLink}" class="btn">Review & Approve</a>
+      </p>
+      
+      <p><strong>Note:</strong> Approvals must be completed in sequence (Client → Project Sponsor → Executive). You will be able to approve once any prior approvers have completed their review.</p>
+      
+      <p>If you have any questions about this approval request, please contact the project administrator.</p>
+      
+      <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>Cloudstrucc Inc. | Cloud Solutions & Digital Transformation</p>
+      <p><a href="https://www.cloudstrucc.com">www.cloudstrucc.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to,
+        subject: `Approval Required: ${formTitle} - ${clientName}`,
+        html
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to send approval request:', error);
+      return { success: false, message: error.message };
+    }
+  }
+
+  /**
+   * Send approval confirmation to stakeholder
+   */
+  async sendApprovalConfirmation({ to, stakeholderName, role, formTitle, clientName, isComplete }) {
+    if (!this.transporter) {
+      console.log('Email service not available. Would send approval confirmation to:', to);
+      return { success: false, message: 'Email service not configured' };
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f5f5f5; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%); padding: 30px 20px; text-align: center; border-radius: 8px 8px 0 0; }
+    .header h2 { color: #fff; margin: 0; font-size: 24px; }
+    .content { background: #fff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+    .success-icon { font-size: 64px; text-align: center; margin: 20px 0; }
+    .info-box { background: #d4edda; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center; }
+    .footer { text-align: center; padding: 20px; color: #666; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>✓ Approval Confirmed</h2>
+    </div>
+    <div class="content">
+      <p class="success-icon">✅</p>
+      
+      <p>Hello <strong>${stakeholderName}</strong>,</p>
+      
+      <p>Thank you! Your approval for the following project has been recorded:</p>
+      
+      <div class="info-box">
+        <p><strong>Project:</strong> ${formTitle}</p>
+        <p><strong>Client:</strong> ${clientName}</p>
+        <p><strong>Approved as:</strong> ${role}</p>
+        <p><strong>Date:</strong> ${new Date().toLocaleString()}</p>
+      </div>
+      
+      ${isComplete ? `
+      <div style="background: #fff3cd; border-radius: 8px; padding: 20px; margin: 20px 0; text-align: center;">
+        <p style="font-size: 18px; margin: 0;"><strong>🎉 Project Fully Approved!</strong></p>
+        <p style="margin: 10px 0 0;">All stakeholders have approved this project.</p>
+      </div>
+      ` : `
+      <p>The remaining stakeholders will be notified to complete their approvals.</p>
+      `}
+      
+      <p>Best regards,<br><strong>The Cloudstrucc Team</strong></p>
+    </div>
+    <div class="footer">
+      <p>Cloudstrucc Inc. | Cloud Solutions & Digital Transformation</p>
+      <p><a href="https://www.cloudstrucc.com" style="color: #27ae60;">www.cloudstrucc.com</a></p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: process.env.SMTP_FROM || process.env.SMTP_USER,
+        to,
+        subject: `Approval Confirmed: ${formTitle} - ${clientName}`,
+        html
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Failed to send approval confirmation:', error);
       return { success: false, message: error.message };
     }
   }

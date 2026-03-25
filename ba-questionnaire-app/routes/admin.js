@@ -1,5 +1,5 @@
 // routes/admin.js
-// Updated with PDF export, Implementation Validation, and File Attachments features
+// Updated with PDF export, Implementation Validation, File Attachments, and Approval Workflow
 
 const express = require('express');
 const router = express.Router();
@@ -106,27 +106,52 @@ router.get('/forms', async (req, res) => {
     }
 });
 
-// Reload forms
-router.post('/forms/reload', async (req, res) => {
+// Form upload
+router.post('/forms/upload', async (req, res) => {
     try {
-        formLoader.reloadForms();
-        req.flash('success', 'Forms reloaded successfully');
+        const { slug, title, description, markdownContent } = req.body;
+
+        if (!slug || !title || !markdownContent) {
+            req.flash('error', 'Slug, title, and markdown content are required');
+            return res.redirect('/admin/forms');
+        }
+
+        const questionnairesDir = path.join(__dirname, '..', 'questionnaires');
+        if (!fs.existsSync(questionnairesDir)) {
+            fs.mkdirSync(questionnairesDir, { recursive: true });
+        }
+
+        const filename = `${slug}.md`;
+        const filepath = path.join(questionnairesDir, filename);
+        fs.writeFileSync(filepath, markdownContent, 'utf8');
+
+        db.createForm({
+            slug,
+            title,
+            description: description || '',
+            markdownFile: filename
+        });
+
+        req.flash('success', `Form "${title}" created successfully`);
+        res.redirect('/admin/forms');
     } catch (error) {
-        console.error('Reload forms error:', error);
-        req.flash('error', 'Error reloading forms');
+        console.error('Form upload error:', error);
+        req.flash('error', 'Error uploading form');
+        res.redirect('/admin/forms');
     }
-    res.redirect('/admin/forms');
 });
 
 // Invites list
 router.get('/invites', async (req, res) => {
     try {
         const invites = db.getAllInvites();
+        const forms = formLoader.getAllForms();
 
         res.render('admin/invites', {
             title: 'Manage Invites',
             layout: 'admin',
-            invites
+            invites,
+            forms
         });
     } catch (error) {
         console.error('Invites error:', error);
@@ -135,144 +160,143 @@ router.get('/invites', async (req, res) => {
     }
 });
 
-// New invite form
+// Create new invite - show form
 router.get('/invites/new', async (req, res) => {
     try {
-        // First, sync forms from formLoader to database if needed
-        const loadedForms = formLoader.getAllForms();
-        console.log('Forms from formLoader:', loadedForms.length);
-        
-        for (const form of loadedForms) {
-            const existing = db.getFormBySlug(form.slug);
-            if (!existing) {
-                console.log('Creating form in DB:', form.slug, form.title);
-                db.createForm({
-                    slug: form.slug,
-                    title: form.title,
-                    description: form.description || '',
-                    markdownFile: form.filename || form.relativePath || ''
-                });
-            }
-        }
-        
-        // Now get forms from database (with numeric IDs)
-        const forms = db.getAllForms();
-        console.log('Forms from database:', forms.length, forms.map(f => ({ id: f.id, slug: f.slug })));
+        const forms = formLoader.getAllForms();
 
         res.render('admin/invite-new', {
-            title: 'Create Invite',
+            title: 'Create New Invite',
             layout: 'admin',
             forms
         });
     } catch (error) {
-        console.error('New invite error:', error);
-        req.flash('error', 'Error loading form');
+        console.error('New invite form error:', error);
+        req.flash('error', 'Error loading invite form');
         res.redirect('/admin/invites');
     }
 });
 
-// Create invite POST - matches your form action="/admin/invites/create"
-router.post('/invites/create', async (req, res) => {
+// Create new invite - process
+router.post('/invites', async (req, res) => {
     try {
-        const { clientName, clientEmail, clientCompany, forms, expiresAt, submissionDeadline, sendEmail } = req.body;
+        const { clientEmail, clientName, clientCompany, formIds, expiresInDays, submissionDeadline } = req.body;
 
-        console.log('Creating invite for:', clientName);
-        console.log('Selected forms from request:', forms);
+        if (!clientEmail || !clientName || !formIds || formIds.length === 0) {
+            req.flash('error', 'Please fill in all required fields');
+            return res.redirect('/admin/invites/new');
+        }
 
-        // Generate access code
-        const accessCode = generateAccessCode();
+        const crypto = require('crypto');
+        const code = crypto.randomBytes(16).toString('hex');
 
-        // Create invite
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + parseInt(expiresInDays || 30));
+
         const invite = db.createInvite({
-            code: accessCode,
+            code,
             clientEmail,
             clientName,
             clientCompany: clientCompany || null,
-            expiresAt: expiresAt,
+            createdBy: req.session.adminId || null,
+            expiresAt: expiresAt.toISOString(),
             submissionDeadline: submissionDeadline || null
         });
 
-        console.log('Created invite:', invite);
-
-        // Add forms to invite
-        if (forms) {
-            const formIds = Array.isArray(forms) ? forms : [forms];
-            console.log('Form IDs to add:', formIds);
-            for (const formId of formIds) {
-                const parsedId = parseInt(formId);
-                console.log('Adding form ID:', parsedId, 'to invite ID:', invite.id);
-                db.addFormToInvite(invite.id, parsedId);
-            }
-            
-            // Verify forms were added
-            const addedForms = db.getInviteForms(invite.id);
-            console.log('Forms after adding:', addedForms);
+        const formIdArray = Array.isArray(formIds) ? formIds : [formIds];
+        for (const formId of formIdArray) {
+            db.addFormToInvite(invite.id, parseInt(formId));
         }
 
-        // Send email if requested
-        if (sendEmail === 'on' && clientEmail) {
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+        if (emailService.isConfigured()) {
             try {
-                const inviteForms = db.getInviteForms(invite.id);
+                const forms = formIdArray.map(fid => formLoader.getAllForms().find(f => f.id == fid));
                 await emailService.sendInvite({
                     to: clientEmail,
                     clientName,
-                    inviteCode: accessCode,
-                    forms: inviteForms,
-                    expiresAt: expiresAt,
-                    submissionDeadline: submissionDeadline
+                    inviteLink: `${baseUrl}/q/${code}`,
+                    forms: forms.map(f => f?.title || 'Form'),
+                    expiresAt: expiresAt.toLocaleDateString()
                 });
-                req.flash('success', `Invite created and email sent to ${clientEmail}. Access code: ${accessCode}`);
+                req.flash('success', `Invite sent to ${clientEmail}`);
             } catch (emailError) {
-                console.error('Email error:', emailError);
-                req.flash('warning', `Invite created but email failed to send. Access code: ${accessCode}`);
+                console.error('Email send error:', emailError);
+                req.flash('warning', `Invite created but email failed. Link: ${baseUrl}/q/${code}`);
             }
         } else {
-            req.flash('success', `Invite created successfully! Access code: ${accessCode}`);
+            req.flash('success', `Invite created. Link: ${baseUrl}/q/${code}`);
         }
 
         res.redirect('/admin/invites');
     } catch (error) {
         console.error('Create invite error:', error);
-        req.flash('error', 'Error creating invite: ' + error.message);
+        req.flash('error', 'Error creating invite');
         res.redirect('/admin/invites/new');
     }
-});
-
-// Delete invite
-router.post('/invites/:id/delete', async (req, res) => {
-    try {
-        db.deleteInvite(req.params.id);
-        req.flash('success', 'Invite deleted');
-    } catch (error) {
-        console.error('Delete invite error:', error);
-        req.flash('error', 'Error deleting invite');
-    }
-    res.redirect('/admin/invites');
 });
 
 // View invite details
 router.get('/invites/:id', async (req, res) => {
     try {
         const invite = db.getInviteById(req.params.id);
-        
+
         if (!invite) {
             req.flash('error', 'Invite not found');
             return res.redirect('/admin/invites');
         }
-        
-        const forms = db.getInviteForms(req.params.id);
-        const submissions = db.getAllSubmissions().filter(s => s.invite_id == req.params.id);
-        
+
+        const forms = db.getInviteForms(invite.id);
+        const submissions = db.getAllSubmissions().filter(s => s.invite_id === invite.id);
+
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
         res.render('admin/invite-detail', {
             title: `Invite: ${invite.client_name}`,
             layout: 'admin',
             invite,
             forms,
-            submissions
+            submissions,
+            inviteLink: `${baseUrl}/q/${invite.code}`
         });
     } catch (error) {
         console.error('Invite detail error:', error);
         req.flash('error', 'Error loading invite');
+        res.redirect('/admin/invites');
+    }
+});
+
+// Resend invite email
+router.post('/invites/:id/resend', async (req, res) => {
+    try {
+        const invite = db.getInviteById(req.params.id);
+
+        if (!invite) {
+            req.flash('error', 'Invite not found');
+            return res.redirect('/admin/invites');
+        }
+
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        const forms = db.getInviteForms(invite.id);
+
+        if (emailService.isConfigured()) {
+            await emailService.sendInvite({
+                to: invite.client_email,
+                clientName: invite.client_name,
+                inviteLink: `${baseUrl}/q/${invite.code}`,
+                forms: forms.map(f => f.title),
+                expiresAt: new Date(invite.expires_at).toLocaleDateString()
+            });
+            req.flash('success', `Invite resent to ${invite.client_email}`);
+        } else {
+            req.flash('warning', 'Email not configured. Cannot resend.');
+        }
+
+        res.redirect(`/admin/invites/${invite.id}`);
+    } catch (error) {
+        console.error('Resend invite error:', error);
+        req.flash('error', 'Error resending invite');
         res.redirect('/admin/invites');
     }
 });
@@ -282,11 +306,25 @@ router.post('/invites/:id/revoke', async (req, res) => {
     try {
         db.revokeInvite(req.params.id);
         req.flash('success', 'Invite revoked');
+        res.redirect('/admin/invites');
     } catch (error) {
         console.error('Revoke invite error:', error);
         req.flash('error', 'Error revoking invite');
+        res.redirect('/admin/invites');
     }
-    res.redirect('/admin/invites');
+});
+
+// Delete invite
+router.post('/invites/:id/delete', async (req, res) => {
+    try {
+        db.deleteInvite(req.params.id);
+        req.flash('success', 'Invite deleted');
+        res.redirect('/admin/invites');
+    } catch (error) {
+        console.error('Delete invite error:', error);
+        req.flash('error', 'Error deleting invite');
+        res.redirect('/admin/invites');
+    }
 });
 
 // Submissions list
@@ -342,6 +380,28 @@ router.get('/submissions/:id', async (req, res) => {
 
         // Get attachments for this submission
         const attachments = db.getSubmissionAttachments(req.params.id);
+        
+        // Get approval status
+        let approvalStatus = null;
+        try {
+            approvalStatus = db.getApprovalStatus(req.params.id);
+        } catch (e) {}
+        
+        // Get audit log
+        let auditLog = [];
+        try {
+            auditLog = db.getAuditLog(req.params.id);
+        } catch (e) {}
+        
+        // Calculate if validation is complete (for showing Send for Approval button)
+        let validationComplete = false;
+        let metCount = 0, notMetCount = 0, totalCount = 0;
+        Object.values(validationData).forEach(v => {
+            totalCount++;
+            if (v.met === 'yes') metCount++;
+            else if (v.met === 'no') notMetCount++;
+        });
+        validationComplete = totalCount > 0 && (metCount + notMetCount) === totalCount;
 
         res.render('admin/submission-detail', {
             title: `Submission: ${submission.clientName || 'Unknown'}`,
@@ -350,6 +410,10 @@ router.get('/submissions/:id', async (req, res) => {
             parsedData,
             validationData,
             attachments,
+            approvalStatus,
+            auditLog,
+            validationComplete,
+            validationStats: { metCount, notMetCount, totalCount },
             dataJson: JSON.stringify(parsedData, null, 2)
         });
     } catch (error) {
@@ -387,6 +451,12 @@ router.get('/submissions/:id/export-pdf', async (req, res) => {
         } catch (e) {
             console.error('Error parsing submission data:', e);
         }
+        
+        // Get approval status for PDF
+        let approvalStatus = null;
+        try {
+            approvalStatus = db.getApprovalStatus(req.params.id);
+        } catch (e) {}
 
         const doc = new PDFDocument({
             size: 'LETTER',
@@ -412,6 +482,39 @@ router.get('/submissions/:id/export-pdf', async (req, res) => {
         doc.text(`Status: ${submission.status || 'in_progress'}`);
         doc.text(`Submitted: ${submission.submitted_at ? new Date(submission.submitted_at).toLocaleString() : 'In Progress'}`);
         doc.moveDown();
+        
+        // APPROVAL SECTION (if approvals exist)
+        if (approvalStatus) {
+            doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+            doc.moveDown();
+            
+            doc.fontSize(14).font('Helvetica-Bold').fillColor('#9b59b6').text('Project Approvals', { underline: true });
+            doc.fillColor('black');
+            doc.moveDown(0.5);
+            
+            doc.fontSize(10).font('Helvetica');
+            
+            // Client
+            doc.font('Helvetica-Bold').text('1. Client: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.client_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.client_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.client_approved_at ? '✓ Approved on ' + new Date(approvalStatus.client_approved_at).toLocaleString() : '○ Pending'}`);
+            doc.moveDown(0.5);
+            
+            // Sponsor
+            doc.font('Helvetica-Bold').text('2. Project Sponsor: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.sponsor_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.sponsor_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.sponsor_approved_at ? '✓ Approved on ' + new Date(approvalStatus.sponsor_approved_at).toLocaleString() : '○ Pending'}`);
+            doc.moveDown(0.5);
+            
+            // Executive
+            doc.font('Helvetica-Bold').text('3. Executive: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.executive_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.executive_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.executive_approved_at ? '✓ Approved on ' + new Date(approvalStatus.executive_approved_at).toLocaleString() : '○ Pending'}`);
+            doc.moveDown();
+        }
 
         doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
         doc.moveDown();
@@ -495,22 +598,47 @@ router.get('/submissions/:id/validation', async (req, res) => {
         } catch (e) {
             console.error('Error parsing validation data:', e);
         }
+        
+        // Get user validation data for comparison
+        let userValidationData = {};
+        try {
+            userValidationData = db.getSubmissionUserValidation(req.params.id);
+        } catch (e) {}
+        
+        // Get approval status
+        let approvalStatus = null;
+        try {
+            approvalStatus = db.getApprovalStatus(req.params.id);
+        } catch (e) {}
+        
+        // Calculate validation stats
+        let metCount = 0, notMetCount = 0, totalCount = 0;
+        Object.values(validationData).forEach(v => {
+            totalCount++;
+            if (v.met === 'yes') metCount++;
+            else if (v.met === 'no') notMetCount++;
+        });
+        const validationComplete = totalCount > 0 && (metCount + notMetCount) === totalCount;
 
         res.render('admin/submission-validation', {
             title: `Validation: ${submission.clientName || 'Unknown'}`,
             layout: 'admin',
             submission,
             parsedData,
-            validationData
+            validationData,
+            userValidationData,
+            approvalStatus,
+            validationComplete,
+            validationStats: { metCount, notMetCount, totalCount }
         });
     } catch (error) {
         console.error('Validation page error:', error);
         req.flash('error', 'Error loading validation page');
-        res.redirect('/admin/submissions');
+        res.redirect(`/admin/submissions/${req.params.id}`);
     }
 });
 
-// Save validation data
+// Save validation
 router.post('/submissions/:id/validation', async (req, res) => {
     try {
         const { validationData } = req.body;
@@ -525,6 +653,16 @@ router.post('/submissions/:id/validation', async (req, res) => {
         }
 
         db.updateSubmissionValidation(req.params.id, parsedValidation);
+        
+        // Add audit log
+        let metCount = 0, notMetCount = 0;
+        Object.values(parsedValidation).forEach(v => {
+            if (v.met === 'yes') metCount++;
+            else if (v.met === 'no') notMetCount++;
+        });
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        db.addAuditLog(req.params.id, 'admin_validated', adminEmail, 'admin', { metCount, notMetCount });
+
         req.flash('success', 'Validation saved successfully');
         res.redirect(`/admin/submissions/${req.params.id}/validation`);
     } catch (error) {
@@ -534,14 +672,14 @@ router.post('/submissions/:id/validation', async (req, res) => {
     }
 });
 
-// Export validation as PDF
+// Validation PDF Export
 router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
     try {
         let PDFDocument;
         try {
             PDFDocument = require('pdfkit');
         } catch (e) {
-            req.flash('error', 'PDF export requires pdfkit. Run: npm install pdfkit');
+            req.flash('error', 'PDF export requires pdfkit');
             return res.redirect(`/admin/submissions/${req.params.id}/validation`);
         }
 
@@ -567,6 +705,12 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
                     : submission.validation_data)
                 : {};
         } catch (e) {}
+        
+        // Get approval status for PDF
+        let approvalStatus = null;
+        try {
+            approvalStatus = db.getApprovalStatus(req.params.id);
+        } catch (e) {}
 
         const doc = new PDFDocument({
             size: 'LETTER',
@@ -581,86 +725,124 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
 
         // Header
         doc.fontSize(20).font('Helvetica-Bold').text('Implementation Validation Report', { align: 'center' });
+        doc.fontSize(12).font('Helvetica').text(submission.formName || 'Requirements Validation', { align: 'center' });
         doc.moveDown();
 
         // Metadata
         doc.fontSize(12).font('Helvetica');
         doc.text(`Client: ${submission.clientName || 'N/A'}`);
         doc.text(`Company: ${submission.companyName || 'N/A'}`);
-        doc.text(`Form: ${submission.formName || 'N/A'}`);
-        doc.text(`Validation Date: ${new Date().toLocaleString()}`);
+        doc.text(`Generated: ${new Date().toLocaleString()}`);
+        doc.moveDown();
+        
+        // APPROVAL SECTION (if approvals exist)
+        if (approvalStatus) {
+            doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+            doc.moveDown();
+            
+            doc.fontSize(14).font('Helvetica-Bold').fillColor('#9b59b6').text('Project Approvals', { underline: true });
+            doc.fillColor('black');
+            doc.moveDown(0.5);
+            
+            doc.fontSize(10).font('Helvetica');
+            
+            // Client
+            doc.font('Helvetica-Bold').text('1. Client: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.client_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.client_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.client_approved_at ? '✓ Approved on ' + new Date(approvalStatus.client_approved_at).toLocaleString() : '○ Pending'}`);
+            if (approvalStatus.client_comments) doc.text(`   Comments: ${approvalStatus.client_comments}`);
+            doc.moveDown(0.5);
+            
+            // Sponsor
+            doc.font('Helvetica-Bold').text('2. Project Sponsor: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.sponsor_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.sponsor_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.sponsor_approved_at ? '✓ Approved on ' + new Date(approvalStatus.sponsor_approved_at).toLocaleString() : '○ Pending'}`);
+            if (approvalStatus.sponsor_comments) doc.text(`   Comments: ${approvalStatus.sponsor_comments}`);
+            doc.moveDown(0.5);
+            
+            // Executive
+            doc.font('Helvetica-Bold').text('3. Executive: ', { continued: true });
+            doc.font('Helvetica').text(approvalStatus.executive_name || 'N/A');
+            doc.text(`   Email: ${approvalStatus.executive_email || 'N/A'}`);
+            doc.text(`   Status: ${approvalStatus.executive_approved_at ? '✓ Approved on ' + new Date(approvalStatus.executive_approved_at).toLocaleString() : '○ Pending'}`);
+            if (approvalStatus.executive_comments) doc.text(`   Comments: ${approvalStatus.executive_comments}`);
+            doc.moveDown();
+        }
+
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+
+        // Validation Summary
+        let metCount = 0;
+        let notMetCount = 0;
+        let totalCount = 0;
+
+        Object.values(validationData).forEach(v => {
+            totalCount++;
+            if (v.met === 'yes') metCount++;
+            else if (v.met === 'no') notMetCount++;
+        });
+
+        doc.fontSize(14).font('Helvetica-Bold').text('Validation Summary:', { underline: true });
+        doc.moveDown(0.5);
+
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Total Requirements: ${totalCount}`);
+        doc.text(`Requirements Met: ${metCount}`);
+        doc.text(`Requirements Not Met: ${notMetCount}`);
+        doc.text(`Completion: ${totalCount > 0 ? Math.round(((metCount + notMetCount) / totalCount) * 100) : 0}%`);
         doc.moveDown();
 
         doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
         doc.moveDown();
 
-        // Validation results
-        doc.fontSize(14).font('Helvetica-Bold').text('Validation Results:', { underline: true });
+        // Detailed validation
+        doc.fontSize(14).font('Helvetica-Bold').text('Detailed Validation:', { underline: true });
         doc.moveDown(0.5);
 
-        doc.fontSize(10).font('Helvetica');
+        doc.fontSize(9).font('Helvetica');
 
-        let totalItems = 0;
-        let metCount = 0;
-        let notMetCount = 0;
-
+        let rowNum = 0;
         for (const [key, value] of Object.entries(parsedData)) {
             if (key.startsWith('_') || key === 'metadata') continue;
+            rowNum++;
 
-            totalItems++;
-
+            const fieldValidation = validationData[key] || {};
             const label = key
                 .replace(/_/g, ' ')
                 .replace(/([A-Z])/g, ' $1')
                 .replace(/^./, str => str.toUpperCase())
                 .trim();
 
-            if (doc.y > 650) doc.addPage();
+            if (doc.y > 680) doc.addPage();
 
-            const fieldValidation = validationData[key] || {};
-            const isMet = fieldValidation.met === 'yes';
-            const comment = fieldValidation.comment || '';
+            const status = fieldValidation.met === 'yes' ? '✓ MET' : 
+                          fieldValidation.met === 'no' ? '✗ NOT MET' : '○ N/A';
 
-            if (isMet) metCount++;
-            else if (fieldValidation.met === 'no') notMetCount++;
+            doc.font('Helvetica-Bold').text(`${rowNum}. ${label}`, { continued: false });
 
-            doc.font('Helvetica-Bold').text(label + ':', { continued: false });
-            
             let displayValue = '';
-            if (typeof value === 'object' && value !== null) {
-                displayValue = JSON.stringify(value, null, 2);
+            if (typeof value === 'boolean') {
+                displayValue = value ? 'Yes' : 'No';
+            } else if (typeof value === 'object' && value !== null) {
+                displayValue = JSON.stringify(value);
             } else {
                 displayValue = String(value || 'N/A');
             }
-            doc.font('Helvetica').text(`Response: ${displayValue}`, { indent: 20 });
+
+            doc.font('Helvetica').text(`   Response: ${displayValue}`);
+            doc.text(`   Status: ${status}`);
             
-            const statusColor = isMet ? 'green' : 'red';
-            const statusText = isMet ? 'REQUIREMENT MET' : 'REQUIREMENT NOT MET';
-            doc.fillColor(statusColor).text(statusText, { indent: 20 });
-            doc.fillColor('black');
-
-            if (comment) {
-                doc.font('Helvetica-Oblique').text(`Comment: ${comment}`, { indent: 20 });
+            if (fieldValidation.comment) {
+                doc.text(`   Comment: ${fieldValidation.comment}`);
             }
-
-            doc.moveDown(0.5);
+            
+            doc.moveDown(0.3);
         }
 
-        // Summary
-        doc.addPage();
-        doc.fontSize(16).font('Helvetica-Bold').text('Summary', { align: 'center' });
-        doc.moveDown();
-        
-        doc.fontSize(12).font('Helvetica');
-        doc.text(`Total Requirements: ${totalItems}`);
-        doc.fillColor('green').text(`Requirements Met: ${metCount}`);
-        doc.fillColor('red').text(`Requirements Not Met: ${notMetCount}`);
-        doc.fillColor('black');
-        
-        const percentage = totalItems > 0 ? Math.round((metCount / totalItems) * 100) : 0;
-        doc.moveDown();
-        doc.fontSize(14).font('Helvetica-Bold').text(`Completion Rate: ${percentage}%`);
-
+        // Footer
         doc.moveDown(2);
         doc.fontSize(8).fillColor('gray');
         doc.text(`Generated on ${new Date().toLocaleString()} by Cloudstrucc BA Forms`, { align: 'center' });
@@ -675,7 +857,7 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
 });
 
 // =============================================================
-// FILE ATTACHMENTS (URL-based)
+// ATTACHMENTS
 // =============================================================
 router.post('/submissions/:id/attachments', async (req, res) => {
     try {
@@ -685,16 +867,10 @@ router.post('/submissions/:id/attachments', async (req, res) => {
             return res.status(400).json({ error: 'File name and URL are required' });
         }
 
-        try {
-            new URL(fileUrl);
-        } catch (e) {
-            return res.status(400).json({ error: 'Invalid URL format' });
-        }
-
         const attachment = db.addSubmissionAttachment(req.params.id, {
             fileName,
             fileUrl,
-            description,
+            description: description || null,
             addedBy: req.session.adminEmail || 'admin',
             addedAt: new Date().toISOString()
         });
@@ -721,26 +897,15 @@ router.post('/submissions/:id/delete', async (req, res) => {
     try {
         db.deleteSubmission(req.params.id);
         req.flash('success', 'Submission deleted');
+        res.redirect('/admin/submissions');
     } catch (error) {
         console.error('Delete submission error:', error);
         req.flash('error', 'Error deleting submission');
+        res.redirect('/admin/submissions');
     }
-    res.redirect('/admin/submissions');
 });
 
-// Helper function to generate access code
-function generateAccessCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 8; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-}
-
-// =============================================================
-// SETTINGS PAGE
-// =============================================================
+// Settings page
 router.get('/settings', async (req, res) => {
     try {
         res.render('admin/settings', {
@@ -906,6 +1071,179 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
         console.error('Send for validation error:', error);
         req.flash('error', 'Error sending for validation');
         res.redirect(`/admin/submissions/${req.params.id}`);
+    }
+});
+
+// =============================================================
+// APPROVAL WORKFLOW - Initiate approval process
+// =============================================================
+router.get('/submissions/:id/approval', async (req, res) => {
+    try {
+        const approvalStatus = db.getApprovalStatus(req.params.id);
+        const submission = db.getSubmissionById(req.params.id);
+        
+        // Check if validation is complete
+        let validationData = {};
+        try {
+            validationData = submission.validation_data 
+                ? (typeof submission.validation_data === 'string' 
+                    ? JSON.parse(submission.validation_data) 
+                    : submission.validation_data)
+                : {};
+        } catch (e) {}
+        
+        let metCount = 0, notMetCount = 0, totalCount = 0;
+        Object.values(validationData).forEach(v => {
+            totalCount++;
+            if (v.met === 'yes') metCount++;
+            else if (v.met === 'no') notMetCount++;
+        });
+        const canInitiate = totalCount > 0 && (metCount + notMetCount) === totalCount && !approvalStatus;
+        
+        res.json({ 
+            success: true, 
+            hasApproval: !!approvalStatus, 
+            approval: approvalStatus,
+            canInitiate
+        });
+    } catch (error) {
+        console.error('Get approval status error:', error);
+        res.status(500).json({ success: false, error: 'Error fetching approval status' });
+    }
+});
+
+router.post('/submissions/:id/approval', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+        
+        if (!submission) {
+            return res.status(404).json({ success: false, error: 'Submission not found' });
+        }
+        
+        // Check if approval already exists
+        const existingApproval = db.getApprovalBySubmissionId(req.params.id);
+        if (existingApproval) {
+            return res.status(400).json({ success: false, error: 'Approval workflow already initiated' });
+        }
+        
+        const { sponsorName, sponsorEmail, executiveName, executiveEmail } = req.body;
+        
+        if (!sponsorName || !sponsorEmail || !executiveName || !executiveEmail) {
+            return res.status(400).json({ success: false, error: 'All stakeholder fields are required' });
+        }
+        
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        
+        // Create approval record
+        const approval = db.createApproval(req.params.id, {
+            clientName: submission.clientName,
+            clientEmail: submission.clientEmail,
+            sponsorName,
+            sponsorEmail,
+            executiveName,
+            executiveEmail,
+            initiatedBy: adminEmail
+        });
+        
+        // Generate approval links
+        const approvalLinks = {
+            client: {
+                name: submission.clientName,
+                email: submission.clientEmail,
+                link: `${baseUrl}/approve/${approval.clientAccessCode}`,
+                role: 'Client'
+            },
+            sponsor: {
+                name: sponsorName,
+                email: sponsorEmail,
+                link: `${baseUrl}/approve/${approval.sponsorAccessCode}`,
+                role: 'Project Sponsor'
+            },
+            executive: {
+                name: executiveName,
+                email: executiveEmail,
+                link: `${baseUrl}/approve/${approval.executiveAccessCode}`,
+                role: 'Executive'
+            }
+        };
+        
+        // Try to send email to client (first approver)
+        if (emailService.isConfigured()) {
+            try {
+                await emailService.sendApprovalRequest({
+                    to: submission.clientEmail,
+                    stakeholderName: submission.clientName,
+                    role: 'Client',
+                    formTitle: submission.formName,
+                    clientName: submission.clientName,
+                    approvalLink: approvalLinks.client.link
+                });
+            } catch (emailError) {
+                console.error('Approval email error:', emailError);
+            }
+        }
+        
+        res.json({ 
+            success: true, 
+            message: 'Approval workflow initiated',
+            approvalLinks
+        });
+    } catch (error) {
+        console.error('Create approval error:', error);
+        res.status(500).json({ success: false, error: 'Error initiating approval' });
+    }
+});
+
+// Resend approval email
+router.post('/submissions/:id/approval/resend/:role', async (req, res) => {
+    try {
+        const approval = db.getApprovalBySubmissionId(req.params.id);
+        if (!approval) {
+            return res.status(404).json({ success: false, error: 'No approval found' });
+        }
+        
+        const submission = db.getSubmissionById(req.params.id);
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        const role = req.params.role;
+        
+        let to, name, link;
+        switch (role) {
+            case 'client':
+                to = approval.client_email;
+                name = approval.client_name;
+                link = `${baseUrl}/approve/${approval.client_access_code}`;
+                break;
+            case 'sponsor':
+                to = approval.sponsor_email;
+                name = approval.sponsor_name;
+                link = `${baseUrl}/approve/${approval.sponsor_access_code}`;
+                break;
+            case 'executive':
+                to = approval.executive_email;
+                name = approval.executive_name;
+                link = `${baseUrl}/approve/${approval.executive_access_code}`;
+                break;
+            default:
+                return res.status(400).json({ success: false, error: 'Invalid role' });
+        }
+        
+        if (emailService.isConfigured()) {
+            await emailService.sendApprovalRequest({
+                to,
+                stakeholderName: name,
+                role: role === 'client' ? 'Client' : role === 'sponsor' ? 'Project Sponsor' : 'Executive',
+                formTitle: submission.formName,
+                clientName: submission.clientName,
+                approvalLink: link
+            });
+            res.json({ success: true, message: `Email sent to ${to}` });
+        } else {
+            res.json({ success: true, message: 'Email not configured', link });
+        }
+    } catch (error) {
+        console.error('Resend approval email error:', error);
+        res.status(500).json({ success: false, error: 'Error resending email' });
     }
 });
 

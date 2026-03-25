@@ -16,10 +16,10 @@ const publicRoutes = require('./routes/public');
 const formLoader = require('./utils/formLoader');
 const emailService = require('./utils/emailService');
 const validationRoutes = require('./routes/validation');
-
+const approvalRoutes = require('./routes/approval');
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+   
 // Initialize database and load forms
 async function initialize() {
   try {
@@ -145,6 +145,8 @@ if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
+
+
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -206,6 +208,7 @@ app.use((req, res, next) => {
 app.use('/', publicRoutes);
 app.use('/admin', adminRoutes);
 app.use('/validate', validationRoutes);
+app.use('/approve', approvalRoutes);
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({

@@ -1,0 +1,133 @@
+{{!-- views/approval/confirmed.hbs --}}
+{{!-- Approval Confirmation Page - Public (no admin auth) --}}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            {{!-- Success Card --}}
+            <div class="card border-0 shadow-lg text-center">
+                <div class="card-body py-5">
+                    {{#if isComplete}}
+                    {{!-- All Approvals Complete --}}
+                    <div class="d-inline-flex align-items-center justify-content-center bg-success rounded-circle mb-4" style="width: 100px; height: 100px;">
+                        <i class="bi bi-trophy text-white" style="font-size: 3rem;"></i>
+                    </div>
+                    <h2 class="text-success mb-3">Project Fully Approved!</h2>
+                    <p class="lead text-muted mb-4">
+                        All stakeholders have approved this submission. The project has received final approval.
+                    </p>
+                    {{else}}
+                    {{!-- Individual Approval Confirmed --}}
+                    <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: #9b59b6;">
+                        <i class="bi bi-check-lg text-white" style="font-size: 3rem;"></i>
+                    </div>
+                    <h2 class="mb-3" style="color: #9b59b6;">Approval Submitted!</h2>
+                    <p class="lead text-muted mb-4">
+                        Thank you, <strong>{{approverName}}</strong>. Your approval as <strong>{{roleName}}</strong> has been recorded.
+                    </p>
+                    {{/if}}
+
+                    {{!-- Project Info --}}
+                    <div class="bg-light rounded p-3 mb-4">
+                        <div class="row text-start">
+                            <div class="col-sm-6">
+                                <small class="text-muted">Project</small>
+                                <p class="mb-0 fw-bold">{{submission.formName}}</p>
+                            </div>
+                            <div class="col-sm-6">
+                                <small class="text-muted">Client</small>
+                                <p class="mb-0 fw-bold">{{submission.clientName}}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {{!-- Approval Progress --}}
+                    <div class="mb-4">
+                        <h5 class="mb-3">Approval Progress</h5>
+                        <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+                            {{!-- Client --}}
+                            <div class="text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2 {{#if approvalStatus.client_approved_at}}bg-success text-white{{else}}bg-light{{/if}}" style="width: 50px; height: 50px;">
+                                    {{#if approvalStatus.client_approved_at}}
+                                    <i class="bi bi-check-lg"></i>
+                                    {{else}}
+                                    <span>1</span>
+                                    {{/if}}
+                                </div>
+                                <div class="small">Client</div>
+                            </div>
+                            
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            
+                            {{!-- Sponsor --}}
+                            <div class="text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2 {{#if approvalStatus.sponsor_approved_at}}bg-success text-white{{else}}bg-light{{/if}}" style="width: 50px; height: 50px;">
+                                    {{#if approvalStatus.sponsor_approved_at}}
+                                    <i class="bi bi-check-lg"></i>
+                                    {{else}}
+                                    <span>2</span>
+                                    {{/if}}
+                                </div>
+                                <div class="small">Sponsor</div>
+                            </div>
+                            
+                            <i class="bi bi-arrow-right text-muted"></i>
+                            
+                            {{!-- Executive --}}
+                            <div class="text-center">
+                                <div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-2 {{#if approvalStatus.executive_approved_at}}bg-success text-white{{else}}bg-light{{/if}}" style="width: 50px; height: 50px;">
+                                    {{#if approvalStatus.executive_approved_at}}
+                                    <i class="bi bi-check-lg"></i>
+                                    {{else}}
+                                    <span>3</span>
+                                    {{/if}}
+                                </div>
+                                <div class="small">Executive</div>
+                            </div>
+                        </div>
+                        
+                        <div class="progress mt-3" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{math approvalStatus.approvedCount '/' 3 '*' 100}}%"></div>
+                        </div>
+                        <small class="text-muted">{{approvalStatus.approvedCount}} of 3 approvals complete</small>
+                    </div>
+
+                    {{!-- Next Steps --}}
+                    {{#unless isComplete}}
+                    <div class="alert alert-info text-start">
+                        <h6><i class="bi bi-info-circle me-2"></i>What happens next?</h6>
+                        <p class="mb-0 small">
+                            {{#if approvalStatus.nextApprover}}
+                                {{#if (eq approvalStatus.nextApprover "sponsor")}}
+                                The Project Sponsor ({{approvalStatus.sponsor_name}}) will be notified to review and approve.
+                                {{else if (eq approvalStatus.nextApprover "executive")}}
+                                The Executive ({{approvalStatus.executive_name}}) will be notified to review and provide final approval.
+                                {{/if}}
+                            {{/if}}
+                        </p>
+                    </div>
+                    {{/unless}}
+
+                    {{!-- Actions --}}
+                    <div class="d-flex justify-content-center gap-2 flex-wrap">
+                        <a href="/approve/{{approval.client_access_code}}/export-pdf" class="btn btn-outline-primary">
+                            <i class="bi bi-file-pdf me-1"></i> Download PDF Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {{!-- Footer --}}
+            <div class="text-center mt-4 text-muted small">
+                <p>You can close this window. A confirmation email has been sent to your email address.</p>
+                <p>Powered by <strong>Cloudstrucc BA Forms</strong></p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 1rem;
+    }
+</style>
