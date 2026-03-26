@@ -1157,9 +1157,147 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
                 : {};
         } catch (e) {}
         
+        let userValidationData = {};
+        try {
+            userValidationData = db.getSubmissionUserValidation(req.params.id);
+        } catch (e) {}
+        
         let approvalStatus = null;
         try { approvalStatus = db.getApprovalStatus(req.params.id); } catch (e) {}
 
+        // =============================================================
+        // APPLY FILTERS FROM QUERY PARAMS
+        // =============================================================
+        const search = (req.query.search || '').toLowerCase().trim();
+        const categoryFilter = req.query.category || 'all';
+        
+        // Handle multi-select filters
+        let adminStatusList = req.query.adminStatus || [];
+        if (typeof adminStatusList === 'string') {
+            adminStatusList = adminStatusList ? adminStatusList.split(',') : [];
+        }
+        
+        let clientStatusList = req.query.clientStatus || [];
+        if (typeof clientStatusList === 'string') {
+            clientStatusList = clientStatusList ? clientStatusList.split(',') : [];
+        }
+        
+        let responseList = req.query.response || [];
+        if (typeof responseList === 'string') {
+            responseList = responseList ? responseList.split(',') : [];
+        }
+        
+        // Check if any filters are applied
+        const hasFilters = search || categoryFilter !== 'all' || adminStatusList.length > 0 || clientStatusList.length > 0 || responseList.length > 0;
+
+        // Build requirements array with the same logic as the validation page
+        const allRequirements = [];
+        let globalIndex = 0;
+        
+        for (const [key, value] of Object.entries(parsedData)) {
+            if (key.startsWith('_') || key === 'metadata') continue;
+            
+            globalIndex++;
+            
+            const label = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+            
+            // Derive category
+            let category = 'General';
+            const keyLower = key.toLowerCase();
+            if (keyLower.includes('security') || keyLower.includes('auth') || keyLower.includes('password') || keyLower.includes('encrypt') || keyLower.includes('mfa')) {
+                category = 'Security';
+            } else if (keyLower.includes('perform') || keyLower.includes('speed') || keyLower.includes('load') || keyLower.includes('response')) {
+                category = 'Performance';
+            } else if (keyLower.includes('integrat') || keyLower.includes('api') || keyLower.includes('connect') || keyLower.includes('sync')) {
+                category = 'Integration';
+            } else if (keyLower.includes('complian') || keyLower.includes('audit') || keyLower.includes('regulat') || keyLower.includes('gdpr') || keyLower.includes('hipaa')) {
+                category = 'Compliance';
+            } else if (keyLower.includes('ui') || keyLower.includes('ux') || keyLower.includes('interface') || keyLower.includes('design') || keyLower.includes('display')) {
+                category = 'UI/UX';
+            } else if (keyLower.includes('data') || keyLower.includes('storage') || keyLower.includes('backup') || keyLower.includes('database')) {
+                category = 'Data Management';
+            } else if (keyLower.includes('report') || keyLower.includes('analytic') || keyLower.includes('dashboard') || keyLower.includes('metric')) {
+                category = 'Reporting';
+            } else if (keyLower.includes('user') || keyLower.includes('role') || keyLower.includes('permission') || keyLower.includes('access')) {
+                category = 'User Management';
+            } else if (keyLower.includes('notif') || keyLower.includes('email') || keyLower.includes('alert') || keyLower.includes('message')) {
+                category = 'Notifications';
+            } else if (keyLower.includes('document') || keyLower.includes('file') || keyLower.includes('attachment') || keyLower.includes('upload')) {
+                category = 'Document Management';
+            }
+            
+            const fieldValidation = validationData[key] || {};
+            const userFieldValidation = userValidationData ? userValidationData[key] : null;
+            
+            let responseType = 'other';
+            let responseDisplay = '';
+            if (typeof value === 'boolean') {
+                responseType = value ? 'yes' : 'no';
+                responseDisplay = value ? 'Yes' : 'No';
+            } else if (value) {
+                responseDisplay = String(value);
+            }
+            
+            let adminStatus = 'pending';
+            if (fieldValidation.met === 'yes') adminStatus = 'met';
+            else if (fieldValidation.met === 'no') adminStatus = 'not-met';
+            
+            let clientStatus = 'pending';
+            if (userFieldValidation) {
+                if (userFieldValidation.met === 'yes') clientStatus = 'met';
+                else if (userFieldValidation.met === 'no') clientStatus = 'not-met';
+            }
+            
+            allRequirements.push({
+                index: globalIndex,
+                key,
+                label,
+                category,
+                value,
+                responseType,
+                responseDisplay,
+                adminStatus,
+                clientStatus,
+                comment: fieldValidation.comment || ''
+            });
+        }
+
+        // Apply filters
+        let filteredRequirements = allRequirements;
+        
+        if (categoryFilter !== 'all') {
+            filteredRequirements = filteredRequirements.filter(r => r.category === categoryFilter);
+        }
+        
+        if (search) {
+            filteredRequirements = filteredRequirements.filter(r => 
+                r.label.toLowerCase().includes(search) || 
+                r.key.toLowerCase().includes(search) ||
+                (r.responseDisplay && r.responseDisplay.toLowerCase().includes(search))
+            );
+        }
+        
+        if (adminStatusList.length > 0) {
+            filteredRequirements = filteredRequirements.filter(r => adminStatusList.includes(r.adminStatus));
+        }
+        
+        if (clientStatusList.length > 0) {
+            filteredRequirements = filteredRequirements.filter(r => clientStatusList.includes(r.clientStatus));
+        }
+        
+        if (responseList.length > 0) {
+            filteredRequirements = filteredRequirements.filter(r => responseList.includes(r.responseType));
+        }
+
+        // Calculate stats for filtered items
+        let metCount = 0, notMetCount = 0;
+        filteredRequirements.forEach(r => {
+            if (r.adminStatus === 'met') metCount++;
+            else if (r.adminStatus === 'not-met') notMetCount++;
+        });
+        const pendingCount = filteredRequirements.length - metCount - notMetCount;
+
+        // Generate PDF
         const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
 
         const filename = `validation-${submission.clientName || submission.id}-${Date.now()}.pdf`;
@@ -1177,6 +1315,18 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
         doc.text(`Company: ${submission.companyName || 'N/A'}`);
         doc.text(`Generated: ${new Date().toLocaleString()}`);
         doc.moveDown();
+        
+        // Show active filters
+        if (hasFilters) {
+            doc.fillColor('#3498db').font('Helvetica-Bold').text('Active Filters:', { underline: true });
+            doc.fillColor('black').font('Helvetica');
+            if (categoryFilter !== 'all') doc.text(`  Category: ${categoryFilter}`);
+            if (search) doc.text(`  Search: "${search}"`);
+            if (adminStatusList.length > 0) doc.text(`  Admin Status: ${adminStatusList.join(', ')}`);
+            if (clientStatusList.length > 0) doc.text(`  Client Status: ${clientStatusList.join(', ')}`);
+            if (responseList.length > 0) doc.text(`  Response Type: ${responseList.join(', ')}`);
+            doc.moveDown();
+        }
 
         if (approvalStatus) {
             doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
@@ -1205,17 +1355,13 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
         doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
         doc.moveDown();
 
-        let metCount = 0, notMetCount = 0, totalCount = 0;
-        Object.values(validationData).forEach(v => {
-            totalCount++;
-            if (v.met === 'yes') metCount++;
-            else if (v.met === 'no') notMetCount++;
-        });
-
         doc.fontSize(14).font('Helvetica-Bold').text('Summary:', { underline: true });
         doc.moveDown(0.5);
         doc.fontSize(12).font('Helvetica');
-        doc.text(`Total: ${totalCount} | Met: ${metCount} | Not Met: ${notMetCount} | Completion: ${totalCount > 0 ? Math.round(((metCount + notMetCount) / totalCount) * 100) : 0}%`);
+        if (hasFilters) {
+            doc.text(`Filtered Results: ${filteredRequirements.length} of ${allRequirements.length} total items`);
+        }
+        doc.text(`Met: ${metCount} | Not Met: ${notMetCount} | Pending: ${pendingCount} | Completion: ${filteredRequirements.length > 0 ? Math.round(((metCount + notMetCount) / filteredRequirements.length) * 100) : 0}%`);
         doc.moveDown();
 
         doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
@@ -1226,25 +1372,21 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
         doc.fontSize(9).font('Helvetica');
 
         let rowNum = 0;
-        for (const [key, value] of Object.entries(parsedData)) {
-            if (key.startsWith('_') || key === 'metadata') continue;
+        for (const req of filteredRequirements) {
             rowNum++;
-
-            const fieldValidation = validationData[key] || {};
-            const label = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
 
             if (doc.y > 680) doc.addPage();
 
-            const status = fieldValidation.met === 'yes' ? '✓ MET' : fieldValidation.met === 'no' ? '✗ NOT MET' : '○ N/A';
+            const status = req.adminStatus === 'met' ? '✓ MET' : req.adminStatus === 'not-met' ? '✗ NOT MET' : '○ PENDING';
 
-            doc.font('Helvetica-Bold').text(`${rowNum}. ${label}`);
+            doc.font('Helvetica-Bold').text(`${rowNum}. ${req.label}`);
 
-            let displayValue = typeof value === 'boolean' ? (value ? 'Yes' : 'No') : 
-                              typeof value === 'object' ? JSON.stringify(value) : String(value || 'N/A');
+            let displayValue = req.responseDisplay || 'N/A';
+            if (displayValue.length > 100) displayValue = displayValue.substring(0, 100) + '...';
 
             doc.font('Helvetica').text(`   Response: ${displayValue}`);
             doc.text(`   Status: ${status}`);
-            if (fieldValidation.comment) doc.text(`   Comment: ${fieldValidation.comment}`);
+            if (req.comment) doc.text(`   Comment: ${req.comment}`);
             doc.moveDown(0.3);
         }
 
