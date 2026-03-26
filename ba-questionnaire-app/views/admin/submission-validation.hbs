@@ -85,54 +85,19 @@
         vertical-align: middle;
     }
     
-    /* Expandable cell styles */
+    /* Expandable cell styles - now showing full text by default */
     .expandable-cell {
         position: relative;
-        cursor: pointer;
     }
     .expandable-cell .cell-content {
-        max-width: 250px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        transition: all 0.2s ease;
-    }
-    .expandable-cell .cell-content.expanded {
         max-width: none;
         white-space: normal;
         word-wrap: break-word;
     }
-    .expandable-cell .expand-icon {
-        display: inline-block;
-        margin-left: 4px;
-        font-size: 0.7rem;
-        color: #6c757d;
-        transition: transform 0.2s;
-    }
-    .expandable-cell .expand-icon.rotated {
-        transform: rotate(180deg);
-    }
-    .expandable-cell:hover {
-        background-color: #f8f9fa;
-    }
-    .expandable-cell.has-overflow .cell-content::after {
-        content: '...';
-    }
-    .expandable-cell.has-overflow .cell-content.expanded::after {
-        content: '';
-    }
     
-    /* Client comment expandable */
+    /* Client comment - full text by default */
     .client-comment {
         display: block;
-        max-width: 250px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .client-comment.expanded {
         max-width: none;
         white-space: normal;
         word-wrap: break-word;
@@ -141,26 +106,15 @@
         color: #0d6efd;
     }
     
-    /* Response cell */
+    /* Response cell - full text by default */
     .response-cell {
-        max-width: 200px;
+        max-width: 250px;
     }
     .response-text {
         display: block;
-        max-width: 180px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-    .response-text.expanded {
         max-width: none;
         white-space: normal;
         word-wrap: break-word;
-    }
-    .response-text:hover {
-        color: #0d6efd;
     }
     
     .status-badge {
@@ -479,13 +433,13 @@
                                 {{#each this.items}}
                                 <tr data-key="{{this.key}}">
                                     <td class="text-muted">{{this.index}}</td>
-                                    <td class="expandable-cell" onclick="toggleExpand(this)">
-                                        <div class="cell-content" data-full-text="{{this.label}}">
+                                    <td>
+                                        <div class="cell-content">
                                             <strong>{{this.label}}</strong>
                                         </div>
                                         {{#if this.clientComment}}
-                                        <small class="text-info client-comment" onclick="event.stopPropagation(); toggleExpandText(this)" data-full-text="{{this.clientComment}}">
-                                            <i class="bi bi-chat-left-text me-1"></i>{{truncate this.clientComment 50}}
+                                        <small class="text-info client-comment">
+                                            <i class="bi bi-chat-left-text me-1"></i>{{this.clientComment}}
                                         </small>
                                         {{/if}}
                                     </td>
@@ -496,7 +450,7 @@
                                         {{#if (eq this.responseType "no")}}
                                         <span class="badge bg-danger">No</span>
                                         {{else}}
-                                        <span class="response-text" onclick="toggleExpandText(this)" data-full-text="{{this.responseDisplay}}" title="Click to expand">{{truncate this.responseDisplay 30}}</span>
+                                        <span class="response-text">{{this.responseDisplay}}</span>
                                         {{/if}}
                                         {{/if}}
                                     </td>
@@ -608,13 +562,6 @@
                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllStatuses()">
                                 <i class="bi bi-eraser me-1"></i> Clear Page Statuses
                             </button>
-                            <hr class="my-2">
-                            <button type="button" class="btn btn-outline-info btn-sm" onclick="expandAllCells()">
-                                <i class="bi bi-arrows-expand me-1"></i> Expand All Text
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="collapseAllCells()">
-                                <i class="bi bi-arrows-collapse me-1"></i> Collapse All Text
-                            </button>
                         </div>
                     </div>
                 </div>
@@ -660,68 +607,6 @@
     const existingValidation = {{{json validationData}}};
     const visibleFieldKeys = {{{json visibleFieldKeys}}};
     const submissionId = '{{submission.id}}';
-    
-    // Expand/Collapse functions for table cells
-    function toggleExpand(cell) {
-        const content = cell.querySelector('.cell-content');
-        if (content) {
-            content.classList.toggle('expanded');
-        }
-    }
-    
-    function toggleExpandText(element) {
-        element.classList.toggle('expanded');
-        const fullText = element.dataset.fullText;
-        
-        if (element.classList.contains('expanded')) {
-            element.textContent = fullText;
-            // Re-add icon for client comments
-            if (element.classList.contains('client-comment')) {
-                const icon = document.createElement('i');
-                icon.className = 'bi bi-chat-left-text me-1';
-                element.prepend(icon);
-            }
-        } else {
-            // Truncate back
-            const maxLen = element.classList.contains('client-comment') ? 50 : 30;
-            let truncated = fullText.length > maxLen ? fullText.substring(0, maxLen) + '...' : fullText;
-            element.textContent = truncated;
-            // Re-add icon for client comments
-            if (element.classList.contains('client-comment')) {
-                const icon = document.createElement('i');
-                icon.className = 'bi bi-chat-left-text me-1';
-                element.prepend(icon);
-            }
-        }
-    }
-    
-    // Expand all / Collapse all buttons
-    function expandAllCells() {
-        document.querySelectorAll('.cell-content').forEach(el => el.classList.add('expanded'));
-        document.querySelectorAll('.response-text').forEach(el => {
-            el.classList.add('expanded');
-            el.textContent = el.dataset.fullText;
-        });
-        document.querySelectorAll('.client-comment').forEach(el => {
-            el.classList.add('expanded');
-            el.innerHTML = '<i class="bi bi-chat-left-text me-1"></i>' + el.dataset.fullText;
-        });
-    }
-    
-    function collapseAllCells() {
-        document.querySelectorAll('.cell-content').forEach(el => el.classList.remove('expanded'));
-        document.querySelectorAll('.response-text').forEach(el => {
-            el.classList.remove('expanded');
-            const fullText = el.dataset.fullText;
-            el.textContent = fullText.length > 30 ? fullText.substring(0, 30) + '...' : fullText;
-        });
-        document.querySelectorAll('.client-comment').forEach(el => {
-            el.classList.remove('expanded');
-            const fullText = el.dataset.fullText;
-            const truncated = fullText.length > 50 ? fullText.substring(0, 50) + '...' : fullText;
-            el.innerHTML = '<i class="bi bi-chat-left-text me-1"></i>' + truncated;
-        });
-    }
     
     function collectPageValidation() {
         const pageData = {};

@@ -452,7 +452,7 @@
   font-style: italic;
 }
 
-/* Client comment styling */
+/* Client comment styling - full text by default */
 .client-comment {
   background-color: #fff3cd;
   border-left: 3px solid #f39c12;
@@ -460,6 +460,17 @@
   border-radius: 0 4px 4px 0;
   font-size: 0.85rem;
   margin-bottom: 0.5rem;
+  max-width: none;
+  white-space: normal;
+  word-wrap: break-word;
+}
+
+/* Full text display by default */
+.expandable-text {
+  display: block;
+  max-width: none;
+  white-space: normal;
+  word-wrap: break-word;
 }
 
 /* Selection checkbox */
@@ -608,19 +619,35 @@ document.addEventListener('DOMContentLoaded', function() {
         row.dataset.requirement = label;
         row.dataset.hasComment = clientComment ? 'has-comment' : 'no-comment';
         
+        // Truncate helper - NOT USED anymore, keeping for reference
+        const truncateText = (text, maxLen) => {
+            if (!text || text.length <= maxLen) return text || '';
+            return text.substring(0, maxLen) + '...';
+        };
+        
+        // Full label (no truncation)
+        const labelHtml = `<strong>${label}</strong>`;
+        
+        // Full display value (no truncation)
+        let expandableDisplayValue = displayValue;
+        if (typeof value === 'string' && value.length > 0 && !displayValue.includes('badge')) {
+            expandableDisplayValue = `<span class="expandable-text">${value}</span>`;
+        }
+        
+        // Full client comment (no truncation)
+        const clientCommentHtml = clientComment 
+            ? `<div class="client-comment"><i class="bi bi-chat-left-quote me-1"></i>${clientComment}</div>`
+            : '<span class="text-muted fst-italic">No comment</span>';
+        
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="form-check-input field-select row-select" checked>
             </td>
             <td class="text-muted">${rowNum}</td>
-            <td><strong>${label}</strong></td>
-            <td>${displayValue}</td>
+            <td>${labelHtml}</td>
+            <td>${expandableDisplayValue}</td>
             <td class="text-center">${statusBadge}</td>
-            <td>
-                ${clientComment 
-                    ? '<div class="client-comment"><i class="bi bi-chat-left-quote me-1"></i>' + clientComment + '</div>' 
-                    : '<span class="text-muted fst-italic">No comment</span>'}
-            </td>
+            <td>${clientCommentHtml}</td>
             <td>
                 <textarea class="admin-reply" placeholder="Reply to client comment..." data-field="${key}">${adminReply}</textarea>
             </td>

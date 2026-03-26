@@ -166,59 +166,23 @@
     border-radius: 0 4px 4px 0;
     font-size: 0.85rem;
     color: #0d4482;
-    cursor: pointer;
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    transition: all 0.2s;
-}
-.admin-note.expanded {
     max-width: none;
     white-space: normal;
     word-wrap: break-word;
-}
-.admin-note:hover {
-    background-color: #cce5ff;
 }
 .admin-note i {
     color: #0d6efd;
 }
-/* Expandable text */
-.expandable-text {
-    cursor: pointer;
-    transition: all 0.2s;
+/* Full text display by default */
+.requirement-label {
     display: block;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-.expandable-text:hover {
-    color: #0d6efd;
-}
-.expandable-text.expanded {
-    max-width: none;
     white-space: normal;
     word-wrap: break-word;
 }
-/* Response text */
 .response-text {
     display: block;
-    max-width: 180px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-.response-text.expanded {
-    max-width: none;
     white-space: normal;
     word-wrap: break-word;
-}
-.response-text:hover {
-    color: #0d6efd;
 }
 </style>
 
@@ -256,34 +220,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 : '<span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>';
         } else if (typeof value === 'object' && value !== null) {
             const jsonStr = JSON.stringify(value, null, 2);
-            displayValue = '<pre class="mb-0 bg-light p-2 rounded small expandable-text" onclick="this.classList.toggle(\'expanded\')" style="cursor: pointer; max-height: 80px; overflow-y: auto;">' + jsonStr + '</pre>';
+            displayValue = '<pre class="mb-0 bg-light p-2 rounded small" style="white-space: pre-wrap;">' + jsonStr + '</pre>';
         } else if (value) {
-            const strValue = String(value);
-            if (strValue.length > 40) {
-                displayValue = '<span class="response-text" onclick="this.classList.toggle(\'expanded\')" title="Click to expand">' + strValue.substring(0, 40) + '...</span>';
-            } else {
-                displayValue = '<span class="text-break small">' + strValue + '</span>';
-            }
+            displayValue = '<span class="response-text">' + String(value) + '</span>';
         } else {
             displayValue = '<span class="text-muted fst-italic">No response</span>';
         }
         
-        // Create expandable label
-        let labelHtml = label;
-        if (label.length > 40) {
-            labelHtml = '<span class="expandable-text" onclick="this.classList.toggle(\'expanded\')" title="Click to expand"><strong>' + label.substring(0, 40) + '...</strong></span>';
-        } else {
-            labelHtml = '<strong>' + label + '</strong>';
-        }
+        // Full label (no truncation)
+        const labelHtml = '<strong class="requirement-label">' + label + '</strong>';
         
-        // Create expandable admin note
+        // Full admin note (no truncation)
         let adminNoteHtml = '';
         if (adminNote) {
-            if (adminNote.length > 50) {
-                adminNoteHtml = '<div class="admin-note" onclick="this.classList.toggle(\'expanded\')" title="Click to expand"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
-            } else {
-                adminNoteHtml = '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
-            }
+            adminNoteHtml = '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
         } else {
             adminNoteHtml = '<span class="text-muted fst-italic small">No notes</span>';
         }

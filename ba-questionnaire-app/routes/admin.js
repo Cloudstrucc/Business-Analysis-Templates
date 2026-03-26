@@ -1258,7 +1258,8 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
                 responseDisplay,
                 adminStatus,
                 clientStatus,
-                comment: fieldValidation.comment || ''
+                comment: fieldValidation.comment || '',
+                clientComment: userFieldValidation ? (userFieldValidation.comment || '') : ''
             });
         }
 
@@ -1379,15 +1380,36 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
 
             const status = req.adminStatus === 'met' ? '✓ MET' : req.adminStatus === 'not-met' ? '✗ NOT MET' : '○ PENDING';
 
+            // Full requirement label (no truncation)
             doc.font('Helvetica-Bold').text(`${rowNum}. ${req.label}`);
 
+            // Full response (no truncation) - wrap long text
             let displayValue = req.responseDisplay || 'N/A';
-            if (displayValue.length > 100) displayValue = displayValue.substring(0, 100) + '...';
-
-            doc.font('Helvetica').text(`   Response: ${displayValue}`);
+            doc.font('Helvetica').text(`   Response: ${displayValue}`, { 
+                width: 500,
+                lineGap: 2
+            });
+            
             doc.text(`   Status: ${status}`);
-            if (req.comment) doc.text(`   Comment: ${req.comment}`);
-            doc.moveDown(0.3);
+            
+            // Full comment (no truncation)
+            if (req.comment) {
+                doc.text(`   Admin Comment: ${req.comment}`, {
+                    width: 500,
+                    lineGap: 2
+                });
+            }
+            
+            // Client comment if available
+            if (req.clientComment) {
+                doc.fillColor('#856404').text(`   Client Comment: ${req.clientComment}`, {
+                    width: 500,
+                    lineGap: 2
+                });
+                doc.fillColor('black');
+            }
+            
+            doc.moveDown(0.5);
         }
 
         doc.moveDown(2);
