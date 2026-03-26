@@ -1371,6 +1371,42 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
         doc.fontSize(14).font('Helvetica-Bold').text('Details:', { underline: true });
         doc.moveDown(0.5);
         doc.fontSize(9).font('Helvetica');
+        
+        // Helper to convert markdown to plain text with basic formatting for PDF
+        function mdToText(md) {
+            if (!md) return '';
+            return md
+                // Remove code blocks but keep content
+                .replace(/```[\w]*\n([\s\S]*?)```/g, '$1')
+                // Remove inline code backticks
+                .replace(/`([^`]+)`/g, '$1')
+                // Convert headers to CAPS
+                .replace(/^#{1,6}\s+(.*)$/gm, (m, p1) => p1.toUpperCase())
+                // Remove bold/italic markers but keep text
+                .replace(/\*\*\*([^*]+)\*\*\*/g, '$1')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/\*([^*]+)\*/g, '$1')
+                .replace(/___([^_]+)___/g, '$1')
+                .replace(/__([^_]+)__/g, '$1')
+                .replace(/_([^_]+)_/g, '$1')
+                // Convert task lists
+                .replace(/^- \[x\]\s+(.*)$/gm, '  ✓ $1')
+                .replace(/^- \[ \]\s+(.*)$/gm, '  ○ $1')
+                // Convert bullet points
+                .replace(/^[\*\-]\s+(.*)$/gm, '  • $1')
+                // Convert numbered lists
+                .replace(/^(\d+)\.\s+(.*)$/gm, '  $1. $2')
+                // Convert blockquotes
+                .replace(/^>\s+(.*)$/gm, '  "$1"')
+                // Remove link syntax but keep text
+                .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+                // Remove horizontal rules
+                .replace(/^---$/gm, '────────────')
+                .replace(/^\*\*\*$/gm, '────────────')
+                // Collapse multiple newlines
+                .replace(/\n{3,}/g, '\n\n')
+                .trim();
+        }
 
         let rowNum = 0;
         for (const req of filteredRequirements) {
@@ -1392,11 +1428,16 @@ router.get('/submissions/:id/validation/export-pdf', async (req, res) => {
             
             doc.text(`   Status: ${status}`);
             
-            // Full comment (no truncation)
+            // Full comment with markdown converted to text
             if (req.comment) {
-                doc.text(`   Admin Comment: ${req.comment}`, {
-                    width: 500,
-                    lineGap: 2
+                const commentText = mdToText(req.comment);
+                doc.fillColor('#0066cc').text(`   Admin Comment:`, {
+                    width: 500
+                });
+                doc.fillColor('black').text(`   ${commentText}`, {
+                    width: 490,
+                    lineGap: 2,
+                    indent: 10
                 });
             }
             

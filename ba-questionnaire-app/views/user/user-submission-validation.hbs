@@ -170,8 +170,60 @@
     white-space: normal;
     word-wrap: break-word;
 }
-.admin-note i {
+.admin-note i.bi-person-badge {
     color: #0d6efd;
+    float: left;
+    margin-right: 0.5rem;
+}
+.admin-note-content {
+    overflow: hidden;
+}
+.admin-note-content h1, .admin-note-content h2, .admin-note-content h3,
+.admin-note-content h4, .admin-note-content h5, .admin-note-content h6 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0.5rem 0 0.25rem 0;
+    color: #0d4482;
+}
+.admin-note-content p {
+    margin: 0.25rem 0;
+}
+.admin-note-content ul, .admin-note-content ol {
+    margin: 0.25rem 0;
+    padding-left: 1.25rem;
+}
+.admin-note-content li {
+    margin: 0.1rem 0;
+}
+.admin-note-content code {
+    background: #cce5ff;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.75rem;
+}
+.admin-note-content pre {
+    background: #2d2d2d;
+    color: #f8f8f2;
+    padding: 0.5rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 0.7rem;
+    margin: 0.25rem 0;
+}
+.admin-note-content strong {
+    font-weight: 600;
+}
+.admin-note-content em {
+    font-style: italic;
+}
+.admin-note-content a {
+    color: #0d6efd;
+}
+.admin-note-content blockquote {
+    border-left: 2px solid #0d6efd;
+    margin: 0.25rem 0;
+    padding-left: 0.5rem;
+    color: #6c757d;
 }
 /* Full text display by default */
 .requirement-label {
@@ -191,6 +243,63 @@ document.addEventListener('DOMContentLoaded', function() {
     const parsedData = {{{json parsedData}}};
     const userValidationData = {{{json userValidationData}}};
     const adminComments = {{{json adminComments}}};
+    
+    // Simple Markdown parser
+    function parseMarkdown(md) {
+        if (!md) return '';
+        
+        let html = md
+            // Escape HTML
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            
+            // Code blocks
+            .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+            
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            
+            // Headers
+            .replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+            .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+            .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+            .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+            .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+            .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+            
+            // Bold and italic
+            .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+            .replace(/_([^_]+)_/g, '<em>$1</em>')
+            
+            // Blockquotes
+            .replace(/^>\s+(.*)$/gm, '<blockquote>$1</blockquote>')
+            
+            // Task lists
+            .replace(/^- \[x\]\s+(.*)$/gm, '<li>✓ $1</li>')
+            .replace(/^- \[ \]\s+(.*)$/gm, '<li>○ $1</li>')
+            
+            // Unordered lists
+            .replace(/^[\*\-]\s+(.*)$/gm, '<li>$1</li>')
+            
+            // Ordered lists
+            .replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>')
+            
+            // Links
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            
+            // Line breaks
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        // Wrap consecutive list items
+        html = html.replace(/(<li>.*?<\/li>)+/g, '<ul>$&</ul>');
+        
+        return html;
+    }
     
     const tbody = document.getElementById('validationTableBody');
     let rowNum = 0;
@@ -230,10 +339,11 @@ document.addEventListener('DOMContentLoaded', function() {
         // Full label (no truncation)
         const labelHtml = '<strong class="requirement-label">' + label + '</strong>';
         
-        // Full admin note (no truncation)
+        // Admin note with markdown rendering
         let adminNoteHtml = '';
         if (adminNote) {
-            adminNoteHtml = '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
+            const renderedNote = parseMarkdown(adminNote);
+            adminNoteHtml = '<div class="admin-note"><i class="bi bi-person-badge me-1"></i><div class="admin-note-content">' + renderedNote + '</div></div>';
         } else {
             adminNoteHtml = '<span class="text-muted fst-italic small">No notes</span>';
         }

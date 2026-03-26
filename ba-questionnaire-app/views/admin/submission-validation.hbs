@@ -155,6 +155,137 @@
     .stat-label { font-size: 0.75rem; color: #6c757d; text-transform: uppercase; }
     .comment-input { font-size: 0.8rem; resize: none; }
     .status-select { font-size: 0.8rem; padding: 0.25rem 0.5rem; width: auto; }
+    
+    /* Markdown comment styles */
+    .comment-cell {
+        min-width: 250px;
+    }
+    .comment-wrapper {
+        position: relative;
+    }
+    .comment-input.md-editor {
+        font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+        font-size: 0.75rem;
+        min-height: 60px;
+        resize: vertical;
+    }
+    .comment-preview {
+        display: none;
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 4px;
+        padding: 0.5rem;
+        font-size: 0.8rem;
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    .comment-preview.active {
+        display: block;
+    }
+    .comment-preview h1, .comment-preview h2, .comment-preview h3, 
+    .comment-preview h4, .comment-preview h5, .comment-preview h6 {
+        font-size: 0.9rem;
+        font-weight: 600;
+        margin: 0.5rem 0 0.25rem 0;
+        color: #333;
+    }
+    .comment-preview h1 { font-size: 1rem; }
+    .comment-preview h2 { font-size: 0.95rem; }
+    .comment-preview h3 { font-size: 0.9rem; }
+    .comment-preview p {
+        margin: 0.25rem 0;
+    }
+    .comment-preview ul, .comment-preview ol {
+        margin: 0.25rem 0;
+        padding-left: 1.25rem;
+    }
+    .comment-preview li {
+        margin: 0.1rem 0;
+    }
+    .comment-preview code {
+        background: #e9ecef;
+        padding: 0.1rem 0.3rem;
+        border-radius: 3px;
+        font-size: 0.75rem;
+        color: #d63384;
+    }
+    .comment-preview pre {
+        background: #2d2d2d;
+        color: #f8f8f2;
+        padding: 0.5rem;
+        border-radius: 4px;
+        overflow-x: auto;
+        font-size: 0.7rem;
+        margin: 0.25rem 0;
+    }
+    .comment-preview pre code {
+        background: none;
+        color: inherit;
+        padding: 0;
+    }
+    .comment-preview blockquote {
+        border-left: 3px solid #0d6efd;
+        margin: 0.25rem 0;
+        padding-left: 0.5rem;
+        color: #6c757d;
+        font-style: italic;
+    }
+    .comment-preview strong {
+        font-weight: 600;
+    }
+    .comment-preview a {
+        color: #0d6efd;
+    }
+    .comment-preview hr {
+        margin: 0.5rem 0;
+        border-top: 1px solid #dee2e6;
+    }
+    .comment-preview table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.75rem;
+        margin: 0.25rem 0;
+    }
+    .comment-preview th, .comment-preview td {
+        border: 1px solid #dee2e6;
+        padding: 0.25rem 0.5rem;
+    }
+    .comment-preview th {
+        background: #f1f3f5;
+    }
+    .comment-preview .task-list-item {
+        list-style: none;
+        margin-left: -1rem;
+    }
+    .comment-preview .task-list-item input {
+        margin-right: 0.25rem;
+    }
+    .comment-toggle-btns {
+        display: flex;
+        gap: 2px;
+        margin-bottom: 4px;
+    }
+    .comment-toggle-btn {
+        font-size: 0.65rem;
+        padding: 0.15rem 0.4rem;
+        border: 1px solid #dee2e6;
+        background: #fff;
+        cursor: pointer;
+        border-radius: 3px;
+    }
+    .comment-toggle-btn.active {
+        background: #0d6efd;
+        color: white;
+        border-color: #0d6efd;
+    }
+    .comment-toggle-btn:hover:not(.active) {
+        background: #f8f9fa;
+    }
+    .md-hint {
+        font-size: 0.6rem;
+        color: #6c757d;
+        margin-top: 2px;
+    }
     .active-filters {
         display: flex;
         flex-wrap: wrap;
@@ -426,7 +557,7 @@
                                     <th style="width: 120px;">Response</th>
                                     <th style="width: 100px;">Admin</th>
                                     <th style="width: 100px;">Client</th>
-                                    <th style="width: 200px;">Comment</th>
+                                    <th style="width: 280px;">Admin Comment <small class="text-muted">(Markdown)</small></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -472,9 +603,17 @@
                                         {{/if}}
                                         {{/if}}
                                     </td>
-                                    <td>
-                                        <textarea class="form-control form-control-sm comment-input admin-comment" 
-                                                  data-key="{{this.key}}" rows="1" placeholder="Add comment...">{{this.comment}}</textarea>
+                                    <td class="comment-cell">
+                                        <div class="comment-wrapper">
+                                            <div class="comment-toggle-btns">
+                                                <button type="button" class="comment-toggle-btn active" data-mode="edit" data-key="{{this.key}}">Edit</button>
+                                                <button type="button" class="comment-toggle-btn" data-mode="preview" data-key="{{this.key}}">Preview</button>
+                                            </div>
+                                            <textarea class="form-control form-control-sm comment-input md-editor admin-comment" 
+                                                      data-key="{{this.key}}" rows="2" placeholder="Markdown supported...">{{this.comment}}</textarea>
+                                            <div class="comment-preview" data-preview-key="{{this.key}}"></div>
+                                            <div class="md-hint">Supports **bold**, *italic*, `code`, lists, links</div>
+                                        </div>
                                     </td>
                                 </tr>
                                 {{/each}}
@@ -608,6 +747,132 @@
     const visibleFieldKeys = {{{json visibleFieldKeys}}};
     const submissionId = '{{submission.id}}';
     
+    // Simple Markdown parser
+    function parseMarkdown(md) {
+        if (!md) return '';
+        
+        let html = md
+            // Escape HTML
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            
+            // Code blocks (``` ... ```)
+            .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+            
+            // Inline code
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            
+            // Headers
+            .replace(/^######\s+(.*)$/gm, '<h6>$1</h6>')
+            .replace(/^#####\s+(.*)$/gm, '<h5>$1</h5>')
+            .replace(/^####\s+(.*)$/gm, '<h4>$1</h4>')
+            .replace(/^###\s+(.*)$/gm, '<h3>$1</h3>')
+            .replace(/^##\s+(.*)$/gm, '<h2>$1</h2>')
+            .replace(/^#\s+(.*)$/gm, '<h1>$1</h1>')
+            
+            // Bold and italic
+            .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            .replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>')
+            .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+            .replace(/_([^_]+)_/g, '<em>$1</em>')
+            
+            // Strikethrough
+            .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+            
+            // Blockquotes
+            .replace(/^>\s+(.*)$/gm, '<blockquote>$1</blockquote>')
+            
+            // Horizontal rule
+            .replace(/^---$/gm, '<hr>')
+            .replace(/^\*\*\*$/gm, '<hr>')
+            
+            // Task lists
+            .replace(/^- \[x\]\s+(.*)$/gm, '<li class="task-list-item"><input type="checkbox" checked disabled> $1</li>')
+            .replace(/^- \[ \]\s+(.*)$/gm, '<li class="task-list-item"><input type="checkbox" disabled> $1</li>')
+            
+            // Unordered lists
+            .replace(/^[\*\-]\s+(.*)$/gm, '<li>$1</li>')
+            
+            // Ordered lists
+            .replace(/^\d+\.\s+(.*)$/gm, '<li>$1</li>')
+            
+            // Links
+            .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>')
+            
+            // Images
+            .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%">')
+            
+            // Tables (basic support)
+            .replace(/^\|(.+)\|$/gm, function(match, content) {
+                const cells = content.split('|').map(c => c.trim());
+                const isHeader = cells.every(c => /^[-:]+$/.test(c));
+                if (isHeader) return ''; // Skip separator row
+                const cellTag = 'td';
+                return '<tr>' + cells.map(c => `<${cellTag}>${c}</${cellTag}>`).join('') + '</tr>';
+            })
+            
+            // Line breaks
+            .replace(/\n\n/g, '</p><p>')
+            .replace(/\n/g, '<br>');
+        
+        // Wrap in paragraph if not already wrapped
+        if (!html.startsWith('<')) {
+            html = '<p>' + html + '</p>';
+        }
+        
+        // Wrap consecutive list items in ul
+        html = html.replace(/(<li[^>]*>.*?<\/li>)+/g, '<ul>$&</ul>');
+        
+        // Wrap table rows in table
+        html = html.replace(/(<tr>.*?<\/tr>)+/g, '<table>$&</table>');
+        
+        // Clean up empty paragraphs
+        html = html.replace(/<p><\/p>/g, '');
+        
+        return html;
+    }
+    
+    // Preview toggle functionality
+    document.querySelectorAll('.comment-toggle-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const key = this.dataset.key;
+            const mode = this.dataset.mode;
+            const wrapper = this.closest('.comment-wrapper');
+            const textarea = wrapper.querySelector('.admin-comment');
+            const preview = wrapper.querySelector('.comment-preview');
+            const hint = wrapper.querySelector('.md-hint');
+            const btns = wrapper.querySelectorAll('.comment-toggle-btn');
+            
+            btns.forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            if (mode === 'preview') {
+                const md = textarea.value;
+                preview.innerHTML = parseMarkdown(md) || '<em class="text-muted">No content</em>';
+                textarea.style.display = 'none';
+                preview.classList.add('active');
+                hint.style.display = 'none';
+            } else {
+                textarea.style.display = '';
+                preview.classList.remove('active');
+                hint.style.display = '';
+            }
+        });
+    });
+    
+    // Auto-expand textarea on focus
+    document.querySelectorAll('.md-editor').forEach(textarea => {
+        textarea.addEventListener('focus', function() {
+            this.rows = 5;
+        });
+        textarea.addEventListener('blur', function() {
+            if (!this.value) this.rows = 2;
+        });
+    });
+    
     function collectPageValidation() {
         const pageData = {};
         document.querySelectorAll('.admin-status').forEach(select => {
@@ -666,9 +931,4 @@
     function clearAllStatuses() {
         document.querySelectorAll('.admin-status').forEach(s => s.value = '');
     }
-    
-    document.querySelectorAll('.comment-input').forEach(textarea => {
-        textarea.addEventListener('focus', function() { this.rows = 3; });
-        textarea.addEventListener('blur', function() { if (!this.value) this.rows = 1; });
-    });
 </script>
