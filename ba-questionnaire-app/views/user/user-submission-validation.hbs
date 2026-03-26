@@ -166,8 +166,58 @@
     border-radius: 0 4px 4px 0;
     font-size: 0.85rem;
     color: #0d4482;
+    cursor: pointer;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.admin-note.expanded {
+    max-width: none;
+    white-space: normal;
+    word-wrap: break-word;
+}
+.admin-note:hover {
+    background-color: #cce5ff;
 }
 .admin-note i {
+    color: #0d6efd;
+}
+/* Expandable text */
+.expandable-text {
+    cursor: pointer;
+    transition: all 0.2s;
+    display: block;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.expandable-text:hover {
+    color: #0d6efd;
+}
+.expandable-text.expanded {
+    max-width: none;
+    white-space: normal;
+    word-wrap: break-word;
+}
+/* Response text */
+.response-text {
+    display: block;
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.response-text.expanded {
+    max-width: none;
+    white-space: normal;
+    word-wrap: break-word;
+}
+.response-text:hover {
     color: #0d6efd;
 }
 </style>
@@ -205,11 +255,37 @@ document.addEventListener('DOMContentLoaded', function() {
                 ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>' 
                 : '<span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>';
         } else if (typeof value === 'object' && value !== null) {
-            displayValue = '<pre class="mb-0 bg-light p-2 rounded small" style="white-space: pre-wrap; max-height: 80px; overflow-y: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
+            const jsonStr = JSON.stringify(value, null, 2);
+            displayValue = '<pre class="mb-0 bg-light p-2 rounded small expandable-text" onclick="this.classList.toggle(\'expanded\')" style="cursor: pointer; max-height: 80px; overflow-y: auto;">' + jsonStr + '</pre>';
         } else if (value) {
-            displayValue = '<span class="text-break small">' + String(value).substring(0, 150) + (String(value).length > 150 ? '...' : '') + '</span>';
+            const strValue = String(value);
+            if (strValue.length > 40) {
+                displayValue = '<span class="response-text" onclick="this.classList.toggle(\'expanded\')" title="Click to expand">' + strValue.substring(0, 40) + '...</span>';
+            } else {
+                displayValue = '<span class="text-break small">' + strValue + '</span>';
+            }
         } else {
             displayValue = '<span class="text-muted fst-italic">No response</span>';
+        }
+        
+        // Create expandable label
+        let labelHtml = label;
+        if (label.length > 40) {
+            labelHtml = '<span class="expandable-text" onclick="this.classList.toggle(\'expanded\')" title="Click to expand"><strong>' + label.substring(0, 40) + '...</strong></span>';
+        } else {
+            labelHtml = '<strong>' + label + '</strong>';
+        }
+        
+        // Create expandable admin note
+        let adminNoteHtml = '';
+        if (adminNote) {
+            if (adminNote.length > 50) {
+                adminNoteHtml = '<div class="admin-note" onclick="this.classList.toggle(\'expanded\')" title="Click to expand"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
+            } else {
+                adminNoteHtml = '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>';
+            }
+        } else {
+            adminNoteHtml = '<span class="text-muted fst-italic small">No notes</span>';
         }
         
         const row = document.createElement('tr');
@@ -218,7 +294,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         row.innerHTML = `
             <td class="text-muted">${rowNum}</td>
-            <td><strong>${label}</strong></td>
+            <td>${labelHtml}</td>
             <td>${displayValue}</td>
             <td class="text-center">
                 <div class="btn-group" role="group">
@@ -238,11 +314,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 <textarea class="form-control comment-input" data-field="${key}" 
                           placeholder="Add comments (optional)...">${comment}</textarea>
             </td>
-            <td>
-                ${adminNote 
-                    ? '<div class="admin-note"><i class="bi bi-person-badge me-1"></i>' + adminNote + '</div>' 
-                    : '<span class="text-muted fst-italic small">No notes</span>'}
-            </td>
+            <td>${adminNoteHtml}</td>
         `;
         
         tbody.appendChild(row);
