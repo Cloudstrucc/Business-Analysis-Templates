@@ -1,912 +1,925 @@
 {{!-- views/admin/submission-validation.hbs --}}
-{{!-- Implementation Validation Page with save confirmation, completion status, and approval workflow --}}
+{{!-- Server-side pagination, category grouping, floating TOC, re-validation sends visible items --}}
 
-<div class="container py-4">
-    {{!-- Header --}}
-    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
-        <div>
-            <nav aria-label="breadcrumb">
-                <ol class="breadcrumb mb-2">
-                    <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
-                    <li class="breadcrumb-item"><a href="/admin/submissions">Submissions</a></li>
-                    <li class="breadcrumb-item"><a href="/admin/submissions/{{submission.id}}">{{submission.clientName}}</a></li>
-                    <li class="breadcrumb-item active">Validation</li>
-                </ol>
-            </nav>
-            <h2 class="mb-1">
-                <i class="bi bi-check2-square me-2"></i>
-                Implementation Validation
-            </h2>
-            <p class="text-muted mb-0">
-                Validate requirements for {{submission.clientName}} - {{submission.formName}}
-            </p>
+<style>
+/* Main layout with TOC */
+.main-content { margin-right: 280px; }
+
+/* Floating TOC */
+.toc-sidebar {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    width: 250px;
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.toc-header {
+    padding: 1rem;
+    border-bottom: 1px solid #dee2e6;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 12px 12px 0 0;
+    position: sticky;
+    top: 0;
+}
+
+.toc-body { padding: 0.5rem; }
+
+.toc-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.5rem 0.75rem;
+    margin: 0.2rem 0;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.8rem;
+    text-decoration: none;
+    color: #333;
+}
+
+.toc-item:hover { background: #f0f4ff; color: #667eea; }
+.toc-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+.toc-item .badge { font-size: 0.65rem; }
+
+.toc-progress {
+    padding: 0.75rem;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 12px 12px;
+}
+
+.toc-progress-bar {
+    height: 6px;
+    border-radius: 3px;
+    overflow: hidden;
+    background: #e9ecef;
+}
+
+/* Filter bar */
+.filter-bar {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.filter-btn {
+    font-size: 0.8rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 20px;
+    border: 1px solid #dee2e6;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.filter-btn:hover { border-color: #3498db; background: #f0f7ff; }
+.filter-btn.active { background: #3498db; color: white; border-color: #3498db; }
+
+/* Pagination */
+.pagination-bar {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.pagination-info { font-size: 0.9rem; color: #6c757d; }
+.pagination-info strong { color: #333; }
+
+.page-size-select {
+    width: auto;
+    font-size: 0.85rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+}
+
+.pagination .page-link {
+    border-radius: 8px;
+    margin: 0 2px;
+    border: none;
+    color: #667eea;
+}
+
+.pagination .page-link:hover { background: #f0f4ff; }
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+}
+
+/* Category sections */
+.category-section { scroll-margin-top: 20px; margin-bottom: 1.5rem; }
+
+.category-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.category-header h5 { margin: 0; font-weight: 600; font-size: 1rem; }
+.category-stats { display: flex; gap: 0.4rem; }
+.category-stats .badge { font-size: 0.7rem; }
+
+/* Table styling */
+.validation-table { margin-bottom: 0; }
+.validation-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    border-bottom: 2px solid #dee2e6;
+    padding: 0.6rem;
+}
+
+.validation-table td {
+    vertical-align: middle;
+    padding: 0.6rem;
+    font-size: 0.85rem;
+}
+
+.validation-row { transition: all 0.2s; }
+.validation-row:hover { background: #f8f9fa; }
+.validation-row.met { background: rgba(25, 135, 84, 0.08); border-left: 3px solid #198754; }
+.validation-row.not-met { background: rgba(220, 53, 69, 0.08); border-left: 3px solid #dc3545; }
+
+/* Comment editor */
+.comment-editor {
+    min-height: 32px;
+    max-height: 70px;
+    overflow-y: auto;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    background: white;
+}
+
+.comment-editor:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15); }
+.comment-editor:empty:before { content: attr(data-placeholder); color: #adb5bd; }
+
+/* Re-validation banner */
+.revalidation-banner {
+    position: sticky;
+    bottom: 20px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    margin-top: 1rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.revalidation-banner h6 { margin: 0; font-weight: 600; }
+
+/* Summary cards */
+.summary-card {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow: hidden;
+}
+
+.summary-card .card-body { padding: 1rem; }
+.summary-card h3 { font-size: 1.75rem; font-weight: 700; margin: 0; }
+.summary-card h6 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem; opacity: 0.9; }
+
+/* Progress bar */
+.progress-container {
+    background: white;
+    border-radius: 12px;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 1rem;
+}
+
+.progress-main { height: 10px; border-radius: 5px; overflow: hidden; background: #e9ecef; }
+
+/* Responsive */
+@media (max-width: 1400px) {
+    .toc-sidebar { width: 220px; }
+    .main-content { margin-right: 240px; }
+}
+
+@media (max-width: 1200px) {
+    .toc-sidebar { display: none; }
+    .main-content { margin-right: 0; }
+}
+</style>
+
+<!-- Floating TOC Sidebar -->
+<div class="toc-sidebar">
+    <div class="toc-header">
+        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Categories</h6>
+    </div>
+    <div class="toc-body">
+        {{#each categories}}
+        <a href="?category={{this.name}}&page=1&perPage={{../pagination.perPage}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}" 
+           class="toc-item {{#if (eq this.name ../filters.category)}}active{{/if}}">
+            <span>
+                {{#if (eq this.name 'Security')}}<i class="bi bi-shield-lock me-2"></i>
+                {{else if (eq this.name 'Performance')}}<i class="bi bi-speedometer2 me-2"></i>
+                {{else if (eq this.name 'Integration')}}<i class="bi bi-plug me-2"></i>
+                {{else if (eq this.name 'Compliance')}}<i class="bi bi-clipboard-check me-2"></i>
+                {{else if (eq this.name 'UI/UX')}}<i class="bi bi-palette me-2"></i>
+                {{else if (eq this.name 'Data Management')}}<i class="bi bi-database me-2"></i>
+                {{else if (eq this.name 'Reporting')}}<i class="bi bi-graph-up me-2"></i>
+                {{else if (eq this.name 'User Management')}}<i class="bi bi-people me-2"></i>
+                {{else if (eq this.name 'Notifications')}}<i class="bi bi-bell me-2"></i>
+                {{else if (eq this.name 'Document Management')}}<i class="bi bi-file-earmark me-2"></i>
+                {{else}}<i class="bi bi-folder me-2"></i>{{/if}}
+                {{this.name}}
+            </span>
+            <span class="badge {{#if (eq this.met this.total)}}bg-success{{else if (gt this.notMet 0)}}bg-danger{{else}}bg-secondary{{/if}}">
+                {{this.met}}/{{this.total}}
+            </span>
+        </a>
+        {{/each}}
+        <hr class="my-2">
+        <a href="?category=all&page=1&perPage={{pagination.perPage}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}" 
+           class="toc-item {{#if (eq filters.category 'all')}}active{{/if}}">
+            <span><i class="bi bi-grid me-2"></i>All Categories</span>
+            <span class="badge bg-primary">{{stats.total}}</span>
+        </a>
+    </div>
+    <div class="toc-progress">
+        <div class="d-flex justify-content-between mb-2">
+            <small class="text-muted">Overall Progress</small>
+            <small class="fw-bold">{{stats.percentValidated}}%</small>
         </div>
-        
-        <div class="d-flex gap-2 flex-wrap">
-            <a href="/admin/submissions/{{submission.id}}/validation/export-pdf" class="btn btn-primary">
-                <i class="bi bi-file-pdf me-1"></i> Export Validation PDF
-            </a>
-            {{!-- Send for Approval button (only if validation complete and no approval yet) --}}
-            {{#if validationComplete}}
-                {{#unless approvalStatus}}
-                <button type="button" class="btn text-white" style="background: #9b59b6;" data-bs-toggle="modal" data-bs-target="#sendForApprovalModal">
-                    <i class="bi bi-award me-1"></i> Send for Approval
-                </button>
-                {{/unless}}
-            {{/if}}
-            {{#if approvalStatus}}
-            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#approvalStatusModal">
-                <i class="bi bi-award me-1"></i> View Approval Status
-            </button>
-            {{/if}}
-            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#auditHistoryModal">
-                <i class="bi bi-clock-history me-1"></i> History
-            </button>
-            <a href="/admin/submissions/{{submission.id}}" class="btn btn-outline-secondary">
-                <i class="bi bi-arrow-left me-1"></i> Back to Submission
-            </a>
+        <div class="toc-progress-bar">
+            <div class="progress-bar bg-success" style="width: {{stats.percentMet}}%; display: inline-block; height: 100%;"></div>
+            <div class="progress-bar bg-danger" style="width: {{#if stats.total}}{{math stats.notMet '/' stats.total '*' 100}}{{else}}0{{/if}}%; display: inline-block; height: 100%;"></div>
+        </div>
+        <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem;">
+            <span class="text-success"><i class="bi bi-check-circle me-1"></i>{{stats.met}}</span>
+            <span class="text-danger"><i class="bi bi-x-circle me-1"></i>{{stats.notMet}}</span>
+            <span class="text-secondary"><i class="bi bi-clock me-1"></i>{{stats.pending}}</span>
         </div>
     </div>
-
-    {{!-- Approval Status Banner (if approval exists) --}}
-    {{#if approvalStatus}}
-    <div class="alert mb-4 {{#if approvalStatus.isComplete}}alert-success{{else}}alert-info{{/if}}">
-        <div class="d-flex align-items-center">
-            <i class="bi {{#if approvalStatus.isComplete}}bi-check-circle-fill{{else}}bi-hourglass-split{{/if}} fs-4 me-3"></i>
-            <div class="flex-grow-1">
-                {{#if approvalStatus.isComplete}}
-                <h6 class="mb-0"><i class="bi bi-trophy me-1"></i> Project Fully Approved!</h6>
-                <small class="text-muted">All 3 stakeholders have approved the implementation.</small>
-                {{else}}
-                <h6 class="mb-0">Approval In Progress</h6>
-                <small class="text-muted">{{approvalStatus.approvedCount}} of 3 stakeholders have approved.</small>
-                {{/if}}
-            </div>
-            <button type="button" class="btn btn-sm {{#if approvalStatus.isComplete}}btn-success{{else}}btn-info{{/if}}" data-bs-toggle="modal" data-bs-target="#approvalStatusModal">
-                View Details
-            </button>
-        </div>
-    </div>
-    {{/if}}
-
-    {{!-- Completion Banner (shown when 100% validated) --}}
-    <div class="alert alert-success d-none mb-4" id="completionBanner">
-        <div class="d-flex align-items-center flex-wrap gap-2">
-            <i class="bi bi-check-circle-fill fs-3 me-3"></i>
-            <div class="flex-grow-1">
-                <h5 class="mb-1">Validation Complete!</h5>
-                <p class="mb-0">All requirements have been validated. You can now export the validation report or send for approval.</p>
-            </div>
-            <div class="d-flex gap-2">
-                <a href="/admin/submissions/{{submission.id}}/validation/export-pdf" class="btn btn-success">
-                    <i class="bi bi-file-pdf me-1"></i> Export PDF Report
-                </a>
-                {{#unless approvalStatus}}
-                <button type="button" class="btn text-white" style="background: #9b59b6;" data-bs-toggle="modal" data-bs-target="#sendForApprovalModal" id="completionApprovalBtn">
-                    <i class="bi bi-award me-1"></i> Send for Approval
-                </button>
-                {{/unless}}
-            </div>
-        </div>
-    </div>
-
-    {{!-- Validation Summary Cards --}}
-    <div class="row mb-4">
-        <div class="col-md-3">
-            <div class="card bg-light">
-                <div class="card-body text-center py-3">
-                    <h6 class="text-muted mb-1">Total Requirements</h6>
-                    <h3 class="mb-0" id="totalCount">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-success text-white">
-                <div class="card-body text-center py-3">
-                    <h6 class="mb-1">Requirements Met</h6>
-                    <h3 class="mb-0" id="metCount">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger text-white">
-                <div class="card-body text-center py-3">
-                    <h6 class="mb-1">Requirements Not Met</h6>
-                    <h3 class="mb-0" id="notMetCount">0</h3>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-secondary text-white">
-                <div class="card-body text-center py-3">
-                    <h6 class="mb-1">Not Validated</h6>
-                    <h3 class="mb-0" id="pendingCount">0</h3>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    {{!-- Progress Bar --}}
-    <div class="mb-4">
-        <div class="d-flex justify-content-between mb-1">
-            <span>Validation Progress</span>
-            <span id="progressPercent">0%</span>
-        </div>
-        <div class="progress" style="height: 24px;">
-            <div class="progress-bar bg-success" role="progressbar" id="progressBarMet" style="width: 0%">
-                <span id="progressBarMetLabel"></span>
-            </div>
-            <div class="progress-bar bg-danger" role="progressbar" id="progressBarNotMet" style="width: 0%">
-                <span id="progressBarNotMetLabel"></span>
-            </div>
-        </div>
-    </div>
-
-    {{!-- Validation Form --}}
-    <form id="validationForm" method="POST" action="/admin/submissions/{{submission.id}}/validation">
-        <div class="card">
-            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">
-                    <i class="bi bi-clipboard-check me-2"></i>
-                    Requirements Validation
-                </h5>
-                <div>
-                    <button type="button" class="btn btn-sm btn-light me-2" id="markAllMet">
-                        <i class="bi bi-check-all me-1"></i> Mark All Met
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-light" id="clearAll">
-                        <i class="bi bi-x-lg me-1"></i> Clear All
-                    </button>
-                </div>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0 validation-table">
-                        <thead class="table-light sticky-top">
-                            <tr>
-                                <th style="width: 5%;">#</th>
-                                <th style="width: 25%;">Requirement</th>
-                                <th style="width: 25%;">Client Response</th>
-                                <th style="width: 15%; text-align: center;">Requirement Met</th>
-                                <th style="width: 30%;">Comments</th>
-                            </tr>
-                        </thead>
-                        <tbody id="validationTableBody">
-                            {{!-- Rows populated by JavaScript --}}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            <div class="card-footer bg-light">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <span class="text-muted" id="saveStatus">
-                            <i class="bi bi-info-circle me-1"></i>
-                            Click "Save Validation" to save your changes
-                        </span>
-                    </div>
-                    <div>
-                        <a href="/admin/submissions/{{submission.id}}" class="btn btn-outline-secondary me-2">
-                            Cancel
-                        </a>
-                        <button type="submit" class="btn btn-success btn-lg" id="saveBtn">
-                            <i class="bi bi-check-lg me-1"></i>
-                            Save Validation
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <input type="hidden" name="validationData" id="validationDataInput" value="">
-    </form>
 </div>
 
-{{!-- ============================================== --}}
-{{!-- MODAL: Send for Approval                      --}}
-{{!-- ============================================== --}}
-<div class="modal fade" id="sendForApprovalModal" tabindex="-1" aria-labelledby="sendForApprovalModalLabel" aria-hidden="true">
+<!-- Main Content -->
+<div class="main-content">
+    <div class="container-fluid py-3">
+        
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
+            <div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-1" style="font-size: 0.85rem;">
+                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="/admin/submissions">Submissions</a></li>
+                        <li class="breadcrumb-item"><a href="/admin/submissions/{{submission.id}}">{{submission.clientName}}</a></li>
+                        <li class="breadcrumb-item active">Validation</li>
+                    </ol>
+                </nav>
+                <h4 class="mb-0">
+                    <i class="bi bi-check2-square me-2"></i>
+                    Implementation Validation
+                </h4>
+                <p class="text-muted mb-0 small">
+                    {{submission.clientName}} - {{submission.formName}}
+                </p>
+            </div>
+            
+            <div class="d-flex gap-2 flex-wrap">
+                <a href="/admin/submissions/{{submission.id}}/validation/export-pdf" class="btn btn-sm btn-primary">
+                    <i class="bi bi-file-pdf me-1"></i> Export PDF
+                </a>
+                {{#if validationComplete}}
+                    {{#unless approvalStatus}}
+                    <button type="button" class="btn btn-sm text-white" style="background: #9b59b6;" data-bs-toggle="modal" data-bs-target="#sendForApprovalModal">
+                        <i class="bi bi-award me-1"></i> Send for Approval
+                    </button>
+                    {{/unless}}
+                {{/if}}
+                {{#if approvalStatus}}
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#approvalStatusModal">
+                    <i class="bi bi-award me-1"></i> Status
+                </button>
+                {{/if}}
+                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#auditHistoryModal">
+                    <i class="bi bi-clock-history me-1"></i> History
+                </button>
+                <a href="/admin/submissions/{{submission.id}}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back
+                </a>
+            </div>
+        </div>
+        
+        <!-- Summary Cards -->
+        <div class="row mb-3 g-2">
+            <div class="col-md-3">
+                <div class="card summary-card bg-light text-center">
+                    <div class="card-body py-2">
+                        <h6 class="text-muted">Total</h6>
+                        <h3>{{stats.total}}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-success text-white text-center">
+                    <div class="card-body py-2">
+                        <h6>Met</h6>
+                        <h3>{{stats.met}}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-danger text-white text-center">
+                    <div class="card-body py-2">
+                        <h6>Not Met</h6>
+                        <h3>{{stats.notMet}}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card summary-card bg-secondary text-white text-center">
+                    <div class="card-body py-2">
+                        <h6>Pending</h6>
+                        <h3>{{stats.pending}}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Progress Bar -->
+        <div class="progress-container">
+            <div class="d-flex justify-content-between mb-1">
+                <span class="small">Validation Progress</span>
+                <span class="small fw-bold">{{stats.percentValidated}}% validated</span>
+            </div>
+            <div class="progress-main">
+                <div class="progress-bar bg-success" style="width: {{stats.percentMet}}%;"></div>
+                <div class="progress-bar bg-danger" style="width: {{#if stats.total}}{{math stats.notMet '/' stats.total '*' 100}}{{else}}0{{/if}}%;"></div>
+            </div>
+        </div>
+        
+        <!-- Filter Bar -->
+        <form method="GET" action="/admin/submissions/{{submission.id}}/validation" id="filterForm">
+            <div class="filter-bar">
+                <div class="row align-items-center g-2">
+                    <div class="col-md-9">
+                        <div class="d-flex gap-2 flex-wrap align-items-center">
+                            <span class="text-muted small"><i class="bi bi-funnel me-1"></i>Filters:</span>
+                            
+                            <!-- Admin Status Filter -->
+                            <select name="adminStatus" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                <option value="all" {{#if (eq filters.adminStatus 'all')}}selected{{/if}}>All Admin Status</option>
+                                <option value="met" {{#if (eq filters.adminStatus 'met')}}selected{{/if}}>✓ Met Only</option>
+                                <option value="not-met" {{#if (eq filters.adminStatus 'not-met')}}selected{{/if}}>✗ Not Met Only</option>
+                                <option value="pending" {{#if (eq filters.adminStatus 'pending')}}selected{{/if}}>◷ Pending Only</option>
+                                <option value="not-met,pending" {{#if (eq filters.adminStatus 'not-met,pending')}}selected{{/if}}>✗ Not Met + Pending</option>
+                            </select>
+                            
+                            <!-- Client Status Filter -->
+                            <select name="clientStatus" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                <option value="all" {{#if (eq filters.clientStatus 'all')}}selected{{/if}}>All Client Status</option>
+                                <option value="met" {{#if (eq filters.clientStatus 'met')}}selected{{/if}}>✓ Client Met</option>
+                                <option value="not-met" {{#if (eq filters.clientStatus 'not-met')}}selected{{/if}}>✗ Client Not Met</option>
+                                <option value="pending" {{#if (eq filters.clientStatus 'pending')}}selected{{/if}}>◷ Client Pending</option>
+                            </select>
+                            
+                            <!-- Response Filter -->
+                            <select name="response" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
+                                <option value="all" {{#if (eq filters.response 'all')}}selected{{/if}}>All Responses</option>
+                                <option value="yes" {{#if (eq filters.response 'yes')}}selected{{/if}}>Yes Only</option>
+                                <option value="no" {{#if (eq filters.response 'no')}}selected{{/if}}>No Only</option>
+                                <option value="other" {{#if (eq filters.response 'other')}}selected{{/if}}>Other Only</option>
+                            </select>
+                            
+                            <!-- Search -->
+                            <div class="input-group" style="width: 200px;">
+                                <span class="input-group-text bg-white border-end-0 py-1"><i class="bi bi-search"></i></span>
+                                <input type="text" name="search" class="form-control form-control-sm border-start-0" 
+                                       placeholder="Search..." value="{{filters.search}}">
+                            </div>
+                            
+                            <input type="hidden" name="category" value="{{filters.category}}">
+                            <input type="hidden" name="perPage" value="{{pagination.perPage}}">
+                            <input type="hidden" name="page" value="1">
+                            
+                            <button type="submit" class="btn btn-sm btn-primary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                            
+                            <a href="/admin/submissions/{{submission.id}}/validation" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x-lg me-1"></i> Clear
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-3 text-end">
+                        <span class="badge bg-primary fs-6 px-3 py-2">
+                            <i class="bi bi-eye me-1"></i> {{pagination.totalFiltered}} visible of {{stats.total}}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </form>
+        
+        <!-- Pagination Bar (Top) -->
+        <div class="pagination-bar">
+            <div class="d-flex align-items-center gap-3">
+                <span class="pagination-info">
+                    Showing <strong>{{pagination.startItem}}-{{pagination.endItem}}</strong> of <strong>{{pagination.totalFiltered}}</strong>
+                </span>
+                <form method="GET" action="/admin/submissions/{{submission.id}}/validation" class="d-flex align-items-center gap-2">
+                    <label class="text-muted small mb-0">Per page:</label>
+                    <select name="perPage" class="form-select form-select-sm page-size-select" onchange="this.form.submit()">
+                        <option value="25" {{#if (eq pagination.perPage 25)}}selected{{/if}}>25</option>
+                        <option value="50" {{#if (eq pagination.perPage 50)}}selected{{/if}}>50</option>
+                        <option value="100" {{#if (eq pagination.perPage 100)}}selected{{/if}}>100</option>
+                        <option value="-1" {{#if (eq pagination.perPage -1)}}selected{{/if}}>All</option>
+                    </select>
+                    <input type="hidden" name="category" value="{{filters.category}}">
+                    <input type="hidden" name="search" value="{{filters.search}}">
+                    <input type="hidden" name="adminStatus" value="{{filters.adminStatus}}">
+                    <input type="hidden" name="clientStatus" value="{{filters.clientStatus}}">
+                    <input type="hidden" name="response" value="{{filters.response}}">
+                    <input type="hidden" name="page" value="1">
+                </form>
+            </div>
+            {{#if (gt pagination.totalPages 1)}}
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+                        <a class="page-link" href="?page=1&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{math pagination.currentPage '-' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    
+                    {{#each (range 1 pagination.totalPages)}}
+                        {{#if (and (gte this (math ../pagination.currentPage '-' 2)) (lte this (math ../pagination.currentPage '+' 2)))}}
+                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
+                            <a class="page-link" href="?page={{this}}&perPage={{../pagination.perPage}}&category={{../filters.category}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}">{{this}}</a>
+                        </li>
+                        {{/if}}
+                    {{/each}}
+                    
+                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{math pagination.currentPage '+' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{pagination.totalPages}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+            {{/if}}
+        </div>
+        
+        <!-- Validation Form -->
+        <form id="validationForm" method="POST" action="/admin/submissions/{{submission.id}}/validation">
+            
+            {{#each categoryGroups}}
+            <!-- Category: {{this.name}} -->
+            <div class="category-section" id="cat-{{slugify this.name}}">
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="category-header">
+                        <h5>
+                            {{#if (eq this.name 'Security')}}<i class="bi bi-shield-lock me-2"></i>
+                            {{else if (eq this.name 'Performance')}}<i class="bi bi-speedometer2 me-2"></i>
+                            {{else if (eq this.name 'Integration')}}<i class="bi bi-plug me-2"></i>
+                            {{else if (eq this.name 'Compliance')}}<i class="bi bi-clipboard-check me-2"></i>
+                            {{else if (eq this.name 'UI/UX')}}<i class="bi bi-palette me-2"></i>
+                            {{else if (eq this.name 'Data Management')}}<i class="bi bi-database me-2"></i>
+                            {{else if (eq this.name 'Reporting')}}<i class="bi bi-graph-up me-2"></i>
+                            {{else if (eq this.name 'User Management')}}<i class="bi bi-people me-2"></i>
+                            {{else if (eq this.name 'Notifications')}}<i class="bi bi-bell me-2"></i>
+                            {{else if (eq this.name 'Document Management')}}<i class="bi bi-file-earmark me-2"></i>
+                            {{else}}<i class="bi bi-folder me-2"></i>{{/if}}
+                            {{this.name}}
+                        </h5>
+                        <div class="category-stats">
+                            <span class="badge bg-light text-dark">{{this.items.length}} shown</span>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <table class="table validation-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 4%;">#</th>
+                                    <th style="width: 24%;">Requirement</th>
+                                    <th style="width: 16%;">Client Response</th>
+                                    <th style="width: 12%; text-align: center;">Admin Status</th>
+                                    <th style="width: 10%; text-align: center;">Client</th>
+                                    <th style="width: 30%;">Comments</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{#each this.items}}
+                                <tr class="validation-row {{this.adminStatus}}" data-field="{{this.key}}">
+                                    <td class="text-muted small">{{this.index}}</td>
+                                    <td><strong class="small">{{this.label}}</strong></td>
+                                    <td>
+                                        {{#if (eq this.responseType 'yes')}}
+                                            <span class="badge bg-success">Yes</span>
+                                        {{else if (eq this.responseType 'no')}}
+                                            <span class="badge bg-danger">No</span>
+                                        {{else}}
+                                            <span class="small text-break" style="max-width: 150px; display: block; overflow: hidden; text-overflow: ellipsis;">{{truncate this.responseDisplay 60}}</span>
+                                        {{/if}}
+                                    </td>
+                                    <td class="text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <input type="radio" class="btn-check validation-radio" name="v_{{this.key}}" id="y_{{this.key}}" value="yes" {{#if (eq this.adminStatus 'met')}}checked{{/if}}>
+                                            <label class="btn btn-outline-success btn-sm" for="y_{{this.key}}"><i class="bi bi-check-lg"></i></label>
+                                            <input type="radio" class="btn-check validation-radio" name="v_{{this.key}}" id="n_{{this.key}}" value="no" {{#if (eq this.adminStatus 'not-met')}}checked{{/if}}>
+                                            <label class="btn btn-outline-danger btn-sm" for="n_{{this.key}}"><i class="bi bi-x-lg"></i></label>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        {{#if (eq this.clientStatus 'met')}}
+                                            <span class="badge bg-success">Met</span>
+                                        {{else if (eq this.clientStatus 'not-met')}}
+                                            <span class="badge bg-danger">Not Met</span>
+                                        {{else}}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {{/if}}
+                                    </td>
+                                    <td>
+                                        <div class="comment-editor" contenteditable="true" data-field="{{this.key}}" data-placeholder="Comments...">{{this.comment}}</div>
+                                    </td>
+                                </tr>
+                                {{/each}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {{/each}}
+            
+            {{#unless categoryGroups.length}}
+            <div class="alert alert-info text-center py-5">
+                <i class="bi bi-search fs-1 mb-3 d-block"></i>
+                <h5>No requirements match your filters</h5>
+                <p class="text-muted">Try adjusting your filter criteria or <a href="/admin/submissions/{{submission.id}}/validation">clear all filters</a>.</p>
+            </div>
+            {{/unless}}
+            
+            <input type="hidden" name="validationData" id="validationDataInput" value="">
+        </form>
+        
+        <!-- Pagination Bar (Bottom) -->
+        {{#if (gt pagination.totalPages 1)}}
+        <div class="pagination-bar">
+            <span class="pagination-info">
+                Showing <strong>{{pagination.startItem}}-{{pagination.endItem}}</strong> of <strong>{{pagination.totalFiltered}}</strong>
+            </span>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+                        <a class="page-link" href="?page=1&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                    </li>
+                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{math pagination.currentPage '-' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    
+                    {{#each (range 1 pagination.totalPages)}}
+                        {{#if (and (gte this (math ../pagination.currentPage '-' 2)) (lte this (math ../pagination.currentPage '+' 2)))}}
+                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
+                            <a class="page-link" href="?page={{this}}&perPage={{../pagination.perPage}}&category={{../filters.category}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}">{{this}}</a>
+                        </li>
+                        {{/if}}
+                    {{/each}}
+                    
+                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{math pagination.currentPage '+' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
+                        <a class="page-link" href="?page={{pagination.totalPages}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {{/if}}
+        
+        <!-- Save Button Bar -->
+        <div class="d-flex justify-content-between align-items-center mt-3 p-3 bg-white rounded-3 shadow-sm">
+            <span class="text-muted small" id="saveStatus">
+                <i class="bi bi-info-circle me-1"></i>
+                Click "Save" to save changes on this page
+            </span>
+            <div>
+                <a href="/admin/submissions/{{submission.id}}" class="btn btn-outline-secondary me-2">Cancel</a>
+                <button type="button" class="btn btn-success" id="saveBtn" onclick="saveValidation()">
+                    <i class="bi bi-check-lg me-1"></i> Save Validation
+                </button>
+            </div>
+        </div>
+        
+        <!-- Re-validation Banner (Sticky Bottom) -->
+        <div class="revalidation-banner">
+            <div>
+                <h6><i class="bi bi-arrow-repeat me-2"></i>Send for Re-validation</h6>
+                <span>All <strong>{{pagination.totalFiltered}} visible</strong> requirements will be sent to the client</span>
+            </div>
+            <button type="button" class="btn btn-light btn-lg" onclick="sendForRevalidation()">
+                <i class="bi bi-send me-1"></i> Send {{pagination.totalFiltered}} Items
+            </button>
+        </div>
+        
+    </div>
+</div>
+
+<!-- Re-validation Modal -->
+<div class="modal fade" id="revalidationModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>Confirm Re-validation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>You are about to send <strong>{{pagination.totalFiltered}} requirements</strong> to the client for re-validation.</p>
+                <div class="mb-3">
+                    <label class="form-label">Message to Client (Optional)</label>
+                    <textarea class="form-control" id="revalidationMessage" rows="3" placeholder="Add instructions..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-warning" id="confirmRevalidationBtn">
+                    <i class="bi bi-send me-1"></i> Send to Client
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Approval Modal -->
+<div class="modal fade" id="sendForApprovalModal" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header text-white" style="background: #9b59b6;">
-                <h5 class="modal-title" id="sendForApprovalModalLabel">
-                    <i class="bi bi-award me-2"></i>
-                    Send for Approval
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="bi bi-award me-2"></i>Send for Approval</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                {{!-- Step 1: Form --}}
                 <div id="approvalStep1">
-                    <p class="text-muted mb-4">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Enter the stakeholder information below to generate approval links. Approvals must be completed in order: Client → Project Sponsor → Executive.
-                    </p>
+                    <p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i>Approvals: Client → Sponsor → Executive</p>
                     
-                    {{!-- Stakeholder 1: Client (Pre-populated) --}}
-                    <div class="card mb-3 border-primary">
-                        <div class="card-header bg-primary text-white py-2">
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-white text-primary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">1</span>
-                                <strong>Client</strong>
-                                <span class="badge bg-light text-primary ms-auto">Pre-populated from submission</span>
-                            </div>
-                        </div>
-                        <div class="card-body py-3">
-                            <div class="row">
-                                <div class="col-md-6 mb-2 mb-md-0">
-                                    <label class="form-label small mb-1">Full Name</label>
-                                    <input type="text" class="form-control form-control-sm" id="clientName" value="{{submission.clientName}}" readonly style="background: #e9ecef;">
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small mb-1">Email</label>
-                                    <input type="email" class="form-control form-control-sm" id="clientEmail" value="{{submission.clientEmail}}" readonly style="background: #e9ecef;">
-                                </div>
-                            </div>
-                            <small class="text-muted mt-2 d-block"><i class="bi bi-info-circle me-1"></i>This is the client who submitted the questionnaire</small>
-                        </div>
-                    </div>
-                    
-                    {{!-- Stakeholder 2: Project Sponsor --}}
-                    <div class="card mb-3 border-warning">
-                        <div class="card-header bg-warning py-2">
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-white text-warning me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">2</span>
-                                <strong>Project Sponsor</strong>
-                                <span class="badge bg-light text-warning ms-auto">Required</span>
-                            </div>
-                        </div>
-                        <div class="card-body py-3">
-                            <div class="row">
-                                <div class="col-md-6 mb-2 mb-md-0">
-                                    <label class="form-label small mb-1">Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control form-control-sm" placeholder="Enter full name..." id="sponsorName" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small mb-1">Email <span class="text-danger">*</span></label>
-                                    <input type="email" class="form-control form-control-sm" placeholder="sponsor@company.com" id="sponsorEmail" required>
-                                </div>
+                    <div class="card mb-2 border-primary">
+                        <div class="card-header bg-primary text-white py-2"><span class="badge bg-white text-primary me-2">1</span>Client</div>
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                <div class="col-6"><input type="text" class="form-control form-control-sm" value="{{submission.clientName}}" readonly style="background:#e9ecef;"></div>
+                                <div class="col-6"><input type="email" class="form-control form-control-sm" value="{{submission.clientEmail}}" readonly style="background:#e9ecef;"></div>
                             </div>
                         </div>
                     </div>
                     
-                    {{!-- Stakeholder 3: Executive --}}
-                    <div class="card mb-3 border-secondary">
-                        <div class="card-header bg-secondary text-white py-2">
-                            <div class="d-flex align-items-center">
-                                <span class="badge bg-white text-secondary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">3</span>
-                                <strong>Executive</strong>
-                                <span class="badge bg-light text-secondary ms-auto">Required</span>
+                    <div class="card mb-2 border-warning">
+                        <div class="card-header bg-warning py-2"><span class="badge bg-white text-warning me-2">2</span>Sponsor</div>
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="Name" id="sponsorName"></div>
+                                <div class="col-6"><input type="email" class="form-control form-control-sm" placeholder="Email" id="sponsorEmail"></div>
                             </div>
                         </div>
-                        <div class="card-body py-3">
-                            <div class="row">
-                                <div class="col-md-6 mb-2 mb-md-0">
-                                    <label class="form-label small mb-1">Full Name <span class="text-danger">*</span></label>
-                                    <input type="text" class="form-control form-control-sm" placeholder="Enter full name..." id="executiveName" required>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label small mb-1">Email <span class="text-danger">*</span></label>
-                                    <input type="email" class="form-control form-control-sm" placeholder="executive@company.com" id="executiveEmail" required>
-                                </div>
+                    </div>
+                    
+                    <div class="card mb-2 border-secondary">
+                        <div class="card-header bg-secondary text-white py-2"><span class="badge bg-white text-secondary me-2">3</span>Executive</div>
+                        <div class="card-body py-2">
+                            <div class="row g-2">
+                                <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="Name" id="executiveName"></div>
+                                <div class="col-6"><input type="email" class="form-control form-control-sm" placeholder="Email" id="executiveEmail"></div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                {{!-- Step 2: Links Generated --}}
-                <div id="approvalStep2" style="display: none;">
-                    <div class="alert alert-success mb-4">
-                        <i class="bi bi-check-circle me-2"></i>
-                        <strong>Success!</strong> Approval links have been generated. Share these links with each stakeholder to collect approvals.
-                    </div>
-                    
-                    <p class="text-muted mb-4">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Approvals must be completed in sequence. Each stakeholder can only approve after the previous one has approved.
-                    </p>
-                    
-                    <div id="approvalLinksContainer">
-                        {{!-- Populated by JavaScript --}}
-                    </div>
+                <div id="approvalStep2" style="display:none;">
+                    <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Links generated!</div>
+                    <div id="approvalLinksContainer"></div>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                 <button type="button" class="btn text-white" style="background: #9b59b6;" id="generateApprovalLinks">
-                    <i class="bi bi-send me-1"></i> Generate Approval Links
+                    <i class="bi bi-send me-1"></i> Generate Links
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-{{!-- ============================================== --}}
-{{!-- MODAL: Approval Status                        --}}
-{{!-- ============================================== --}}
+<!-- Approval Status Modal -->
 {{#if approvalStatus}}
-<div class="modal fade" id="approvalStatusModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal fade" id="approvalStatusModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header text-white" style="background: #9b59b6;">
-                <h5 class="modal-title">
-                    <i class="bi bi-award me-2"></i>
-                    Approval Status
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title"><i class="bi bi-award me-2"></i>Approval Status</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <div>
-                        <h6 class="mb-1">Progress</h6>
-                        <span class="text-muted">{{approvalStatus.approvedCount}} of 3 approvals complete</span>
-                    </div>
-                    {{#if approvalStatus.isComplete}}
-                    <span class="badge bg-success fs-6 px-3 py-2">
-                        <i class="bi bi-trophy me-1"></i> Fully Approved
-                    </span>
-                    {{else}}
-                    <span class="badge bg-warning text-dark fs-6 px-3 py-2">
-                        <i class="bi bi-hourglass-split me-1"></i> In Progress
-                    </span>
-                    {{/if}}
-                </div>
-                
-                {{!-- Client --}}
-                <div class="card mb-3 {{#if approvalStatus.client_approved_at}}border-success{{else}}border-warning{{/if}}">
-                    <div class="card-body py-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-primary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">1</span>
-                            <div class="flex-grow-1">
-                                <strong>{{approvalStatus.client_name}}</strong> <span class="badge bg-primary">Client</span>
-                                <br><small class="text-muted">{{approvalStatus.client_email}}</small>
-                            </div>
-                            {{#if approvalStatus.client_approved_at}}
-                            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Approved</span>
-                            {{else}}
-                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
-                            {{/if}}
-                        </div>
-                        {{#if approvalStatus.client_approved_at}}
-                        <small class="text-muted d-block mt-2">Approved on {{approvalStatus.client_approved_at}}</small>
-                        {{/if}}
-                    </div>
-                </div>
-                
-                {{!-- Sponsor --}}
-                <div class="card mb-3 {{#if approvalStatus.sponsor_approved_at}}border-success{{else}}border-warning{{/if}}">
-                    <div class="card-body py-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-warning text-dark me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">2</span>
-                            <div class="flex-grow-1">
-                                <strong>{{approvalStatus.sponsor_name}}</strong> <span class="badge bg-warning text-dark">Project Sponsor</span>
-                                <br><small class="text-muted">{{approvalStatus.sponsor_email}}</small>
-                            </div>
-                            {{#if approvalStatus.sponsor_approved_at}}
-                            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Approved</span>
-                            {{else}}
-                            <span class="badge bg-warning text-dark"><i class="bi bi-clock me-1"></i>Pending</span>
-                            {{/if}}
-                        </div>
-                        {{#if approvalStatus.sponsor_approved_at}}
-                        <small class="text-muted d-block mt-2">Approved on {{approvalStatus.sponsor_approved_at}}</small>
-                        {{/if}}
-                    </div>
-                </div>
-                
-                {{!-- Executive --}}
-                <div class="card mb-3 {{#if approvalStatus.executive_approved_at}}border-success{{else}}border-secondary{{/if}}">
-                    <div class="card-body py-3">
-                        <div class="d-flex align-items-center">
-                            <span class="badge bg-secondary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">3</span>
-                            <div class="flex-grow-1">
-                                <strong>{{approvalStatus.executive_name}}</strong> <span class="badge bg-secondary">Executive</span>
-                                <br><small class="text-muted">{{approvalStatus.executive_email}}</small>
-                            </div>
-                            {{#if approvalStatus.executive_approved_at}}
-                            <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Approved</span>
-                            {{else}}
-                            <span class="badge bg-secondary"><i class="bi bi-clock me-1"></i>Pending</span>
-                            {{/if}}
-                        </div>
-                        {{#if approvalStatus.executive_approved_at}}
-                        <small class="text-muted d-block mt-2">Approved on {{approvalStatus.executive_approved_at}}</small>
-                        {{/if}}
-                    </div>
-                </div>
+                <p class="text-muted">{{approvalStatus.approvedCount}} of 3 approved</p>
+                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-primary me-2">1</span>{{approvalStatus.client_name}}</span>{{#if approvalStatus.client_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-warning text-dark">Pending</span>{{/if}}</div></div>
+                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-warning text-dark me-2">2</span>{{approvalStatus.sponsor_name}}</span>{{#if approvalStatus.sponsor_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-warning text-dark">Pending</span>{{/if}}</div></div>
+                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-secondary me-2">3</span>{{approvalStatus.executive_name}}</span>{{#if approvalStatus.executive_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-secondary">Pending</span>{{/if}}</div></div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
         </div>
     </div>
 </div>
 {{/if}}
 
-{{!-- ============================================== --}}
-{{!-- MODAL: Audit History                          --}}
-{{!-- ============================================== --}}
-<div class="modal fade" id="auditHistoryModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+<!-- Audit History Modal -->
+<div class="modal fade" id="auditHistoryModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-light">
-                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Validation History</h5>
+                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>History</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
                 {{#if auditLog.length}}
-                <div class="audit-timeline">
-                    {{#each auditLog}}
-                    <div class="audit-item mb-3 pb-3 border-bottom">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <span class="badge 
-                                    {{#if (eq action 'submitted')}}bg-primary
-                                    {{else if (eq action 'admin_validated')}}bg-success
-                                    {{else if (eq action 'approval_initiated')}}bg-info
-                                    {{else if (eq action 'client_approved')}}bg-success
-                                    {{else if (eq action 'sponsor_approved')}}bg-success
-                                    {{else if (eq action 'executive_approved')}}bg-success
-                                    {{else if (eq action 'approval_completed')}}bg-success
-                                    {{else}}bg-secondary{{/if}}">
-                                    {{action}}
-                                </span>
-                                <strong class="ms-2">{{actor}}</strong>
-                            </div>
-                            <small class="text-muted">{{created_at}}</small>
-                        </div>
-                        {{#if details.comment}}
-                        <p class="text-muted small mb-0 mt-1">{{details.comment}}</p>
-                        {{/if}}
-                    </div>
-                    {{/each}}
+                {{#each auditLog}}
+                <div class="mb-2 pb-2 border-bottom">
+                    <span class="badge bg-secondary">{{action}}</span>
+                    <strong class="ms-2">{{actor}}</strong>
+                    <small class="text-muted float-end">{{created_at}}</small>
                 </div>
+                {{/each}}
                 {{else}}
-                <p class="text-muted text-center py-4">No history available yet.</p>
+                <p class="text-muted text-center py-4">No history yet.</p>
                 {{/if}}
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
         </div>
     </div>
 </div>
 
-<style>
-.validation-table th,
-.validation-table td {
-    vertical-align: top;
-    white-space: normal;
-    word-wrap: break-word;
-}
-
-.rich-text-editor {
-    min-height: 50px;
-    max-height: 150px;
-    overflow-y: auto;
-    padding: 8px;
-    border: 1px solid #ced4da;
-    border-radius: 4px;
-    background: #fff;
-    font-size: 0.9rem;
-}
-
-.rich-text-editor:empty:before {
-    content: attr(data-placeholder);
-    color: #999;
-    font-style: italic;
-}
-
-.rich-text-editor:focus {
-    outline: none;
-    border-color: #86b7fe;
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
-}
-
-.validation-row.validated-yes {
-    background-color: rgba(25, 135, 84, 0.1) !important;
-}
-
-.validation-row.validated-no {
-    background-color: rgba(220, 53, 69, 0.1) !important;
-}
-
-.validation-row.validated-yes td,
-.validation-row.validated-no td {
-    opacity: 1;
-}
-
-.validation-table thead {
-    position: sticky;
-    top: 0;
-    z-index: 10;
-}
-
-.btn-group-validation .btn {
-    padding: 0.375rem 0.75rem;
-}
-
-.format-toolbar {
-    margin-top: 4px;
-    opacity: 0.7;
-}
-
-.format-toolbar:hover {
-    opacity: 1;
-}
-
-.format-toolbar .btn {
-    padding: 0 0.35rem;
-    font-size: 0.75rem;
-}
-
-.row-number {
-    font-weight: bold;
-    color: #6c757d;
-}
-
-/* Pulse animation for save button when changes are made */
-@keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7); }
-    70% { box-shadow: 0 0 0 10px rgba(25, 135, 84, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(25, 135, 84, 0); }
-}
-
-.btn-pulse {
-    animation: pulse 1.5s infinite;
-}
-</style>
-
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const parsedData = {{{json parsedData}}};
-    const validationData = {{{json validationData}}};
+// Visible field keys for re-validation (server provides this)
+const visibleFieldKeys = {{{json visibleFieldKeys}}};
+const validationData = {{{json validationData}}};
+let hasChanges = false;
+
+// Track changes
+document.querySelectorAll('.validation-radio').forEach(radio => {
+    radio.addEventListener('change', () => { hasChanges = true; updateSaveStatus(); });
+});
+
+document.querySelectorAll('.comment-editor').forEach(editor => {
+    editor.addEventListener('input', () => { hasChanges = true; updateSaveStatus(); });
+});
+
+function updateSaveStatus() {
+    const status = document.getElementById('saveStatus');
+    if (hasChanges) {
+        status.innerHTML = '<i class="bi bi-exclamation-circle text-warning me-1"></i>You have unsaved changes';
+    }
+}
+
+// Save validation
+function saveValidation() {
+    const data = {};
     
-    const tbody = document.getElementById('validationTableBody');
-    let rowNum = 0;
-    let hasChanges = false;
+    // Collect from current page
+    document.querySelectorAll('.validation-row').forEach(row => {
+        const field = row.dataset.field;
+        const yesRadio = document.getElementById('y_' + field);
+        const noRadio = document.getElementById('n_' + field);
+        const editor = row.querySelector('.comment-editor');
+        
+        let met = null;
+        if (yesRadio && yesRadio.checked) met = 'yes';
+        else if (noRadio && noRadio.checked) met = 'no';
+        
+        data[field] = {
+            met,
+            comment: editor ? editor.innerHTML.trim() : ''
+        };
+    });
     
-    // Build table rows
-    for (const [key, value] of Object.entries(parsedData)) {
-        if (key.startsWith('_') || key === 'metadata') continue;
+    // Merge with existing validation data (for fields not on this page)
+    const merged = { ...validationData, ...data };
+    
+    document.getElementById('validationDataInput').value = JSON.stringify(merged);
+    document.getElementById('validationForm').submit();
+}
+
+// Send for re-validation
+function sendForRevalidation() {
+    const modal = new bootstrap.Modal(document.getElementById('revalidationModal'));
+    modal.show();
+}
+
+document.getElementById('confirmRevalidationBtn').addEventListener('click', async function() {
+    this.disabled = true;
+    this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sending...';
+    
+    try {
+        const res = await fetch('/admin/submissions/{{submission.id}}/send-for-validation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                filteredFields: visibleFieldKeys,
+                message: document.getElementById('revalidationMessage').value
+            })
+        });
         
-        rowNum++;
-        
-        const label = key
-            .replace(/_/g, ' ')
-            .replace(/([A-Z])/g, ' $1')
-            .replace(/^./, str => str.toUpperCase())
-            .trim();
-        
-        const fieldValidation = validationData[key] || {};
-        const isMet = fieldValidation.met === 'yes';
-        const isNotMet = fieldValidation.met === 'no';
-        const comment = fieldValidation.comment || '';
-        
-        let displayValue = '';
-        if (typeof value === 'boolean') {
-            displayValue = value 
-                ? '<span class="badge bg-success"><i class="bi bi-check-lg"></i> Yes</span>' 
-                : '<span class="badge bg-danger"><i class="bi bi-x-lg"></i> No</span>';
-        } else if (typeof value === 'object' && value !== null) {
-            displayValue = '<pre class="mb-0 bg-light p-2 rounded small" style="white-space: pre-wrap; max-height: 100px; overflow-y: auto;">' + JSON.stringify(value, null, 2) + '</pre>';
-        } else if (value) {
-            displayValue = '<span class="text-break">' + String(value) + '</span>';
+        const result = await res.json();
+        if (result.success) {
+            alert('Sent ' + result.fieldCount + ' items for re-validation!');
+            window.location.reload();
         } else {
-            displayValue = '<span class="text-muted fst-italic">No response</span>';
+            alert('Error: ' + (result.error || 'Failed'));
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-send me-1"></i>Send to Client';
         }
-        
-        const row = document.createElement('tr');
-        row.className = 'validation-row' + (isMet ? ' validated-yes' : '') + (isNotMet ? ' validated-no' : '');
-        row.dataset.field = key;
-        
-        row.innerHTML = `
-            <td class="row-number">${rowNum}</td>
-            <td><strong>${label}</strong></td>
-            <td>${displayValue}</td>
-            <td class="text-center">
-                <div class="btn-group btn-group-validation" role="group">
-                    <input type="radio" class="btn-check validation-check" name="validation_${key}" 
-                           id="yes_${key}" value="yes" ${isMet ? 'checked' : ''}>
-                    <label class="btn btn-outline-success" for="yes_${key}" title="Requirement Met">
-                        <i class="bi bi-check-lg"></i> Yes
-                    </label>
-                    <input type="radio" class="btn-check validation-check" name="validation_${key}" 
-                           id="no_${key}" value="no" ${isNotMet ? 'checked' : ''}>
-                    <label class="btn btn-outline-danger" for="no_${key}" title="Requirement Not Met">
-                        <i class="bi bi-x-lg"></i> No
-                    </label>
-                </div>
-            </td>
-            <td>
-                <div class="rich-text-editor" 
-                     contenteditable="true" 
-                     data-field="${key}"
-                     data-placeholder="Add comments...">${comment}</div>
-                <div class="format-toolbar">
-                    <button type="button" class="btn btn-link btn-sm text-secondary format-btn p-0 me-1" data-command="bold" title="Bold"><i class="bi bi-type-bold"></i></button>
-                    <button type="button" class="btn btn-link btn-sm text-secondary format-btn p-0 me-1" data-command="italic" title="Italic"><i class="bi bi-type-italic"></i></button>
-                    <button type="button" class="btn btn-link btn-sm text-secondary format-btn p-0" data-command="insertUnorderedList" title="List"><i class="bi bi-list-ul"></i></button>
-                </div>
-            </td>
-        `;
-        
-        tbody.appendChild(row);
-    }
-    
-    // Update stats
-    function updateStats() {
-        const rows = document.querySelectorAll('.validation-row');
-        let total = rows.length;
-        let met = 0;
-        let notMet = 0;
-        let pending = 0;
-
-        rows.forEach(row => {
-            const yesRadio = row.querySelector('input[value="yes"]');
-            const noRadio = row.querySelector('input[value="no"]');
-            
-            row.classList.remove('validated-yes', 'validated-no');
-            
-            if (yesRadio && yesRadio.checked) {
-                met++;
-                row.classList.add('validated-yes');
-            } else if (noRadio && noRadio.checked) {
-                notMet++;
-                row.classList.add('validated-no');
-            } else {
-                pending++;
-            }
-        });
-
-        document.getElementById('totalCount').textContent = total;
-        document.getElementById('metCount').textContent = met;
-        document.getElementById('notMetCount').textContent = notMet;
-        document.getElementById('pendingCount').textContent = pending;
-
-        const validated = met + notMet;
-        const percentValidated = total > 0 ? Math.round((validated / total) * 100) : 0;
-        const percentMet = total > 0 ? Math.round((met / total) * 100) : 0;
-        const percentNotMet = total > 0 ? Math.round((notMet / total) * 100) : 0;
-        
-        document.getElementById('progressPercent').textContent = percentValidated + '% validated';
-        document.getElementById('progressBarMet').style.width = percentMet + '%';
-        document.getElementById('progressBarNotMet').style.width = percentNotMet + '%';
-        
-        // Show/hide completion banner and approval button
-        const completionBanner = document.getElementById('completionBanner');
-        const completionApprovalBtn = document.getElementById('completionApprovalBtn');
-        if (pending === 0 && total > 0) {
-            completionBanner.classList.remove('d-none');
-        } else {
-            completionBanner.classList.add('d-none');
-        }
-    }
-
-    // Track changes
-    function markChanged() {
-        hasChanges = true;
-        const saveBtn = document.getElementById('saveBtn');
-        const saveStatus = document.getElementById('saveStatus');
-        saveBtn.classList.add('btn-pulse');
-        saveStatus.innerHTML = '<i class="bi bi-exclamation-circle text-warning me-1"></i> You have unsaved changes';
-    }
-
-    // Initial count
-    updateStats();
-
-    // Update on change
-    document.addEventListener('change', function(e) {
-        if (e.target.classList.contains('validation-check')) {
-            updateStats();
-            markChanged();
-        }
-    });
-
-    // Track text changes
-    document.querySelectorAll('.rich-text-editor').forEach(editor => {
-        editor.addEventListener('input', markChanged);
-    });
-
-    // Mark all as met
-    document.getElementById('markAllMet').addEventListener('click', function() {
-        document.querySelectorAll('input[value="yes"]').forEach(input => {
-            input.checked = true;
-        });
-        updateStats();
-        markChanged();
-    });
-
-    // Clear all
-    document.getElementById('clearAll').addEventListener('click', function() {
-        if (!confirm('Clear all validation selections?')) return;
-        document.querySelectorAll('.validation-check').forEach(input => {
-            input.checked = false;
-        });
-        updateStats();
-        markChanged();
-    });
-
-    // Rich text formatting
-    document.addEventListener('click', function(e) {
-        const btn = e.target.closest('.format-btn');
-        if (btn) {
-            e.preventDefault();
-            document.execCommand(btn.dataset.command, false, null);
-        }
-    });
-
-    // Build JSON before submit
-    document.getElementById('validationForm').addEventListener('submit', function(e) {
-        const validation = {};
-        
-        document.querySelectorAll('.validation-row').forEach(row => {
-            const field = row.dataset.field;
-            const yesRadio = row.querySelector('input[value="yes"]');
-            const noRadio = row.querySelector('input[value="no"]');
-            const editor = row.querySelector('.rich-text-editor');
-            
-            let met = null;
-            if (yesRadio && yesRadio.checked) met = 'yes';
-            else if (noRadio && noRadio.checked) met = 'no';
-            
-            const comment = editor ? editor.innerHTML.trim() : '';
-            
-            validation[field] = { met, comment };
-        });
-        
-        document.getElementById('validationDataInput').value = JSON.stringify(validation);
-        
-        // Visual feedback
-        const saveBtn = document.getElementById('saveBtn');
-        saveBtn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Saving...';
-        saveBtn.disabled = true;
-    });
-
-    // Warn before leaving with unsaved changes
-    window.addEventListener('beforeunload', function(e) {
-        if (hasChanges) {
-            e.preventDefault();
-            e.returnValue = '';
-        }
-    });
-    
-    // ==============================================
-    // Approval Workflow
-    // ==============================================
-    const generateApprovalLinksBtn = document.getElementById('generateApprovalLinks');
-    if (generateApprovalLinksBtn) {
-        generateApprovalLinksBtn.addEventListener('click', async function() {
-            const sponsorName = document.getElementById('sponsorName').value.trim();
-            const sponsorEmail = document.getElementById('sponsorEmail').value.trim();
-            const executiveName = document.getElementById('executiveName').value.trim();
-            const executiveEmail = document.getElementById('executiveEmail').value.trim();
-            
-            if (!sponsorName || !sponsorEmail || !executiveName || !executiveEmail) {
-                alert('Please fill in all stakeholder information.');
-                return;
-            }
-            
-            // Simple email validation
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(sponsorEmail) || !emailRegex.test(executiveEmail)) {
-                alert('Please enter valid email addresses.');
-                return;
-            }
-            
-            // Disable button and show loading
-            this.disabled = true;
-            this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i> Generating...';
-            
-            try {
-                const response = await fetch('/admin/submissions/{{submission.id}}/approval', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sponsorName, sponsorEmail, executiveName, executiveEmail })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Hide step 1, show step 2
-                    document.getElementById('approvalStep1').style.display = 'none';
-                    document.getElementById('approvalStep2').style.display = 'block';
-                    
-                    // Hide the generate button
-                    this.style.display = 'none';
-                    
-                    // Populate links
-                    const container = document.getElementById('approvalLinksContainer');
-                    container.innerHTML = `
-                        <div class="card mb-3">
-                            <div class="card-body py-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="badge bg-primary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">1</span>
-                                    <div class="flex-grow-1">
-                                        <strong>${result.approvalLinks.client.name}</strong> <span class="badge bg-primary">Client</span>
-                                        <br><small class="text-muted">${result.approvalLinks.client.email}</small>
-                                    </div>
-                                    <span class="badge bg-success"><i class="bi bi-check-lg me-1"></i>Ready</span>
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" class="form-control form-control-sm font-monospace" value="${result.approvalLinks.client.link}" readonly id="approvalLinkClient">
-                                    <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('approvalLinkClient')" title="Copy link">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-body py-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="badge bg-warning text-dark me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">2</span>
-                                    <div class="flex-grow-1">
-                                        <strong>${result.approvalLinks.sponsor.name}</strong> <span class="badge bg-warning text-dark">Project Sponsor</span>
-                                        <br><small class="text-muted">${result.approvalLinks.sponsor.email}</small>
-                                    </div>
-                                    <span class="badge bg-secondary"><i class="bi bi-clock me-1"></i>Waiting for #1</span>
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" class="form-control form-control-sm font-monospace" value="${result.approvalLinks.sponsor.link}" readonly id="approvalLinkSponsor">
-                                    <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('approvalLinkSponsor')" title="Copy link">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Link will work after Client approves</small>
-                            </div>
-                        </div>
-                        <div class="card mb-3">
-                            <div class="card-body py-3">
-                                <div class="d-flex align-items-center mb-2">
-                                    <span class="badge bg-secondary me-2 rounded-circle" style="width: 24px; height: 24px; line-height: 18px;">3</span>
-                                    <div class="flex-grow-1">
-                                        <strong>${result.approvalLinks.executive.name}</strong> <span class="badge bg-secondary">Executive</span>
-                                        <br><small class="text-muted">${result.approvalLinks.executive.email}</small>
-                                    </div>
-                                    <span class="badge bg-secondary"><i class="bi bi-clock me-1"></i>Waiting for #2</span>
-                                </div>
-                                <div class="input-group">
-                                    <input type="text" class="form-control form-control-sm font-monospace" value="${result.approvalLinks.executive.link}" readonly id="approvalLinkExec">
-                                    <button class="btn btn-outline-primary btn-sm" onclick="copyToClipboard('approvalLinkExec')" title="Copy link">
-                                        <i class="bi bi-clipboard"></i>
-                                    </button>
-                                </div>
-                                <small class="text-muted mt-1 d-block"><i class="bi bi-info-circle me-1"></i>Link will work after Sponsor approves</small>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    alert('Error: ' + (result.error || 'Failed to generate approval links'));
-                    this.disabled = false;
-                    this.innerHTML = '<i class="bi bi-send me-1"></i> Generate Approval Links';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Error generating approval links. Please try again.');
-                this.disabled = false;
-                this.innerHTML = '<i class="bi bi-send me-1"></i> Generate Approval Links';
-            }
-        });
+    } catch (err) {
+        alert('Error sending request');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-send me-1"></i>Send to Client';
     }
 });
 
-// Copy to clipboard helper
-function copyToClipboard(inputId) {
-    const input = document.getElementById(inputId);
-    input.select();
-    document.execCommand('copy');
+// Approval workflow
+document.getElementById('generateApprovalLinks')?.addEventListener('click', async function() {
+    const sn = document.getElementById('sponsorName').value.trim();
+    const se = document.getElementById('sponsorEmail').value.trim();
+    const en = document.getElementById('executiveName').value.trim();
+    const ee = document.getElementById('executiveEmail').value.trim();
     
-    // Visual feedback
-    const btn = input.nextElementSibling;
-    const originalHTML = btn.innerHTML;
-    btn.innerHTML = '<i class="bi bi-check-lg"></i>';
-    btn.classList.remove('btn-outline-primary');
-    btn.classList.add('btn-success');
+    if (!sn || !se || !en || !ee) return alert('Fill all fields');
     
-    setTimeout(() => {
-        btn.innerHTML = originalHTML;
-        btn.classList.remove('btn-success');
-        btn.classList.add('btn-outline-primary');
-    }, 1500);
-}
+    this.disabled = true;
+    this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>...';
+    
+    try {
+        const res = await fetch('/admin/submissions/{{submission.id}}/approval', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sponsorName: sn, sponsorEmail: se, executiveName: en, executiveEmail: ee })
+        });
+        
+        const result = await res.json();
+        if (result.success) {
+            document.getElementById('approvalStep1').style.display = 'none';
+            document.getElementById('approvalStep2').style.display = 'block';
+            this.style.display = 'none';
+            document.getElementById('approvalLinksContainer').innerHTML = `
+                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.client.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.client.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
+                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.sponsor.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.sponsor.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
+                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.executive.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.executive.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
+            `;
+        } else {
+            alert('Error: ' + (result.error || 'Failed'));
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-send me-1"></i>Generate Links';
+        }
+    } catch (err) {
+        alert('Error');
+        this.disabled = false;
+        this.innerHTML = '<i class="bi bi-send me-1"></i>Generate Links';
+    }
+});
+
+// Warn before leaving with unsaved changes
+window.addEventListener('beforeunload', e => {
+    if (hasChanges) { e.preventDefault(); e.returnValue = ''; }
+});
 </script>
