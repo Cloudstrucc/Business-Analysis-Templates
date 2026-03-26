@@ -1,8 +1,13 @@
 // utils/handlebarsHelpers.js
-// Register these helpers in your app.js after setting up Handlebars
+// Custom Handlebars helpers for BA Forms app
 
 module.exports = function(hbs) {
-    // Equality check
+    
+    // =====================================================
+    // COMPARISON HELPERS
+    // =====================================================
+    
+    // Equal
     hbs.registerHelper('eq', function(a, b) {
         return a === b;
     });
@@ -32,93 +37,310 @@ module.exports = function(hbs) {
         return a <= b;
     });
     
-    // Logical AND
-    hbs.registerHelper('and', function() {
-        const args = Array.prototype.slice.call(arguments, 0, -1);
+    // =====================================================
+    // LOGICAL HELPERS
+    // =====================================================
+    
+    // AND - returns true if all arguments are truthy
+    hbs.registerHelper('and', function(...args) {
+        args.pop();
         return args.every(Boolean);
     });
     
-    // Logical OR
-    hbs.registerHelper('or', function() {
-        const args = Array.prototype.slice.call(arguments, 0, -1);
+    // OR - returns true if any argument is truthy
+    hbs.registerHelper('or', function(...args) {
+        args.pop();
         return args.some(Boolean);
     });
     
-    // Math operations
-    hbs.registerHelper('math', function() {
-        const args = Array.prototype.slice.call(arguments, 0, -1);
-        let result = parseFloat(args[0]) || 0;
-        
-        for (let i = 1; i < args.length; i += 2) {
-            const operator = args[i];
-            const operand = parseFloat(args[i + 1]) || 0;
-            
-            switch (operator) {
-                case '+': result += operand; break;
-                case '-': result -= operand; break;
-                case '*': result *= operand; break;
-                case '/': result = operand !== 0 ? result / operand : 0; break;
-                case '%': result = operand !== 0 ? result % operand : 0; break;
-            }
-        }
-        
-        return result;
+    // NOT
+    hbs.registerHelper('not', function(value) {
+        return !value;
     });
+    
+    // =====================================================
+    // MATH HELPERS
+    // =====================================================
+    
+    // Math operations: {{math a '+' b}}
+    hbs.registerHelper('math', function(a, operator, b) {
+        a = parseFloat(a) || 0;
+        b = parseFloat(b) || 0;
+        
+        switch (operator) {
+            case '+': return a + b;
+            case '-': return a - b;
+            case '*': return a * b;
+            case '/': return b !== 0 ? a / b : 0;
+            case '%': return a % b;
+            default: return a;
+        }
+    });
+    
+    // Increment
+    hbs.registerHelper('inc', function(value) {
+        return parseInt(value) + 1;
+    });
+    
+    // Decrement
+    hbs.registerHelper('dec', function(value) {
+        return parseInt(value) - 1;
+    });
+    
+    // =====================================================
+    // ARRAY/RANGE HELPERS
+    // =====================================================
     
     // Generate a range of numbers
-    hbs.registerHelper('range', function(start, end, options) {
+    hbs.registerHelper('range', function(start, end) {
         const result = [];
-        for (let i = start; i <= end; i++) {
-            result.push(i);
+        start = parseInt(start) || 0;
+        end = parseInt(end) || 0;
+        
+        if (start <= end) {
+            for (let i = start; i <= end; i++) {
+                result.push(i);
+            }
+        } else {
+            for (let i = start; i >= end; i--) {
+                result.push(i);
+            }
         }
         return result;
     });
     
-    // Slugify a string (for IDs)
-    hbs.registerHelper('slugify', function(str) {
-        if (!str) return '';
-        return str.toString()
-            .toLowerCase()
-            .replace(/\s+/g, '-')
-            .replace(/[^\w\-]+/g, '')
-            .replace(/\-\-+/g, '-')
-            .replace(/^-+/, '')
-            .replace(/-+$/, '');
-    });
-    
-    // Truncate text
-    hbs.registerHelper('truncate', function(str, length) {
-        if (!str) return '';
-        str = str.toString();
-        if (str.length <= length) return str;
-        return str.substring(0, length) + '...';
-    });
-    
-    // JSON stringify for embedding in JS
-    hbs.registerHelper('json', function(context) {
-        return JSON.stringify(context || {});
-    });
-    
-    // If in array
+    // Check if array includes a value
     hbs.registerHelper('includes', function(array, value) {
         if (!Array.isArray(array)) return false;
         return array.includes(value);
     });
     
-    // Default value
-    hbs.registerHelper('default', function(value, defaultValue) {
-        return value != null ? value : defaultValue;
+    // Get array length
+    hbs.registerHelper('length', function(array) {
+        if (!array) return 0;
+        return array.length || 0;
     });
     
-    // Format number with commas
+    // =====================================================
+    // STRING HELPERS
+    // =====================================================
+    
+    // Slugify
+    hbs.registerHelper('slugify', function(str) {
+        if (!str) return '';
+        return String(str)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+    });
+    
+    // Truncate text
+    hbs.registerHelper('truncate', function(str, length) {
+        if (!str) return '';
+        str = String(str);
+        length = parseInt(length) || 50;
+        if (str.length <= length) return str;
+        return str.substring(0, length) + '...';
+    });
+    
+    // Lowercase
+    hbs.registerHelper('lowercase', function(str) {
+        if (!str) return '';
+        return String(str).toLowerCase();
+    });
+    
+    // Uppercase
+    hbs.registerHelper('uppercase', function(str) {
+        if (!str) return '';
+        return String(str).toUpperCase();
+    });
+    
+    // Capitalize
+    hbs.registerHelper('capitalize', function(str) {
+        if (!str) return '';
+        str = String(str);
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    });
+    
+    // =====================================================
+    // JSON HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('json', function(obj) {
+        return JSON.stringify(obj || {});
+    });
+    
+    hbs.registerHelper('jsonPretty', function(obj) {
+        return JSON.stringify(obj || {}, null, 2);
+    });
+    
+    // =====================================================
+    // NUMBER FORMATTING HELPERS
+    // =====================================================
+    
     hbs.registerHelper('formatNumber', function(num) {
-        if (num == null) return '0';
-        return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        if (num === null || num === undefined) return '0';
+        return Number(num).toLocaleString();
     });
     
-    // Percentage calculation
     hbs.registerHelper('percentage', function(value, total) {
-        if (!total) return 0;
+        value = parseFloat(value) || 0;
+        total = parseFloat(total) || 0;
+        if (total === 0) return 0;
         return Math.round((value / total) * 100);
     });
+    
+    // =====================================================
+    // DEFAULT/FALLBACK HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('default', function(value, defaultValue) {
+        return value || defaultValue;
+    });
+    
+    hbs.registerHelper('coalesce', function(...args) {
+        args.pop();
+        for (const arg of args) {
+            if (arg) return arg;
+        }
+        return '';
+    });
+    
+    // =====================================================
+    // CONDITIONAL BLOCK HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('ifEq', function(a, b, options) {
+        if (a === b) return options.fn(this);
+        return options.inverse(this);
+    });
+    
+    hbs.registerHelper('ifNeq', function(a, b, options) {
+        if (a !== b) return options.fn(this);
+        return options.inverse(this);
+    });
+    
+    hbs.registerHelper('ifGt', function(a, b, options) {
+        if (a > b) return options.fn(this);
+        return options.inverse(this);
+    });
+    
+    hbs.registerHelper('ifLt', function(a, b, options) {
+        if (a < b) return options.fn(this);
+        return options.inverse(this);
+    });
+    
+    hbs.registerHelper('unlessEq', function(a, b, options) {
+        if (a !== b) return options.fn(this);
+        return options.inverse(this);
+    });
+    
+    // =====================================================
+    // DATE HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('formatDate', function(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '';
+        return d.toLocaleString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+        });
+    });
+    
+    hbs.registerHelper('timeAgo', function(date) {
+        if (!date) return '';
+        const d = new Date(date);
+        if (isNaN(d.getTime())) return '';
+        
+        const seconds = Math.floor((new Date() - d) / 1000);
+        const intervals = [
+            { label: 'year', seconds: 31536000 },
+            { label: 'month', seconds: 2592000 },
+            { label: 'week', seconds: 604800 },
+            { label: 'day', seconds: 86400 },
+            { label: 'hour', seconds: 3600 },
+            { label: 'minute', seconds: 60 }
+        ];
+        
+        for (const interval of intervals) {
+            const count = Math.floor(seconds / interval.seconds);
+            if (count >= 1) {
+                return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+            }
+        }
+        return 'just now';
+    });
+    
+    // =====================================================
+    // STATUS/BADGE HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('statusClass', function(status) {
+        const classes = {
+            'met': 'bg-success',
+            'not-met': 'bg-danger',
+            'pending': 'bg-secondary',
+            'yes': 'bg-success',
+            'no': 'bg-danger',
+            'completed': 'bg-success',
+            'in_progress': 'bg-warning',
+            'draft': 'bg-secondary'
+        };
+        return classes[status] || 'bg-secondary';
+    });
+    
+    hbs.registerHelper('statusIcon', function(status) {
+        const icons = {
+            'met': 'bi-check-circle-fill',
+            'not-met': 'bi-x-circle-fill',
+            'pending': 'bi-circle',
+            'yes': 'bi-check-lg',
+            'no': 'bi-x-lg'
+        };
+        return icons[status] || 'bi-circle';
+    });
+    
+    // =====================================================
+    // CATEGORY ICON HELPER
+    // =====================================================
+    
+    hbs.registerHelper('categoryIcon', function(category) {
+        const icons = {
+            'Security': 'bi-shield-lock',
+            'Performance': 'bi-speedometer2',
+            'Integration': 'bi-plug',
+            'Compliance': 'bi-clipboard-check',
+            'UI/UX': 'bi-palette',
+            'Data Management': 'bi-database',
+            'Reporting': 'bi-bar-chart',
+            'User Management': 'bi-people',
+            'Notifications': 'bi-bell',
+            'Document Management': 'bi-file-earmark-text',
+            'General': 'bi-list-check'
+        };
+        return icons[category] || 'bi-list-check';
+    });
+    
+    // =====================================================
+    // SELECTED/ACTIVE HELPERS
+    // =====================================================
+    
+    hbs.registerHelper('selected', function(a, b) {
+        return a === b ? 'selected' : '';
+    });
+    
+    hbs.registerHelper('active', function(a, b) {
+        return a === b ? 'active' : '';
+    });
+    
+    hbs.registerHelper('checked', function(value) {
+        return value ? 'checked' : '';
+    });
+    
+    hbs.registerHelper('disabled', function(value) {
+        return value ? 'disabled' : '';
+    });
+
 };

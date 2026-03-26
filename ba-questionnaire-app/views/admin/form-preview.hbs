@@ -1,0 +1,274 @@
+{{!-- views/admin/form-preview.hbs --}}
+{{!-- Preview a form questionnaire --}}
+
+<style>
+    .preview-banner {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    .form-section {
+        background: white;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+        border-left: 4px solid #3498db;
+    }
+    .section-header {
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        margin: 0;
+        font-size: 1.25rem;
+    }
+    .section-number {
+        background: #3498db;
+        color: white;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    .section-description {
+        color: #6c757d;
+        margin-top: 0.5rem;
+        font-size: 0.9375rem;
+    }
+    .form-field {
+        margin-bottom: 1.25rem;
+    }
+    .form-field label {
+        font-weight: 500;
+        margin-bottom: 0.375rem;
+        display: block;
+    }
+    .form-field .form-text {
+        font-size: 0.8125rem;
+        color: #6c757d;
+    }
+    .checkbox-group, .radio-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem 1.5rem;
+    }
+    .field-type-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        margin-left: 0.5rem;
+        vertical-align: middle;
+    }
+    .preview-disabled {
+        opacity: 0.7;
+        pointer-events: none;
+    }
+</style>
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin/forms">Forms</a></li>
+                    <li class="breadcrumb-item active">Preview</li>
+                </ol>
+            </nav>
+            <h3 class="mb-1"><i class="bi bi-eye me-2"></i>{{form.title}}</h3>
+            <p class="text-muted mb-0">{{form.description}}</p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/admin/forms" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Back to Forms
+            </a>
+        </div>
+    </div>
+    
+    <!-- Preview Banner -->
+    <div class="preview-banner">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong><i class="bi bi-info-circle me-2"></i>Preview Mode</strong>
+                <br>
+                <small>This is a read-only preview of how the form will appear to clients. Form inputs are disabled.</small>
+            </div>
+            <div>
+                <span class="badge bg-light text-dark me-2">
+                    <i class="bi bi-list-check me-1"></i>
+                    {{#if parsedForm.sections}}
+                        {{parsedForm.sections.length}} Sections
+                    {{else}}
+                        0 Sections
+                    {{/if}}
+                </span>
+                <span class="badge bg-light text-dark">
+                    <i class="bi bi-input-cursor me-1"></i>
+                    {{#if parsedForm.totalFields}}
+                        {{parsedForm.totalFields}} Fields
+                    {{else}}
+                        0 Fields
+                    {{/if}}
+                </span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Form Preview -->
+    <div class="preview-disabled">
+        {{#if parsedForm.sections}}
+            {{#each parsedForm.sections}}
+            <div class="form-section">
+                <div class="section-header">
+                    <h4 class="section-title">
+                        <span class="section-number">{{inc @index}}</span>
+                        {{this.title}}
+                    </h4>
+                    {{#if this.description}}
+                    <p class="section-description">{{this.description}}</p>
+                    {{/if}}
+                </div>
+                
+                {{#each this.fields}}
+                <div class="form-field">
+                    <label>
+                        {{this.label}}
+                        {{#if this.required}}
+                        <span class="text-danger">*</span>
+                        {{/if}}
+                        <span class="badge bg-secondary field-type-badge">{{this.type}}</span>
+                    </label>
+                    
+                    {{#if (eq this.type "text")}}
+                    <input type="text" class="form-control" placeholder="{{this.placeholder}}" disabled>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "textarea")}}
+                    <textarea class="form-control" rows="3" placeholder="{{this.placeholder}}" disabled></textarea>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "number")}}
+                    <input type="number" class="form-control" placeholder="{{this.placeholder}}" disabled>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "email")}}
+                    <input type="email" class="form-control" placeholder="{{this.placeholder}}" disabled>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "date")}}
+                    <input type="date" class="form-control" disabled>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "select")}}
+                    <select class="form-select" disabled>
+                        <option>Select an option...</option>
+                        {{#each this.options}}
+                        <option>{{this}}</option>
+                        {{/each}}
+                    </select>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "radio")}}
+                    <div class="radio-group">
+                        {{#each this.options}}
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" disabled>
+                            <label class="form-check-label">{{this}}</label>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "checkbox")}}
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" disabled>
+                        <label class="form-check-label">{{this.checkboxLabel}}</label>
+                    </div>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "checkboxes")}}
+                    <div class="checkbox-group">
+                        {{#each this.options}}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" disabled>
+                            <label class="form-check-label">{{this}}</label>
+                        </div>
+                        {{/each}}
+                    </div>
+                    {{/if}}
+                    
+                    {{#if (eq this.type "yesno")}}
+                    <div class="radio-group">
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" disabled>
+                            <label class="form-check-label">Yes</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="radio" class="form-check-input" disabled>
+                            <label class="form-check-label">No</label>
+                        </div>
+                    </div>
+                    {{/if}}
+                    
+                    {{#if this.helpText}}
+                    <div class="form-text">{{this.helpText}}</div>
+                    {{/if}}
+                </div>
+                {{/each}}
+            </div>
+            {{/each}}
+        {{else}}
+            <!-- Fallback: Show raw markdown content -->
+            <div class="form-section">
+                <div class="section-header">
+                    <h4 class="section-title">
+                        <span class="section-number">1</span>
+                        Form Content
+                    </h4>
+                </div>
+                {{#if form.content}}
+                <div class="markdown-content">
+                    {{{form.content}}}
+                </div>
+                {{else}}
+                <p class="text-muted">No form content available for preview.</p>
+                {{/if}}
+            </div>
+        {{/if}}
+    </div>
+    
+    <!-- Form Info Card -->
+    <div class="card mt-4">
+        <div class="card-header bg-light">
+            <strong><i class="bi bi-info-circle me-2"></i>Form Information</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Slug:</strong> <code>{{form.slug}}</code></p>
+                    <p><strong>Title:</strong> {{form.title}}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Created:</strong> {{formatDate form.created_at}}</p>
+                    {{#if form.markdown_file}}
+                    <p><strong>File:</strong> <code>{{form.markdown_file}}</code></p>
+                    {{/if}}
+                </div>
+            </div>
+            {{#if form.description}}
+            <p><strong>Description:</strong> {{form.description}}</p>
+            {{/if}}
+        </div>
+    </div>
+</div>

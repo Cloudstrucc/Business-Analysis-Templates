@@ -26,10 +26,7 @@ async function initialize() {
     await initDatabase();
     console.log('Database initialized');
     
-    // Load forms from templates
     formLoader.loadAllForms();
-    
-    // Initialize email service
     emailService.initialize();
     
     console.log('Application initialized successfully');
@@ -46,87 +43,300 @@ app.engine('hbs', engine({
   layoutsDir: path.join(__dirname, 'views/layouts'),
   partialsDir: path.join(__dirname, 'views/partials'),
   helpers: {
-    // Equality helper - works as both inline and block helper
+    // =====================================================
+    // COMPARISON HELPERS
+    // =====================================================
     eq: function(a, b, options) {
       if (options && options.fn) {
-        // Block helper usage: {{#eq a b}}...{{else}}...{{/eq}}
         return a === b ? options.fn(this) : options.inverse(this);
       }
-      // Inline usage: {{eq a b}}
       return a === b;
     },
-    // Not equal helper
     neq: function(a, b, options) {
       if (options && options.fn) {
         return a !== b ? options.fn(this) : options.inverse(this);
       }
       return a !== b;
     },
-    // Greater than helper
     gt: function(a, b, options) {
       if (options && options.fn) {
         return a > b ? options.fn(this) : options.inverse(this);
       }
       return a > b;
     },
-    // Less than helper
+    gte: function(a, b, options) {
+      if (options && options.fn) {
+        return a >= b ? options.fn(this) : options.inverse(this);
+      }
+      return a >= b;
+    },
     lt: function(a, b, options) {
       if (options && options.fn) {
         return a < b ? options.fn(this) : options.inverse(this);
       }
       return a < b;
     },
-    // JSON stringify helper
-    json: function(obj) {
-      return JSON.stringify(obj);
+    lte: function(a, b, options) {
+      if (options && options.fn) {
+        return a <= b ? options.fn(this) : options.inverse(this);
+      }
+      return a <= b;
     },
-    // Format date helper
-    formatDate: function(date, format) {
-      if (!date) return '';
-      const d = new Date(date);
-      const options = { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      };
-      return d.toLocaleDateString('en-US', options);
+    
+    // =====================================================
+    // LOGICAL HELPERS
+    // =====================================================
+    and: function(...args) {
+      args.pop();
+      return args.every(Boolean);
     },
-    // Current year helper
-    currentYear: function() {
-      return new Date().getFullYear();
+    or: function(...args) {
+      args.pop();
+      return args.some(Boolean);
     },
-    // Increment helper
+    not: function(value) {
+      return !value;
+    },
+    
+    // =====================================================
+    // MATH HELPERS
+    // =====================================================
+    math: function(a, operator, b) {
+      a = parseFloat(a) || 0;
+      b = parseFloat(b) || 0;
+      switch (operator) {
+        case '+': return a + b;
+        case '-': return a - b;
+        case '*': return a * b;
+        case '/': return b !== 0 ? a / b : 0;
+        case '%': return a % b;
+        default: return a;
+      }
+    },
     inc: function(value) {
       return parseInt(value) + 1;
     },
-    // Conditional helper
+    dec: function(value) {
+      return parseInt(value) - 1;
+    },
+    percentage: function(value, total) {
+      value = parseFloat(value) || 0;
+      total = parseFloat(total) || 0;
+      if (total === 0) return 0;
+      return Math.round((value / total) * 100);
+    },
+    
+    // =====================================================
+    // ARRAY/RANGE HELPERS
+    // =====================================================
+    range: function(start, end) {
+      const result = [];
+      start = parseInt(start) || 0;
+      end = parseInt(end) || 0;
+      if (Math.abs(end - start) > 100) end = start + 100;
+      if (start <= end) {
+        for (let i = start; i <= end; i++) result.push(i);
+      } else {
+        for (let i = start; i >= end; i--) result.push(i);
+      }
+      return result;
+    },
+    includes: function(array, value) {
+      if (!Array.isArray(array)) return false;
+      return array.includes(value);
+    },
+    length: function(array) {
+      if (!array) return 0;
+      return array.length || 0;
+    },
+    
+    // =====================================================
+    // STRING HELPERS
+    // =====================================================
+    slugify: function(str) {
+      if (!str) return '';
+      return String(str).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    },
+    truncate: function(str, length) {
+      if (!str) return '';
+      str = String(str);
+      length = parseInt(length) || 50;
+      if (str.length <= length) return str;
+      return str.substring(0, length) + '...';
+    },
+    lowercase: function(str) {
+      if (!str) return '';
+      return String(str).toLowerCase();
+    },
+    uppercase: function(str) {
+      if (!str) return '';
+      return String(str).toUpperCase();
+    },
+    capitalize: function(str) {
+      if (!str) return '';
+      str = String(str);
+      return str.charAt(0).toUpperCase() + str.slice(1);
+    },
+    
+    // =====================================================
+    // JSON HELPERS
+    // =====================================================
+    json: function(obj) {
+      return JSON.stringify(obj || {});
+    },
+    jsonPretty: function(obj) {
+      return JSON.stringify(obj || {}, null, 2);
+    },
+    
+    // =====================================================
+    // NUMBER FORMATTING
+    // =====================================================
+    formatNumber: function(num) {
+      if (num === null || num === undefined) return '0';
+      return Number(num).toLocaleString();
+    },
+    
+    // =====================================================
+    // DEFAULT/FALLBACK
+    // =====================================================
+    default: function(value, defaultValue) {
+      return value || defaultValue;
+    },
+    coalesce: function(...args) {
+      args.pop();
+      for (const arg of args) {
+        if (arg) return arg;
+      }
+      return '';
+    },
+    
+    // =====================================================
+    // CONDITIONAL BLOCK HELPERS
+    // =====================================================
+    ifEq: function(a, b, options) {
+      if (a === b) return options.fn(this);
+      return options.inverse(this);
+    },
+    ifNeq: function(a, b, options) {
+      if (a !== b) return options.fn(this);
+      return options.inverse(this);
+    },
+    ifGt: function(a, b, options) {
+      if (a > b) return options.fn(this);
+      return options.inverse(this);
+    },
+    ifLt: function(a, b, options) {
+      if (a < b) return options.fn(this);
+      return options.inverse(this);
+    },
+    unlessEq: function(a, b, options) {
+      if (a !== b) return options.fn(this);
+      return options.inverse(this);
+    },
     ifCond: function(v1, operator, v2, options) {
       switch (operator) {
-        case '==':
-          return (v1 == v2) ? options.fn(this) : options.inverse(this);
-        case '===':
-          return (v1 === v2) ? options.fn(this) : options.inverse(this);
-        case '!=':
-          return (v1 != v2) ? options.fn(this) : options.inverse(this);
-        case '!==':
-          return (v1 !== v2) ? options.fn(this) : options.inverse(this);
-        case '<':
-          return (v1 < v2) ? options.fn(this) : options.inverse(this);
-        case '<=':
-          return (v1 <= v2) ? options.fn(this) : options.inverse(this);
-        case '>':
-          return (v1 > v2) ? options.fn(this) : options.inverse(this);
-        case '>=':
-          return (v1 >= v2) ? options.fn(this) : options.inverse(this);
-        case '&&':
-          return (v1 && v2) ? options.fn(this) : options.inverse(this);
-        case '||':
-          return (v1 || v2) ? options.fn(this) : options.inverse(this);
-        default:
-          return options.inverse(this);
+        case '==': return (v1 == v2) ? options.fn(this) : options.inverse(this);
+        case '===': return (v1 === v2) ? options.fn(this) : options.inverse(this);
+        case '!=': return (v1 != v2) ? options.fn(this) : options.inverse(this);
+        case '!==': return (v1 !== v2) ? options.fn(this) : options.inverse(this);
+        case '<': return (v1 < v2) ? options.fn(this) : options.inverse(this);
+        case '<=': return (v1 <= v2) ? options.fn(this) : options.inverse(this);
+        case '>': return (v1 > v2) ? options.fn(this) : options.inverse(this);
+        case '>=': return (v1 >= v2) ? options.fn(this) : options.inverse(this);
+        case '&&': return (v1 && v2) ? options.fn(this) : options.inverse(this);
+        case '||': return (v1 || v2) ? options.fn(this) : options.inverse(this);
+        default: return options.inverse(this);
       }
+    },
+    
+    // =====================================================
+    // DATE HELPERS
+    // =====================================================
+    formatDate: function(date, format) {
+      if (!date) return '';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-US', { 
+        year: 'numeric', month: 'short', day: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    },
+    currentYear: function() {
+      return new Date().getFullYear();
+    },
+    timeAgo: function(date) {
+      if (!date) return '';
+      const d = new Date(date);
+      if (isNaN(d.getTime())) return '';
+      const seconds = Math.floor((new Date() - d) / 1000);
+      const intervals = [
+        { label: 'year', seconds: 31536000 },
+        { label: 'month', seconds: 2592000 },
+        { label: 'week', seconds: 604800 },
+        { label: 'day', seconds: 86400 },
+        { label: 'hour', seconds: 3600 },
+        { label: 'minute', seconds: 60 }
+      ];
+      for (const interval of intervals) {
+        const count = Math.floor(seconds / interval.seconds);
+        if (count >= 1) return `${count} ${interval.label}${count > 1 ? 's' : ''} ago`;
+      }
+      return 'just now';
+    },
+    
+    // =====================================================
+    // STATUS/BADGE HELPERS
+    // =====================================================
+    statusClass: function(status) {
+      const classes = {
+        'met': 'bg-success', 'not-met': 'bg-danger', 'pending': 'bg-secondary',
+        'yes': 'bg-success', 'no': 'bg-danger', 'completed': 'bg-success',
+        'in_progress': 'bg-warning', 'draft': 'bg-secondary'
+      };
+      return classes[status] || 'bg-secondary';
+    },
+    statusIcon: function(status) {
+      const icons = {
+        'met': 'bi-check-circle-fill', 'not-met': 'bi-x-circle-fill',
+        'pending': 'bi-circle', 'yes': 'bi-check-lg', 'no': 'bi-x-lg'
+      };
+      return icons[status] || 'bi-circle';
+    },
+    
+    // =====================================================
+    // CATEGORY ICON HELPER
+    // =====================================================
+    categoryIcon: function(category) {
+      const icons = {
+        'Security': 'bi-shield-lock',
+        'Performance': 'bi-speedometer2',
+        'Integration': 'bi-plug',
+        'Compliance': 'bi-clipboard-check',
+        'UI/UX': 'bi-palette',
+        'Data Management': 'bi-database',
+        'Reporting': 'bi-bar-chart',
+        'User Management': 'bi-people',
+        'Notifications': 'bi-bell',
+        'Document Management': 'bi-file-earmark-text',
+        'General': 'bi-list-check'
+      };
+      return icons[category] || 'bi-list-check';
+    },
+    
+    // =====================================================
+    // SELECTED/ACTIVE HELPERS
+    // =====================================================
+    selected: function(a, b) {
+      return a === b ? 'selected' : '';
+    },
+    active: function(a, b) {
+      return a === b ? 'active' : '';
+    },
+    checked: function(value) {
+      return value ? 'checked' : '';
+    },
+    disabled: function(value) {
+      return value ? 'disabled' : '';
     }
   }
 }));
@@ -136,7 +346,7 @@ app.set('views', path.join(__dirname, 'views'));
 
 // Security middleware
 app.use(helmet({
-  contentSecurityPolicy: false, // Disabled for Bootstrap CDN
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false
 }));
 
@@ -144,8 +354,6 @@ app.use(helmet({
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
-
-
 
 // Body parsing
 app.use(express.json());
@@ -156,30 +364,17 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Session configuration
-// Trust proxy for Azure App Service (required for secure cookies)
 app.set('trust proxy', 1);
-
-// app.use(session({
-//   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
-//   resave: false,
-//   saveUninitialized: false,
-//   cookie: {
-//     secure: process.env.NODE_ENV === 'production',
-//     httpOnly: true,
-//     sameSite: 'lax',
-//     maxAge: 24 * 60 * 60 * 1000 // 24 hours
-//   }
-// }));
 
 app.use(session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-change-me',
   resave: false,
   saveUninitialized: false,
   cookie: { 
-    secure: false,  // Set to true ONLY if using HTTPS
+    secure: false,
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax'  // or 'strict'
+    maxAge: 24 * 60 * 60 * 1000,
+    sameSite: 'lax'
   }
 }));
 
@@ -209,6 +404,7 @@ app.use('/', publicRoutes);
 app.use('/admin', adminRoutes);
 app.use('/validate', validationRoutes);
 app.use('/approve', approvalRoutes);
+
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({
@@ -237,22 +433,19 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Analytics scheduler (runs every ANALYTICS_INTERVAL_HOURS)
+// Analytics scheduler
 function scheduleAnalytics() {
   const intervalHours = parseInt(process.env.ANALYTICS_INTERVAL_HOURS || '72');
-  const intervalMs = intervalHours * 60 * 60 * 1000;
 
   setInterval(async () => {
     try {
       const { all, get } = require('./models/database');
       
-      // Check if we should send analytics
       const lastSent = get(`SELECT sent_at FROM analytics_sent ORDER BY sent_at DESC LIMIT 1`);
       const lastSentDate = lastSent ? new Date(lastSent.sent_at) : new Date(0);
       const hoursSinceLastSent = (Date.now() - lastSentDate.getTime()) / (1000 * 60 * 60);
 
       if (hoursSinceLastSent >= intervalHours) {
-        // Gather analytics data
         const totalInvites = get(`SELECT COUNT(*) as count FROM invites WHERE is_revoked = 0 AND expires_at > datetime('now')`)?.count || 0;
         const inProgress = get(`SELECT COUNT(DISTINCT invite_id) as count FROM submissions WHERE status = 'in_progress'`)?.count || 0;
         const completedThisPeriod = get(`SELECT COUNT(*) as count FROM submissions WHERE status = 'submitted' AND submitted_at > datetime('now', '-3 days')`)?.count || 0;
@@ -278,17 +471,11 @@ function scheduleAnalytics() {
           LIMIT 10
         `);
 
-        // Send analytics email
         await emailService.sendAnalyticsDigest({
-          totalInvites,
-          inProgress,
-          completedThisPeriod,
-          expiringSoon,
-          activeInvites,
-          recentSubmissions
+          totalInvites, inProgress, completedThisPeriod, expiringSoon,
+          activeInvites, recentSubmissions
         });
 
-        // Record that we sent analytics
         const { run } = require('./models/database');
         run(`INSERT INTO analytics_sent (sent_at) VALUES (CURRENT_TIMESTAMP)`);
 
@@ -297,7 +484,7 @@ function scheduleAnalytics() {
     } catch (error) {
       console.error('Failed to send analytics:', error);
     }
-  }, 60 * 60 * 1000); // Check every hour
+  }, 60 * 60 * 1000);
 }
 
 // Start server
@@ -316,7 +503,6 @@ initialize().then(() => {
 ╚════════════════════════════════════════════════════════════╝
     `);
     
-    // Start analytics scheduler
     scheduleAnalytics();
   });
 }).catch(err => {

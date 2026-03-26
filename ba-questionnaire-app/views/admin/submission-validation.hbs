@@ -1,576 +1,449 @@
 {{!-- views/admin/submission-validation.hbs --}}
-{{!-- Server-side pagination, category grouping, floating TOC, re-validation sends visible items --}}
+{{!-- Server-side pagination with category grouping, floating TOC, and multi-select filters --}}
 
 <style>
-/* Main layout with TOC */
-.main-content { margin-right: 280px; }
-
-/* Floating TOC */
-.toc-sidebar {
-    position: fixed;
-    top: 80px;
-    right: 20px;
-    width: 250px;
-    max-height: calc(100vh - 100px);
-    overflow-y: auto;
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-    z-index: 100;
-}
-
-.toc-header {
-    padding: 1rem;
-    border-bottom: 1px solid #dee2e6;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border-radius: 12px 12px 0 0;
-    position: sticky;
-    top: 0;
-}
-
-.toc-body { padding: 0.5rem; }
-
-.toc-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.5rem 0.75rem;
-    margin: 0.2rem 0;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-    font-size: 0.8rem;
-    text-decoration: none;
-    color: #333;
-}
-
-.toc-item:hover { background: #f0f4ff; color: #667eea; }
-.toc-item.active { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-.toc-item .badge { font-size: 0.65rem; }
-
-.toc-progress {
-    padding: 0.75rem;
-    background: #f8f9fa;
-    border-top: 1px solid #dee2e6;
-    border-radius: 0 0 12px 12px;
-}
-
-.toc-progress-bar {
-    height: 6px;
-    border-radius: 3px;
-    overflow: hidden;
-    background: #e9ecef;
-}
-
-/* Filter bar */
-.filter-bar {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-}
-
-.filter-btn {
-    font-size: 0.8rem;
-    padding: 0.4rem 0.75rem;
-    border-radius: 20px;
-    border: 1px solid #dee2e6;
-    background: white;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.filter-btn:hover { border-color: #3498db; background: #f0f7ff; }
-.filter-btn.active { background: #3498db; color: white; border-color: #3498db; }
-
-/* Pagination */
-.pagination-bar {
-    background: white;
-    border: 1px solid #dee2e6;
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-}
-
-.pagination-info { font-size: 0.9rem; color: #6c757d; }
-.pagination-info strong { color: #333; }
-
-.page-size-select {
-    width: auto;
-    font-size: 0.85rem;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-}
-
-.pagination .page-link {
-    border-radius: 8px;
-    margin: 0 2px;
-    border: none;
-    color: #667eea;
-}
-
-.pagination .page-link:hover { background: #f0f4ff; }
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-}
-
-/* Category sections */
-.category-section { scroll-margin-top: 20px; margin-bottom: 1.5rem; }
-
-.category-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.75rem 1rem;
-    border-radius: 12px 12px 0 0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.category-header h5 { margin: 0; font-weight: 600; font-size: 1rem; }
-.category-stats { display: flex; gap: 0.4rem; }
-.category-stats .badge { font-size: 0.7rem; }
-
-/* Table styling */
-.validation-table { margin-bottom: 0; }
-.validation-table th {
-    background: #f8f9fa;
-    font-weight: 600;
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-    border-bottom: 2px solid #dee2e6;
-    padding: 0.6rem;
-}
-
-.validation-table td {
-    vertical-align: middle;
-    padding: 0.6rem;
-    font-size: 0.85rem;
-}
-
-.validation-row { transition: all 0.2s; }
-.validation-row:hover { background: #f8f9fa; }
-.validation-row.met { background: rgba(25, 135, 84, 0.08); border-left: 3px solid #198754; }
-.validation-row.not-met { background: rgba(220, 53, 69, 0.08); border-left: 3px solid #dc3545; }
-
-/* Comment editor */
-.comment-editor {
-    min-height: 32px;
-    max-height: 70px;
-    overflow-y: auto;
-    padding: 0.35rem 0.5rem;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
-    font-size: 0.8rem;
-    background: white;
-}
-
-.comment-editor:focus { outline: none; border-color: #3498db; box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.15); }
-.comment-editor:empty:before { content: attr(data-placeholder); color: #adb5bd; }
-
-/* Re-validation banner */
-.revalidation-banner {
-    position: sticky;
-    bottom: 20px;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    margin-top: 1rem;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.revalidation-banner h6 { margin: 0; font-weight: 600; }
-
-/* Summary cards */
-.summary-card {
-    border-radius: 12px;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    overflow: hidden;
-}
-
-.summary-card .card-body { padding: 1rem; }
-.summary-card h3 { font-size: 1.75rem; font-weight: 700; margin: 0; }
-.summary-card h6 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.25rem; opacity: 0.9; }
-
-/* Progress bar */
-.progress-container {
-    background: white;
-    border-radius: 12px;
-    padding: 0.75rem 1rem;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    margin-bottom: 1rem;
-}
-
-.progress-main { height: 10px; border-radius: 5px; overflow: hidden; background: #e9ecef; }
-
-/* Responsive */
-@media (max-width: 1400px) {
-    .toc-sidebar { width: 220px; }
-    .main-content { margin-right: 240px; }
-}
-
-@media (max-width: 1200px) {
-    .toc-sidebar { display: none; }
-    .main-content { margin-right: 0; }
-}
+    .category-toc {
+        position: sticky;
+        top: 80px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+    }
+    .category-toc .list-group-item {
+        padding: 0.5rem 0.75rem;
+        font-size: 0.85rem;
+        border-left: 3px solid transparent;
+        transition: all 0.2s;
+    }
+    .category-toc .list-group-item:hover {
+        background: #f8f9fa;
+        border-left-color: #0d6efd;
+    }
+    .category-toc .list-group-item.active-category {
+        background: #e7f1ff;
+        border-left-color: #0d6efd;
+    }
+    .filter-bar {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    .filter-group {
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0.5rem;
+        background: white;
+    }
+    .filter-group-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: #6c757d;
+        margin-bottom: 0.5rem;
+    }
+    .filter-check {
+        display: inline-flex;
+        align-items: center;
+        margin-right: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    .filter-check input {
+        margin-right: 0.25rem;
+    }
+    .filter-check label {
+        font-size: 0.8rem;
+        cursor: pointer;
+        user-select: none;
+    }
+    .category-section {
+        scroll-margin-top: 80px;
+    }
+    .category-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 8px 8px 0 0;
+        margin-top: 1.5rem;
+    }
+    .category-header:first-of-type {
+        margin-top: 0;
+    }
+    .category-header h5 {
+        margin: 0;
+        font-size: 1rem;
+    }
+    .requirements-table {
+        font-size: 0.875rem;
+    }
+    .requirements-table th {
+        background: #f1f3f4;
+        font-weight: 600;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+    .requirements-table td {
+        vertical-align: middle;
+    }
+    .response-cell {
+        max-width: 200px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .status-badge {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 12px;
+    }
+    .status-met { background: #d4edda; color: #155724; }
+    .status-not-met { background: #f8d7da; color: #721c24; }
+    .status-pending { background: #e2e3e5; color: #383d41; }
+    .revalidation-banner {
+        position: sticky;
+        bottom: 0;
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        color: white;
+        padding: 1rem;
+        border-radius: 8px 8px 0 0;
+        box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+        z-index: 100;
+    }
+    .pagination-bar {
+        background: #f8f9fa;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .progress-stats {
+        display: flex;
+        gap: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .stat-item { text-align: center; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; }
+    .stat-label { font-size: 0.75rem; color: #6c757d; text-transform: uppercase; }
+    .comment-input { font-size: 0.8rem; resize: none; }
+    .status-select { font-size: 0.8rem; padding: 0.25rem 0.5rem; width: auto; }
+    .active-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin-top: 0.75rem;
+    }
+    .active-filter-tag {
+        background: #e7f1ff;
+        color: #0d6efd;
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+    }
+    .active-filter-tag .remove-filter {
+        cursor: pointer;
+        font-weight: bold;
+    }
 </style>
 
-<!-- Floating TOC Sidebar -->
-<div class="toc-sidebar">
-    <div class="toc-header">
-        <h6 class="mb-0"><i class="bi bi-list-ul me-2"></i>Categories</h6>
-    </div>
-    <div class="toc-body">
-        {{#each categories}}
-        <a href="?category={{this.name}}&page=1&perPage={{../pagination.perPage}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}" 
-           class="toc-item {{#if (eq this.name ../filters.category)}}active{{/if}}">
-            <span>
-                {{#if (eq this.name 'Security')}}<i class="bi bi-shield-lock me-2"></i>
-                {{else if (eq this.name 'Performance')}}<i class="bi bi-speedometer2 me-2"></i>
-                {{else if (eq this.name 'Integration')}}<i class="bi bi-plug me-2"></i>
-                {{else if (eq this.name 'Compliance')}}<i class="bi bi-clipboard-check me-2"></i>
-                {{else if (eq this.name 'UI/UX')}}<i class="bi bi-palette me-2"></i>
-                {{else if (eq this.name 'Data Management')}}<i class="bi bi-database me-2"></i>
-                {{else if (eq this.name 'Reporting')}}<i class="bi bi-graph-up me-2"></i>
-                {{else if (eq this.name 'User Management')}}<i class="bi bi-people me-2"></i>
-                {{else if (eq this.name 'Notifications')}}<i class="bi bi-bell me-2"></i>
-                {{else if (eq this.name 'Document Management')}}<i class="bi bi-file-earmark me-2"></i>
-                {{else}}<i class="bi bi-folder me-2"></i>{{/if}}
-                {{this.name}}
-            </span>
-            <span class="badge {{#if (eq this.met this.total)}}bg-success{{else if (gt this.notMet 0)}}bg-danger{{else}}bg-secondary{{/if}}">
-                {{this.met}}/{{this.total}}
-            </span>
-        </a>
-        {{/each}}
-        <hr class="my-2">
-        <a href="?category=all&page=1&perPage={{pagination.perPage}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}" 
-           class="toc-item {{#if (eq filters.category 'all')}}active{{/if}}">
-            <span><i class="bi bi-grid me-2"></i>All Categories</span>
-            <span class="badge bg-primary">{{stats.total}}</span>
-        </a>
-    </div>
-    <div class="toc-progress">
-        <div class="d-flex justify-content-between mb-2">
-            <small class="text-muted">Overall Progress</small>
-            <small class="fw-bold">{{stats.percentValidated}}%</small>
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb mb-2">
+                    <li class="breadcrumb-item"><a href="/admin/submissions">Submissions</a></li>
+                    <li class="breadcrumb-item"><a href="/admin/submissions/{{submission.id}}">{{submission.clientName}}</a></li>
+                    <li class="breadcrumb-item active">Validation</li>
+                </ol>
+            </nav>
+            <h3 class="mb-1"><i class="bi bi-clipboard-check me-2"></i>Implementation Validation</h3>
+            <p class="text-muted mb-0">{{submission.formName}} • {{submission.clientName}}</p>
         </div>
-        <div class="toc-progress-bar">
-            <div class="progress-bar bg-success" style="width: {{stats.percentMet}}%; display: inline-block; height: 100%;"></div>
-            <div class="progress-bar bg-danger" style="width: {{#if stats.total}}{{math stats.notMet '/' stats.total '*' 100}}{{else}}0{{/if}}%; display: inline-block; height: 100%;"></div>
-        </div>
-        <div class="d-flex justify-content-between mt-2" style="font-size: 0.7rem;">
-            <span class="text-success"><i class="bi bi-check-circle me-1"></i>{{stats.met}}</span>
-            <span class="text-danger"><i class="bi bi-x-circle me-1"></i>{{stats.notMet}}</span>
-            <span class="text-secondary"><i class="bi bi-clock me-1"></i>{{stats.pending}}</span>
+        <div class="d-flex gap-2">
+            <a href="/admin/submissions/{{submission.id}}/validation/export-pdf" class="btn btn-outline-secondary">
+                <i class="bi bi-file-pdf me-1"></i> Export PDF
+            </a>
+            <button type="button" class="btn btn-outline-info" data-bs-toggle="modal" data-bs-target="#auditLogModal">
+                <i class="bi bi-clock-history me-1"></i> Audit Log
+            </button>
         </div>
     </div>
-</div>
-
-<!-- Main Content -->
-<div class="main-content">
-    <div class="container-fluid py-3">
-        
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-start mb-3 flex-wrap gap-2">
-            <div>
-                <nav aria-label="breadcrumb">
-                    <ol class="breadcrumb mb-1" style="font-size: 0.85rem;">
-                        <li class="breadcrumb-item"><a href="/admin/dashboard">Dashboard</a></li>
-                        <li class="breadcrumb-item"><a href="/admin/submissions">Submissions</a></li>
-                        <li class="breadcrumb-item"><a href="/admin/submissions/{{submission.id}}">{{submission.clientName}}</a></li>
-                        <li class="breadcrumb-item active">Validation</li>
-                    </ol>
-                </nav>
-                <h4 class="mb-0">
-                    <i class="bi bi-check2-square me-2"></i>
-                    Implementation Validation
-                </h4>
-                <p class="text-muted mb-0 small">
-                    {{submission.clientName}} - {{submission.formName}}
-                </p>
-            </div>
-            
-            <div class="d-flex gap-2 flex-wrap">
-                <a href="/admin/submissions/{{submission.id}}/validation/export-pdf" class="btn btn-sm btn-primary">
-                    <i class="bi bi-file-pdf me-1"></i> Export PDF
-                </a>
-                {{#if validationComplete}}
-                    {{#unless approvalStatus}}
-                    <button type="button" class="btn btn-sm text-white" style="background: #9b59b6;" data-bs-toggle="modal" data-bs-target="#sendForApprovalModal">
-                        <i class="bi bi-award me-1"></i> Send for Approval
-                    </button>
-                    {{/unless}}
-                {{/if}}
-                {{#if approvalStatus}}
-                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#approvalStatusModal">
-                    <i class="bi bi-award me-1"></i> Status
-                </button>
-                {{/if}}
-                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#auditHistoryModal">
-                    <i class="bi bi-clock-history me-1"></i> History
-                </button>
-                <a href="/admin/submissions/{{submission.id}}" class="btn btn-sm btn-outline-secondary">
-                    <i class="bi bi-arrow-left me-1"></i> Back
-                </a>
-            </div>
-        </div>
-        
-        <!-- Summary Cards -->
-        <div class="row mb-3 g-2">
-            <div class="col-md-3">
-                <div class="card summary-card bg-light text-center">
-                    <div class="card-body py-2">
-                        <h6 class="text-muted">Total</h6>
-                        <h3>{{stats.total}}</h3>
+    
+    <!-- Progress Stats -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="progress-stats">
+                    <div class="stat-item">
+                        <div class="stat-value text-primary">{{stats.total}}</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-success">{{stats.met}}</div>
+                        <div class="stat-label">Met</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-danger">{{stats.notMet}}</div>
+                        <div class="stat-label">Not Met</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value text-secondary">{{stats.pending}}</div>
+                        <div class="stat-label">Pending</div>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card summary-card bg-success text-white text-center">
-                    <div class="card-body py-2">
-                        <h6>Met</h6>
-                        <h3>{{stats.met}}</h3>
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width: 200px;">
+                        <div class="d-flex justify-content-between mb-1">
+                            <small>Progress</small>
+                            <small>{{stats.percentValidated}}%</small>
+                        </div>
+                        <div class="progress" style="height: 8px;">
+                            <div class="progress-bar bg-success" style="width: {{percentage stats.met stats.total}}%"></div>
+                            <div class="progress-bar bg-danger" style="width: {{percentage stats.notMet stats.total}}%"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card summary-card bg-danger text-white text-center">
-                    <div class="card-body py-2">
-                        <h6>Not Met</h6>
-                        <h3>{{stats.notMet}}</h3>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card summary-card bg-secondary text-white text-center">
-                    <div class="card-body py-2">
-                        <h6>Pending</h6>
-                        <h3>{{stats.pending}}</h3>
-                    </div>
+                    {{#if validationComplete}}
+                    <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i> Complete</span>
+                    {{/if}}
                 </div>
             </div>
         </div>
-        
-        <!-- Progress Bar -->
-        <div class="progress-container">
-            <div class="d-flex justify-content-between mb-1">
-                <span class="small">Validation Progress</span>
-                <span class="small fw-bold">{{stats.percentValidated}}% validated</span>
-            </div>
-            <div class="progress-main">
-                <div class="progress-bar bg-success" style="width: {{stats.percentMet}}%;"></div>
-                <div class="progress-bar bg-danger" style="width: {{#if stats.total}}{{math stats.notMet '/' stats.total '*' 100}}{{else}}0{{/if}}%;"></div>
-            </div>
-        </div>
-        
-        <!-- Filter Bar -->
-        <form method="GET" action="/admin/submissions/{{submission.id}}/validation" id="filterForm">
+    </div>
+    
+    <div class="row">
+        <!-- Main Content -->
+        <div class="col-lg-9">
+            <!-- Filter Bar with Multi-Select -->
             <div class="filter-bar">
-                <div class="row align-items-center g-2">
-                    <div class="col-md-9">
-                        <div class="d-flex gap-2 flex-wrap align-items-center">
-                            <span class="text-muted small"><i class="bi bi-funnel me-1"></i>Filters:</span>
-                            
-                            <!-- Admin Status Filter -->
-                            <select name="adminStatus" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
-                                <option value="all" {{#if (eq filters.adminStatus 'all')}}selected{{/if}}>All Admin Status</option>
-                                <option value="met" {{#if (eq filters.adminStatus 'met')}}selected{{/if}}>✓ Met Only</option>
-                                <option value="not-met" {{#if (eq filters.adminStatus 'not-met')}}selected{{/if}}>✗ Not Met Only</option>
-                                <option value="pending" {{#if (eq filters.adminStatus 'pending')}}selected{{/if}}>◷ Pending Only</option>
-                                <option value="not-met,pending" {{#if (eq filters.adminStatus 'not-met,pending')}}selected{{/if}}>✗ Not Met + Pending</option>
-                            </select>
-                            
-                            <!-- Client Status Filter -->
-                            <select name="clientStatus" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
-                                <option value="all" {{#if (eq filters.clientStatus 'all')}}selected{{/if}}>All Client Status</option>
-                                <option value="met" {{#if (eq filters.clientStatus 'met')}}selected{{/if}}>✓ Client Met</option>
-                                <option value="not-met" {{#if (eq filters.clientStatus 'not-met')}}selected{{/if}}>✗ Client Not Met</option>
-                                <option value="pending" {{#if (eq filters.clientStatus 'pending')}}selected{{/if}}>◷ Client Pending</option>
-                            </select>
-                            
-                            <!-- Response Filter -->
-                            <select name="response" class="form-select form-select-sm" style="width: auto;" onchange="this.form.submit()">
-                                <option value="all" {{#if (eq filters.response 'all')}}selected{{/if}}>All Responses</option>
-                                <option value="yes" {{#if (eq filters.response 'yes')}}selected{{/if}}>Yes Only</option>
-                                <option value="no" {{#if (eq filters.response 'no')}}selected{{/if}}>No Only</option>
-                                <option value="other" {{#if (eq filters.response 'other')}}selected{{/if}}>Other Only</option>
-                            </select>
-                            
-                            <!-- Search -->
-                            <div class="input-group" style="width: 200px;">
-                                <span class="input-group-text bg-white border-end-0 py-1"><i class="bi bi-search"></i></span>
-                                <input type="text" name="search" class="form-control form-control-sm border-start-0" 
-                                       placeholder="Search..." value="{{filters.search}}">
+                <form method="GET" action="/admin/submissions/{{submission.id}}/validation" id="filterForm">
+                    <div class="row g-3">
+                        <!-- Search -->
+                        <div class="col-md-4">
+                            <label class="form-label small mb-1">Search</label>
+                            <div class="input-group input-group-sm">
+                                <input type="text" name="search" class="form-control" 
+                                       placeholder="Search requirements..." value="{{filters.search}}">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i>
+                                </button>
                             </div>
-                            
-                            <input type="hidden" name="category" value="{{filters.category}}">
-                            <input type="hidden" name="perPage" value="{{pagination.perPage}}">
-                            <input type="hidden" name="page" value="1">
-                            
-                            <button type="submit" class="btn btn-sm btn-primary">
-                                <i class="bi bi-search"></i>
-                            </button>
-                            
-                            <a href="/admin/submissions/{{submission.id}}/validation" class="btn btn-sm btn-outline-danger">
-                                <i class="bi bi-x-lg me-1"></i> Clear
+                        </div>
+                        
+                        <!-- Per Page -->
+                        <div class="col-md-2">
+                            <label class="form-label small mb-1">Per Page</label>
+                            <select name="perPage" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="25" {{#if (eq pagination.perPage 25)}}selected{{/if}}>25</option>
+                                <option value="50" {{#if (eq pagination.perPage 50)}}selected{{/if}}>50</option>
+                                <option value="100" {{#if (eq pagination.perPage 100)}}selected{{/if}}>100</option>
+                                <option value="-1" {{#if (eq pagination.perPage -1)}}selected{{/if}}>All</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Clear Filters -->
+                        <div class="col-md-2 d-flex align-items-end">
+                            <a href="/admin/submissions/{{submission.id}}/validation" class="btn btn-outline-secondary btn-sm w-100">
+                                <i class="bi bi-x-circle me-1"></i> Clear
                             </a>
                         </div>
                     </div>
-                    <div class="col-md-3 text-end">
-                        <span class="badge bg-primary fs-6 px-3 py-2">
-                            <i class="bi bi-eye me-1"></i> {{pagination.totalFiltered}} visible of {{stats.total}}
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </form>
-        
-        <!-- Pagination Bar (Top) -->
-        <div class="pagination-bar">
-            <div class="d-flex align-items-center gap-3">
-                <span class="pagination-info">
-                    Showing <strong>{{pagination.startItem}}-{{pagination.endItem}}</strong> of <strong>{{pagination.totalFiltered}}</strong>
-                </span>
-                <form method="GET" action="/admin/submissions/{{submission.id}}/validation" class="d-flex align-items-center gap-2">
-                    <label class="text-muted small mb-0">Per page:</label>
-                    <select name="perPage" class="form-select form-select-sm page-size-select" onchange="this.form.submit()">
-                        <option value="25" {{#if (eq pagination.perPage 25)}}selected{{/if}}>25</option>
-                        <option value="50" {{#if (eq pagination.perPage 50)}}selected{{/if}}>50</option>
-                        <option value="100" {{#if (eq pagination.perPage 100)}}selected{{/if}}>100</option>
-                        <option value="-1" {{#if (eq pagination.perPage -1)}}selected{{/if}}>All</option>
-                    </select>
-                    <input type="hidden" name="category" value="{{filters.category}}">
-                    <input type="hidden" name="search" value="{{filters.search}}">
-                    <input type="hidden" name="adminStatus" value="{{filters.adminStatus}}">
-                    <input type="hidden" name="clientStatus" value="{{filters.clientStatus}}">
-                    <input type="hidden" name="response" value="{{filters.response}}">
-                    <input type="hidden" name="page" value="1">
-                </form>
-            </div>
-            {{#if (gt pagination.totalPages 1)}}
-            <nav>
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-                        <a class="page-link" href="?page=1&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-double-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{math pagination.currentPage '-' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
                     
-                    {{#each (range 1 pagination.totalPages)}}
-                        {{#if (and (gte this (math ../pagination.currentPage '-' 2)) (lte this (math ../pagination.currentPage '+' 2)))}}
-                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
-                            <a class="page-link" href="?page={{this}}&perPage={{../pagination.perPage}}&category={{../filters.category}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}">{{this}}</a>
-                        </li>
-                        {{/if}}
-                    {{/each}}
-                    
-                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{math pagination.currentPage '+' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{pagination.totalPages}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-double-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-            {{/if}}
-        </div>
-        
-        <!-- Validation Form -->
-        <form id="validationForm" method="POST" action="/admin/submissions/{{submission.id}}/validation">
-            
-            {{#each categoryGroups}}
-            <!-- Category: {{this.name}} -->
-            <div class="category-section" id="cat-{{slugify this.name}}">
-                <div class="card border-0 shadow-sm mb-3">
-                    <div class="category-header">
-                        <h5>
-                            {{#if (eq this.name 'Security')}}<i class="bi bi-shield-lock me-2"></i>
-                            {{else if (eq this.name 'Performance')}}<i class="bi bi-speedometer2 me-2"></i>
-                            {{else if (eq this.name 'Integration')}}<i class="bi bi-plug me-2"></i>
-                            {{else if (eq this.name 'Compliance')}}<i class="bi bi-clipboard-check me-2"></i>
-                            {{else if (eq this.name 'UI/UX')}}<i class="bi bi-palette me-2"></i>
-                            {{else if (eq this.name 'Data Management')}}<i class="bi bi-database me-2"></i>
-                            {{else if (eq this.name 'Reporting')}}<i class="bi bi-graph-up me-2"></i>
-                            {{else if (eq this.name 'User Management')}}<i class="bi bi-people me-2"></i>
-                            {{else if (eq this.name 'Notifications')}}<i class="bi bi-bell me-2"></i>
-                            {{else if (eq this.name 'Document Management')}}<i class="bi bi-file-earmark me-2"></i>
-                            {{else}}<i class="bi bi-folder me-2"></i>{{/if}}
-                            {{this.name}}
-                        </h5>
-                        <div class="category-stats">
-                            <span class="badge bg-light text-dark">{{this.items.length}} shown</span>
+                    <!-- Multi-Select Filter Groups -->
+                    <div class="row g-3 mt-2">
+                        <!-- Admin Status Filter -->
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <div class="filter-group-label">Admin Status</div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="adminStatus" value="met" id="admin-met"
+                                           {{#if (includes filters.adminStatusList "met")}}checked{{/if}}>
+                                    <label for="admin-met"><span class="badge bg-success">Met</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="adminStatus" value="not-met" id="admin-not-met"
+                                           {{#if (includes filters.adminStatusList "not-met")}}checked{{/if}}>
+                                    <label for="admin-not-met"><span class="badge bg-danger">Not Met</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="adminStatus" value="pending" id="admin-pending"
+                                           {{#if (includes filters.adminStatusList "pending")}}checked{{/if}}>
+                                    <label for="admin-pending"><span class="badge bg-secondary">Pending</span></label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Client Status Filter -->
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <div class="filter-group-label">Client Status</div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="clientStatus" value="met" id="client-met"
+                                           {{#if (includes filters.clientStatusList "met")}}checked{{/if}}>
+                                    <label for="client-met"><span class="badge bg-success">Met</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="clientStatus" value="not-met" id="client-not-met"
+                                           {{#if (includes filters.clientStatusList "not-met")}}checked{{/if}}>
+                                    <label for="client-not-met"><span class="badge bg-danger">Not Met</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="clientStatus" value="pending" id="client-pending"
+                                           {{#if (includes filters.clientStatusList "pending")}}checked{{/if}}>
+                                    <label for="client-pending"><span class="badge bg-secondary">Pending</span></label>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Response Type Filter -->
+                        <div class="col-md-4">
+                            <div class="filter-group">
+                                <div class="filter-group-label">Response Type</div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="response" value="yes" id="response-yes"
+                                           {{#if (includes filters.responseList "yes")}}checked{{/if}}>
+                                    <label for="response-yes"><span class="badge bg-success">Yes</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="response" value="no" id="response-no"
+                                           {{#if (includes filters.responseList "no")}}checked{{/if}}>
+                                    <label for="response-no"><span class="badge bg-danger">No</span></label>
+                                </div>
+                                <div class="filter-check">
+                                    <input type="checkbox" name="response" value="other" id="response-other"
+                                           {{#if (includes filters.responseList "other")}}checked{{/if}}>
+                                    <label for="response-other"><span class="badge bg-info">Other</span></label>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                    <div class="card-body p-0">
-                        <table class="table validation-table">
+                    
+                    <!-- Apply Filters Button -->
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary btn-sm">
+                                <i class="bi bi-funnel me-1"></i> Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden category filter -->
+                    <input type="hidden" name="category" value="{{filters.category}}">
+                </form>
+            </div>
+            
+            <!-- Pagination Info -->
+            <div class="pagination-bar mb-3">
+                <div>
+                    <strong>Showing {{pagination.startItem}}-{{pagination.endItem}}</strong> of {{pagination.totalFiltered}} items
+                    {{#if (neq filters.category "all")}}
+                    <span class="badge bg-info ms-2">Category: {{filters.category}}</span>
+                    {{/if}}
+                    {{#if filters.search}}
+                    <span class="badge bg-secondary ms-2">Search: "{{filters.search}}"</span>
+                    {{/if}}
+                </div>
+                
+                {{#if (gt pagination.totalPages 1)}}
+                <nav>
+                    <ul class="pagination pagination-sm mb-0">
+                        {{#if (gt pagination.currentPage 1)}}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{math pagination.currentPage '-' 1}}&perPage={{pagination.perPage}}&search={{filters.search}}&category={{filters.category}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        </li>
+                        {{/if}}
+                        
+                        {{#each (range 1 pagination.totalPages)}}
+                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
+                            <a class="page-link" href="?page={{this}}&perPage={{../pagination.perPage}}&search={{../filters.search}}&category={{../filters.category}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}">
+                                {{this}}
+                            </a>
+                        </li>
+                        {{/each}}
+                        
+                        {{#if (lt pagination.currentPage pagination.totalPages)}}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{math pagination.currentPage '+' 1}}&perPage={{pagination.perPage}}&search={{filters.search}}&category={{filters.category}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                        </li>
+                        {{/if}}
+                    </ul>
+                </nav>
+                {{/if}}
+            </div>
+            
+            <!-- Validation Form -->
+            <form method="POST" action="/admin/submissions/{{submission.id}}/validation" id="validationForm">
+                <input type="hidden" name="validationData" id="validationDataInput">
+                
+                {{#each categoryGroups}}
+                <div class="category-section" id="category-{{slugify this.name}}">
+                    <div class="category-header d-flex justify-content-between align-items-center">
+                        <h5><i class="bi {{categoryIcon this.name}} me-2"></i>{{this.name}}</h5>
+                        <span class="badge" style="background: rgba(255,255,255,0.2);">{{this.items.length}} items</span>
+                    </div>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-hover requirements-table mb-0">
                             <thead>
                                 <tr>
-                                    <th style="width: 4%;">#</th>
-                                    <th style="width: 24%;">Requirement</th>
-                                    <th style="width: 16%;">Client Response</th>
-                                    <th style="width: 12%; text-align: center;">Admin Status</th>
-                                    <th style="width: 10%; text-align: center;">Client</th>
-                                    <th style="width: 30%;">Comments</th>
+                                    <th style="width: 40px;">#</th>
+                                    <th>Requirement</th>
+                                    <th style="width: 120px;">Response</th>
+                                    <th style="width: 100px;">Admin</th>
+                                    <th style="width: 100px;">Client</th>
+                                    <th style="width: 200px;">Comment</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {{#each this.items}}
-                                <tr class="validation-row {{this.adminStatus}}" data-field="{{this.key}}">
-                                    <td class="text-muted small">{{this.index}}</td>
-                                    <td><strong class="small">{{this.label}}</strong></td>
+                                <tr data-key="{{this.key}}">
+                                    <td class="text-muted">{{this.index}}</td>
                                     <td>
-                                        {{#if (eq this.responseType 'yes')}}
-                                            <span class="badge bg-success">Yes</span>
-                                        {{else if (eq this.responseType 'no')}}
-                                            <span class="badge bg-danger">No</span>
-                                        {{else}}
-                                            <span class="small text-break" style="max-width: 150px; display: block; overflow: hidden; text-overflow: ellipsis;">{{truncate this.responseDisplay 60}}</span>
+                                        <strong>{{this.label}}</strong>
+                                        {{#if this.clientComment}}
+                                        <br><small class="text-info"><i class="bi bi-chat-left-text me-1"></i>{{truncate this.clientComment 50}}</small>
                                         {{/if}}
                                     </td>
-                                    <td class="text-center">
-                                        <div class="btn-group btn-group-sm">
-                                            <input type="radio" class="btn-check validation-radio" name="v_{{this.key}}" id="y_{{this.key}}" value="yes" {{#if (eq this.adminStatus 'met')}}checked{{/if}}>
-                                            <label class="btn btn-outline-success btn-sm" for="y_{{this.key}}"><i class="bi bi-check-lg"></i></label>
-                                            <input type="radio" class="btn-check validation-radio" name="v_{{this.key}}" id="n_{{this.key}}" value="no" {{#if (eq this.adminStatus 'not-met')}}checked{{/if}}>
-                                            <label class="btn btn-outline-danger btn-sm" for="n_{{this.key}}"><i class="bi bi-x-lg"></i></label>
-                                        </div>
-                                    </td>
-                                    <td class="text-center">
-                                        {{#if (eq this.clientStatus 'met')}}
-                                            <span class="badge bg-success">Met</span>
-                                        {{else if (eq this.clientStatus 'not-met')}}
-                                            <span class="badge bg-danger">Not Met</span>
+                                    <td class="response-cell" title="{{this.responseDisplay}}">
+                                        {{#if (eq this.responseType "yes")}}
+                                        <span class="badge bg-success">Yes</span>
                                         {{else}}
-                                            <span class="badge bg-secondary">Pending</span>
+                                        {{#if (eq this.responseType "no")}}
+                                        <span class="badge bg-danger">No</span>
+                                        {{else}}
+                                        <span class="text-muted">{{truncate this.responseDisplay 30}}</span>
+                                        {{/if}}
                                         {{/if}}
                                     </td>
                                     <td>
-                                        <div class="comment-editor" contenteditable="true" data-field="{{this.key}}" data-placeholder="Comments...">{{this.comment}}</div>
+                                        <select class="form-select form-select-sm status-select admin-status" data-key="{{this.key}}">
+                                            <option value="" {{#if (eq this.adminStatus "pending")}}selected{{/if}}>Pending</option>
+                                            <option value="yes" {{#if (eq this.adminStatus "met")}}selected{{/if}}>Met</option>
+                                            <option value="no" {{#if (eq this.adminStatus "not-met")}}selected{{/if}}>Not Met</option>
+                                        </select>
+                                    </td>
+                                    <td>
+                                        {{#if (eq this.clientStatus "met")}}
+                                        <span class="status-badge status-met"><i class="bi bi-check-circle me-1"></i>Met</span>
+                                        {{else}}
+                                        {{#if (eq this.clientStatus "not-met")}}
+                                        <span class="status-badge status-not-met"><i class="bi bi-x-circle me-1"></i>Not Met</span>
+                                        {{else}}
+                                        <span class="status-badge status-pending">Pending</span>
+                                        {{/if}}
+                                        {{/if}}
+                                    </td>
+                                    <td>
+                                        <textarea class="form-control form-control-sm comment-input admin-comment" 
+                                                  data-key="{{this.key}}" rows="1" placeholder="Add comment...">{{this.comment}}</textarea>
                                     </td>
                                 </tr>
                                 {{/each}}
@@ -578,348 +451,193 @@
                         </table>
                     </div>
                 </div>
-            </div>
-            {{/each}}
-            
-            {{#unless categoryGroups.length}}
-            <div class="alert alert-info text-center py-5">
-                <i class="bi bi-search fs-1 mb-3 d-block"></i>
-                <h5>No requirements match your filters</h5>
-                <p class="text-muted">Try adjusting your filter criteria or <a href="/admin/submissions/{{submission.id}}/validation">clear all filters</a>.</p>
-            </div>
-            {{/unless}}
-            
-            <input type="hidden" name="validationData" id="validationDataInput" value="">
-        </form>
-        
-        <!-- Pagination Bar (Bottom) -->
-        {{#if (gt pagination.totalPages 1)}}
-        <div class="pagination-bar">
-            <span class="pagination-info">
-                Showing <strong>{{pagination.startItem}}-{{pagination.endItem}}</strong> of <strong>{{pagination.totalFiltered}}</strong>
-            </span>
-            <nav>
-                <ul class="pagination pagination-sm mb-0">
-                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-                        <a class="page-link" href="?page=1&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-double-left"></i>
-                        </a>
-                    </li>
-                    <li class="page-item {{#if (eq pagination.currentPage 1)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{math pagination.currentPage '-' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-left"></i>
-                        </a>
-                    </li>
-                    
-                    {{#each (range 1 pagination.totalPages)}}
-                        {{#if (and (gte this (math ../pagination.currentPage '-' 2)) (lte this (math ../pagination.currentPage '+' 2)))}}
-                        <li class="page-item {{#if (eq this ../pagination.currentPage)}}active{{/if}}">
-                            <a class="page-link" href="?page={{this}}&perPage={{../pagination.perPage}}&category={{../filters.category}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}">{{this}}</a>
-                        </li>
-                        {{/if}}
-                    {{/each}}
-                    
-                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{math pagination.currentPage '+' 1}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-right"></i>
-                        </a>
-                    </li>
-                    <li class="page-item {{#if (eq pagination.currentPage pagination.totalPages)}}disabled{{/if}}">
-                        <a class="page-link" href="?page={{pagination.totalPages}}&perPage={{pagination.perPage}}&category={{filters.category}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}">
-                            <i class="bi bi-chevron-double-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-        </div>
-        {{/if}}
-        
-        <!-- Save Button Bar -->
-        <div class="d-flex justify-content-between align-items-center mt-3 p-3 bg-white rounded-3 shadow-sm">
-            <span class="text-muted small" id="saveStatus">
-                <i class="bi bi-info-circle me-1"></i>
-                Click "Save" to save changes on this page
-            </span>
-            <div>
-                <a href="/admin/submissions/{{submission.id}}" class="btn btn-outline-secondary me-2">Cancel</a>
-                <button type="button" class="btn btn-success" id="saveBtn" onclick="saveValidation()">
-                    <i class="bi bi-check-lg me-1"></i> Save Validation
-                </button>
-            </div>
-        </div>
-        
-        <!-- Re-validation Banner (Sticky Bottom) -->
-        <div class="revalidation-banner">
-            <div>
-                <h6><i class="bi bi-arrow-repeat me-2"></i>Send for Re-validation</h6>
-                <span>All <strong>{{pagination.totalFiltered}} visible</strong> requirements will be sent to the client</span>
-            </div>
-            <button type="button" class="btn btn-light btn-lg" onclick="sendForRevalidation()">
-                <i class="bi bi-send me-1"></i> Send {{pagination.totalFiltered}} Items
-            </button>
-        </div>
-        
-    </div>
-</div>
-
-<!-- Re-validation Modal -->
-<div class="modal fade" id="revalidationModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-warning">
-                <h5 class="modal-title"><i class="bi bi-arrow-repeat me-2"></i>Confirm Re-validation</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>You are about to send <strong>{{pagination.totalFiltered}} requirements</strong> to the client for re-validation.</p>
-                <div class="mb-3">
-                    <label class="form-label">Message to Client (Optional)</label>
-                    <textarea class="form-control" id="revalidationMessage" rows="3" placeholder="Add instructions..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn btn-warning" id="confirmRevalidationBtn">
-                    <i class="bi bi-send me-1"></i> Send to Client
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Approval Modal -->
-<div class="modal fade" id="sendForApprovalModal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background: #9b59b6;">
-                <h5 class="modal-title"><i class="bi bi-award me-2"></i>Send for Approval</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <div id="approvalStep1">
-                    <p class="text-muted mb-3"><i class="bi bi-info-circle me-1"></i>Approvals: Client → Sponsor → Executive</p>
-                    
-                    <div class="card mb-2 border-primary">
-                        <div class="card-header bg-primary text-white py-2"><span class="badge bg-white text-primary me-2">1</span>Client</div>
-                        <div class="card-body py-2">
-                            <div class="row g-2">
-                                <div class="col-6"><input type="text" class="form-control form-control-sm" value="{{submission.clientName}}" readonly style="background:#e9ecef;"></div>
-                                <div class="col-6"><input type="email" class="form-control form-control-sm" value="{{submission.clientEmail}}" readonly style="background:#e9ecef;"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card mb-2 border-warning">
-                        <div class="card-header bg-warning py-2"><span class="badge bg-white text-warning me-2">2</span>Sponsor</div>
-                        <div class="card-body py-2">
-                            <div class="row g-2">
-                                <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="Name" id="sponsorName"></div>
-                                <div class="col-6"><input type="email" class="form-control form-control-sm" placeholder="Email" id="sponsorEmail"></div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="card mb-2 border-secondary">
-                        <div class="card-header bg-secondary text-white py-2"><span class="badge bg-white text-secondary me-2">3</span>Executive</div>
-                        <div class="card-body py-2">
-                            <div class="row g-2">
-                                <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="Name" id="executiveName"></div>
-                                <div class="col-6"><input type="email" class="form-control form-control-sm" placeholder="Email" id="executiveEmail"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div id="approvalStep2" style="display:none;">
-                    <div class="alert alert-success"><i class="bi bi-check-circle me-2"></i>Links generated!</div>
-                    <div id="approvalLinksContainer"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="button" class="btn text-white" style="background: #9b59b6;" id="generateApprovalLinks">
-                    <i class="bi bi-send me-1"></i> Generate Links
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Approval Status Modal -->
-{{#if approvalStatus}}
-<div class="modal fade" id="approvalStatusModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header text-white" style="background: #9b59b6;">
-                <h5 class="modal-title"><i class="bi bi-award me-2"></i>Approval Status</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted">{{approvalStatus.approvedCount}} of 3 approved</p>
-                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-primary me-2">1</span>{{approvalStatus.client_name}}</span>{{#if approvalStatus.client_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-warning text-dark">Pending</span>{{/if}}</div></div>
-                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-warning text-dark me-2">2</span>{{approvalStatus.sponsor_name}}</span>{{#if approvalStatus.sponsor_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-warning text-dark">Pending</span>{{/if}}</div></div>
-                <div class="card mb-2"><div class="card-body py-2 d-flex justify-content-between"><span><span class="badge bg-secondary me-2">3</span>{{approvalStatus.executive_name}}</span>{{#if approvalStatus.executive_approved_at}}<span class="badge bg-success">✓</span>{{else}}<span class="badge bg-secondary">Pending</span>{{/if}}</div></div>
-            </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
-        </div>
-    </div>
-</div>
-{{/if}}
-
-<!-- Audit History Modal -->
-<div class="modal fade" id="auditHistoryModal" tabindex="-1">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>History</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" style="max-height: 400px; overflow-y: auto;">
-                {{#if auditLog.length}}
-                {{#each auditLog}}
-                <div class="mb-2 pb-2 border-bottom">
-                    <span class="badge bg-secondary">{{action}}</span>
-                    <strong class="ms-2">{{actor}}</strong>
-                    <small class="text-muted float-end">{{created_at}}</small>
-                </div>
                 {{/each}}
-                {{else}}
-                <p class="text-muted text-center py-4">No history yet.</p>
-                {{/if}}
+                
+                {{#unless categoryGroups.length}}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    No requirements match your current filters.
+                    <a href="/admin/submissions/{{submission.id}}/validation">Clear all filters</a>
+                </div>
+                {{/unless}}
+                
+                <div class="d-flex justify-content-end gap-2 my-4">
+                    <button type="button" class="btn btn-primary btn-lg" onclick="saveValidation()">
+                        <i class="bi bi-save me-2"></i>Save Current Page
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Re-validation Banner -->
+            <div class="revalidation-banner">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                    <div>
+                        <strong><i class="bi bi-send me-2"></i>Send for Re-validation</strong>
+                        <br>
+                        <small>{{pagination.totalFiltered}} visible items will be sent to the client</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <input type="text" id="revalidationMessage" class="form-control" 
+                               placeholder="Optional message to client..." style="width: 300px;">
+                        <button type="button" class="btn btn-light" onclick="sendForRevalidation()">
+                            <i class="bi bi-envelope me-1"></i> Send {{pagination.totalFiltered}} Items
+                        </button>
+                    </div>
+                </div>
             </div>
-            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button></div>
+        </div>
+        
+        <!-- Category TOC Sidebar -->
+        <div class="col-lg-3">
+            <div class="category-toc">
+                <div class="card">
+                    <div class="card-header">
+                        <strong><i class="bi bi-list-ul me-2"></i>Categories</strong>
+                    </div>
+                    <div class="list-group list-group-flush">
+                        <a href="?category=all&perPage={{pagination.perPage}}&search={{filters.search}}&adminStatus={{filters.adminStatus}}&clientStatus={{filters.clientStatus}}&response={{filters.response}}" 
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {{#if (eq filters.category "all")}}active-category{{/if}}">
+                            <span><i class="bi bi-grid me-2"></i>All Categories</span>
+                            <span class="badge bg-primary">{{stats.total}}</span>
+                        </a>
+                        {{#each categories}}
+                        <a href="?category={{this.name}}&perPage={{../pagination.perPage}}&search={{../filters.search}}&adminStatus={{../filters.adminStatus}}&clientStatus={{../filters.clientStatus}}&response={{../filters.response}}" 
+                           class="list-group-item list-group-item-action d-flex justify-content-between align-items-center {{#if (eq ../filters.category this.name)}}active-category{{/if}}">
+                            <span>
+                                <i class="bi {{categoryIcon this.name}} me-2"></i>
+                                {{this.name}}
+                            </span>
+                            <div>
+                                <span class="badge bg-success" title="Met">{{this.met}}</span>
+                                <span class="badge bg-secondary" title="Total">/{{this.total}}</span>
+                            </div>
+                        </a>
+                        {{/each}}
+                    </div>
+                </div>
+                
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <strong><i class="bi bi-lightning me-2"></i>Quick Actions</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="markAllAsMet()">
+                                <i class="bi bi-check-all me-1"></i> Mark Page as Met
+                            </button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="markAllAsNotMet()">
+                                <i class="bi bi-x-lg me-1"></i> Mark Page as Not Met
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="clearAllStatuses()">
+                                <i class="bi bi-eraser me-1"></i> Clear Page Statuses
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Log Modal -->
+<div class="modal fade" id="auditLogModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-clock-history me-2"></i>Audit History</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>Date</th><th>Action</th><th>User</th><th>Details</th></tr>
+                        </thead>
+                        <tbody>
+                            {{#each auditLog}}
+                            <tr>
+                                <td><small>{{formatDate this.created_at}}</small></td>
+                                <td><span class="badge bg-secondary">{{this.action}}</span></td>
+                                <td>{{this.performed_by}}</td>
+                                <td><small class="text-muted">{{this.details}}</small></td>
+                            </tr>
+                            {{else}}
+                            <tr><td colspan="4" class="text-center text-muted">No audit history</td></tr>
+                            {{/each}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
 <script>
-// Visible field keys for re-validation (server provides this)
-const visibleFieldKeys = {{{json visibleFieldKeys}}};
-const validationData = {{{json validationData}}};
-let hasChanges = false;
-
-// Track changes
-document.querySelectorAll('.validation-radio').forEach(radio => {
-    radio.addEventListener('change', () => { hasChanges = true; updateSaveStatus(); });
-});
-
-document.querySelectorAll('.comment-editor').forEach(editor => {
-    editor.addEventListener('input', () => { hasChanges = true; updateSaveStatus(); });
-});
-
-function updateSaveStatus() {
-    const status = document.getElementById('saveStatus');
-    if (hasChanges) {
-        status.innerHTML = '<i class="bi bi-exclamation-circle text-warning me-1"></i>You have unsaved changes';
-    }
-}
-
-// Save validation
-function saveValidation() {
-    const data = {};
+    const existingValidation = {{{json validationData}}};
+    const visibleFieldKeys = {{{json visibleFieldKeys}}};
+    const submissionId = '{{submission.id}}';
     
-    // Collect from current page
-    document.querySelectorAll('.validation-row').forEach(row => {
-        const field = row.dataset.field;
-        const yesRadio = document.getElementById('y_' + field);
-        const noRadio = document.getElementById('n_' + field);
-        const editor = row.querySelector('.comment-editor');
+    function collectPageValidation() {
+        const pageData = {};
+        document.querySelectorAll('.admin-status').forEach(select => {
+            const key = select.dataset.key;
+            const commentEl = document.querySelector(`.admin-comment[data-key="${key}"]`);
+            pageData[key] = {
+                met: select.value || null,
+                comment: commentEl ? commentEl.value : ''
+            };
+        });
+        return pageData;
+    }
+    
+    function mergeValidation(pageData) {
+        const merged = { ...existingValidation };
+        for (const [key, value] of Object.entries(pageData)) {
+            merged[key] = value;
+        }
+        return merged;
+    }
+    
+    function saveValidation() {
+        const pageData = collectPageValidation();
+        const merged = mergeValidation(pageData);
+        document.getElementById('validationDataInput').value = JSON.stringify(merged);
+        document.getElementById('validationForm').submit();
+    }
+    
+    function sendForRevalidation() {
+        const message = document.getElementById('revalidationMessage').value;
+        if (!confirm(`Send ${visibleFieldKeys.length} items to client for re-validation?`)) return;
         
-        let met = null;
-        if (yesRadio && yesRadio.checked) met = 'yes';
-        else if (noRadio && noRadio.checked) met = 'no';
-        
-        data[field] = {
-            met,
-            comment: editor ? editor.innerHTML.trim() : ''
-        };
+        fetch(`/admin/submissions/${submissionId}/send-for-validation`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body: JSON.stringify({ filteredFields: visibleFieldKeys, message })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert(`Re-validation request sent for ${data.fieldCount} items!`);
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(err => { console.error(err); alert('Error sending request'); });
+    }
+    
+    function markAllAsMet() {
+        document.querySelectorAll('.admin-status').forEach(s => s.value = 'yes');
+    }
+    function markAllAsNotMet() {
+        document.querySelectorAll('.admin-status').forEach(s => s.value = 'no');
+    }
+    function clearAllStatuses() {
+        document.querySelectorAll('.admin-status').forEach(s => s.value = '');
+    }
+    
+    document.querySelectorAll('.comment-input').forEach(textarea => {
+        textarea.addEventListener('focus', function() { this.rows = 3; });
+        textarea.addEventListener('blur', function() { if (!this.value) this.rows = 1; });
     });
-    
-    // Merge with existing validation data (for fields not on this page)
-    const merged = { ...validationData, ...data };
-    
-    document.getElementById('validationDataInput').value = JSON.stringify(merged);
-    document.getElementById('validationForm').submit();
-}
-
-// Send for re-validation
-function sendForRevalidation() {
-    const modal = new bootstrap.Modal(document.getElementById('revalidationModal'));
-    modal.show();
-}
-
-document.getElementById('confirmRevalidationBtn').addEventListener('click', async function() {
-    this.disabled = true;
-    this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Sending...';
-    
-    try {
-        const res = await fetch('/admin/submissions/{{submission.id}}/send-for-validation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                filteredFields: visibleFieldKeys,
-                message: document.getElementById('revalidationMessage').value
-            })
-        });
-        
-        const result = await res.json();
-        if (result.success) {
-            alert('Sent ' + result.fieldCount + ' items for re-validation!');
-            window.location.reload();
-        } else {
-            alert('Error: ' + (result.error || 'Failed'));
-            this.disabled = false;
-            this.innerHTML = '<i class="bi bi-send me-1"></i>Send to Client';
-        }
-    } catch (err) {
-        alert('Error sending request');
-        this.disabled = false;
-        this.innerHTML = '<i class="bi bi-send me-1"></i>Send to Client';
-    }
-});
-
-// Approval workflow
-document.getElementById('generateApprovalLinks')?.addEventListener('click', async function() {
-    const sn = document.getElementById('sponsorName').value.trim();
-    const se = document.getElementById('sponsorEmail').value.trim();
-    const en = document.getElementById('executiveName').value.trim();
-    const ee = document.getElementById('executiveEmail').value.trim();
-    
-    if (!sn || !se || !en || !ee) return alert('Fill all fields');
-    
-    this.disabled = true;
-    this.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>...';
-    
-    try {
-        const res = await fetch('/admin/submissions/{{submission.id}}/approval', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sponsorName: sn, sponsorEmail: se, executiveName: en, executiveEmail: ee })
-        });
-        
-        const result = await res.json();
-        if (result.success) {
-            document.getElementById('approvalStep1').style.display = 'none';
-            document.getElementById('approvalStep2').style.display = 'block';
-            this.style.display = 'none';
-            document.getElementById('approvalLinksContainer').innerHTML = `
-                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.client.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.client.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
-                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.sponsor.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.sponsor.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
-                <div class="card mb-2"><div class="card-body py-2"><strong>${result.approvalLinks.executive.name}</strong><br><input class="form-control form-control-sm mt-1" value="${result.approvalLinks.executive.link}" readonly onclick="this.select();document.execCommand('copy');"></div></div>
-            `;
-        } else {
-            alert('Error: ' + (result.error || 'Failed'));
-            this.disabled = false;
-            this.innerHTML = '<i class="bi bi-send me-1"></i>Generate Links';
-        }
-    } catch (err) {
-        alert('Error');
-        this.disabled = false;
-        this.innerHTML = '<i class="bi bi-send me-1"></i>Generate Links';
-    }
-});
-
-// Warn before leaving with unsaved changes
-window.addEventListener('beforeunload', e => {
-    if (hasChanges) { e.preventDefault(); e.returnValue = ''; }
-});
 </script>
