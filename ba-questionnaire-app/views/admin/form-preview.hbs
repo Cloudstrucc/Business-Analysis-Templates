@@ -40,39 +40,86 @@
         justify-content: center;
         font-size: 0.875rem;
         font-weight: 600;
+        flex-shrink: 0;
     }
     .section-description {
         color: #6c757d;
         margin-top: 0.5rem;
         font-size: 0.9375rem;
     }
-    .form-field {
-        margin-bottom: 1.25rem;
+    .subsection-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #495057;
+        margin: 1.5rem 0 1rem 0;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed #dee2e6;
     }
-    .form-field label {
-        font-weight: 500;
-        margin-bottom: 0.375rem;
-        display: block;
+    .field-item {
+        padding: 0.75rem;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        margin-bottom: 0.75rem;
+        background: #fafbfc;
     }
-    .form-field .form-text {
-        font-size: 0.8125rem;
+    .field-item:hover {
+        background: #f0f4f8;
+        border-color: #3498db;
+    }
+    .field-label {
+        font-weight: 600;
+        color: #2c3e50;
+        margin-bottom: 0.25rem;
+    }
+    .field-description {
+        font-size: 0.85rem;
         color: #6c757d;
+        margin-bottom: 0.5rem;
     }
-    .checkbox-group, .radio-group {
+    .field-input-preview {
         display: flex;
+        gap: 0.75rem;
         flex-wrap: wrap;
-        gap: 0.5rem 1.5rem;
+        opacity: 0.6;
     }
-    .field-type-badge {
-        font-size: 0.7rem;
-        padding: 0.2rem 0.5rem;
+    .decision-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.25rem 0.5rem;
+        background: white;
+        border: 1px solid #dee2e6;
         border-radius: 4px;
-        margin-left: 0.5rem;
-        vertical-align: middle;
+        font-size: 0.8rem;
+    }
+    .decision-option input {
+        margin: 0;
     }
     .preview-disabled {
-        opacity: 0.7;
         pointer-events: none;
+    }
+    .field-count-badge {
+        font-size: 0.75rem;
+        padding: 0.2rem 0.5rem;
+        background: rgba(52, 152, 219, 0.1);
+        color: #3498db;
+        border-radius: 4px;
+        margin-left: auto;
+    }
+    .empty-section {
+        text-align: center;
+        padding: 2rem;
+        color: #6c757d;
+    }
+    .raw-content {
+        background: #f8f9fa;
+        padding: 1rem;
+        border-radius: 8px;
+        font-family: monospace;
+        font-size: 0.85rem;
+        white-space: pre-wrap;
+        max-height: 500px;
+        overflow-y: auto;
     }
 </style>
 
@@ -98,23 +145,23 @@
     
     <!-- Preview Banner -->
     <div class="preview-banner">
-        <div class="d-flex justify-content-between align-items-center">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
                 <strong><i class="bi bi-info-circle me-2"></i>Preview Mode</strong>
                 <br>
-                <small>This is a read-only preview of how the form will appear to clients. Form inputs are disabled.</small>
+                <small>This is a read-only preview of how the form will appear to clients.</small>
             </div>
-            <div>
-                <span class="badge bg-light text-dark me-2">
-                    <i class="bi bi-list-check me-1"></i>
-                    {{#if parsedForm.sections}}
+            <div class="d-flex gap-2">
+                <span class="badge bg-light text-dark">
+                    <i class="bi bi-folder me-1"></i>
+                    {{#if parsedForm.sections.length}}
                         {{parsedForm.sections.length}} Sections
                     {{else}}
                         0 Sections
                     {{/if}}
                 </span>
                 <span class="badge bg-light text-dark">
-                    <i class="bi bi-input-cursor me-1"></i>
+                    <i class="bi bi-list-check me-1"></i>
                     {{#if parsedForm.totalFields}}
                         {{parsedForm.totalFields}} Fields
                     {{else}}
@@ -126,127 +173,99 @@
     </div>
     
     <!-- Form Preview -->
-    <div class="preview-disabled">
-        {{#if parsedForm.sections}}
-            {{#each parsedForm.sections}}
-            <div class="form-section">
-                <div class="section-header">
+    {{#if parsedForm.sections.length}}
+        {{#each parsedForm.sections}}
+        <div class="form-section">
+            <div class="section-header">
+                <div class="d-flex align-items-center">
                     <h4 class="section-title">
                         <span class="section-number">{{inc @index}}</span>
                         {{this.title}}
                     </h4>
-                    {{#if this.description}}
-                    <p class="section-description">{{this.description}}</p>
-                    {{/if}}
+                    <span class="field-count-badge">{{this.fields.length}} items</span>
                 </div>
-                
-                {{#each this.fields}}
-                <div class="form-field">
-                    <label>
-                        {{this.label}}
-                        {{#if this.required}}
-                        <span class="text-danger">*</span>
-                        {{/if}}
-                        <span class="badge bg-secondary field-type-badge">{{this.type}}</span>
-                    </label>
-                    
-                    {{#if (eq this.type "text")}}
-                    <input type="text" class="form-control" placeholder="{{this.placeholder}}" disabled>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "textarea")}}
-                    <textarea class="form-control" rows="3" placeholder="{{this.placeholder}}" disabled></textarea>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "number")}}
-                    <input type="number" class="form-control" placeholder="{{this.placeholder}}" disabled>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "email")}}
-                    <input type="email" class="form-control" placeholder="{{this.placeholder}}" disabled>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "date")}}
-                    <input type="date" class="form-control" disabled>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "select")}}
-                    <select class="form-select" disabled>
-                        <option>Select an option...</option>
-                        {{#each this.options}}
-                        <option>{{this}}</option>
-                        {{/each}}
-                    </select>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "radio")}}
-                    <div class="radio-group">
-                        {{#each this.options}}
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" disabled>
-                            <label class="form-check-label">{{this}}</label>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "checkbox")}}
-                    <div class="form-check">
-                        <input type="checkbox" class="form-check-input" disabled>
-                        <label class="form-check-label">{{this.checkboxLabel}}</label>
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "checkboxes")}}
-                    <div class="checkbox-group">
-                        {{#each this.options}}
-                        <div class="form-check">
-                            <input type="checkbox" class="form-check-input" disabled>
-                            <label class="form-check-label">{{this}}</label>
-                        </div>
-                        {{/each}}
-                    </div>
-                    {{/if}}
-                    
-                    {{#if (eq this.type "yesno")}}
-                    <div class="radio-group">
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" disabled>
-                            <label class="form-check-label">Yes</label>
-                        </div>
-                        <div class="form-check">
-                            <input type="radio" class="form-check-input" disabled>
-                            <label class="form-check-label">No</label>
-                        </div>
-                    </div>
-                    {{/if}}
-                    
-                    {{#if this.helpText}}
-                    <div class="form-text">{{this.helpText}}</div>
-                    {{/if}}
-                </div>
-                {{/each}}
-            </div>
-            {{/each}}
-        {{else}}
-            <!-- Fallback: Show raw markdown content -->
-            <div class="form-section">
-                <div class="section-header">
-                    <h4 class="section-title">
-                        <span class="section-number">1</span>
-                        Form Content
-                    </h4>
-                </div>
-                {{#if form.content}}
-                <div class="markdown-content">
-                    {{{form.content}}}
-                </div>
-                {{else}}
-                <p class="text-muted">No form content available for preview.</p>
+                {{#if this.description}}
+                <p class="section-description">{{this.description}}</p>
                 {{/if}}
             </div>
-        {{/if}}
-    </div>
+            
+            {{#if this.fields.length}}
+                <div class="preview-disabled">
+                {{#each this.fields}}
+                    {{#if this.isSubsection}}
+                        <h5 class="subsection-title">{{this.label}}</h5>
+                    {{else}}
+                        <div class="field-item">
+                            <div class="field-label">{{this.label}}</div>
+                            {{#if this.description}}
+                            <div class="field-description">{{this.description}}</div>
+                            {{/if}}
+                            <div class="field-input-preview">
+                                {{#if this.hasDecision}}
+                                    <span class="decision-option">
+                                        <input type="checkbox" disabled> OOB
+                                    </span>
+                                    <span class="decision-option">
+                                        <input type="checkbox" disabled> CUSTOMIZE
+                                    </span>
+                                    <span class="decision-option">
+                                        <input type="checkbox" disabled> N/A
+                                    </span>
+                                {{else}}
+                                    {{#if (eq this.type "select")}}
+                                        <span class="decision-option">
+                                            <input type="checkbox" disabled> OOB
+                                        </span>
+                                        <span class="decision-option">
+                                            <input type="checkbox" disabled> CUSTOMIZE
+                                        </span>
+                                        <span class="decision-option">
+                                            <input type="checkbox" disabled> N/A
+                                        </span>
+                                    {{else}}
+                                        <span class="decision-option">
+                                            <input type="radio" disabled> Yes
+                                        </span>
+                                        <span class="decision-option">
+                                            <input type="radio" disabled> No
+                                        </span>
+                                    {{/if}}
+                                {{/if}}
+                                <input type="text" class="form-control form-control-sm" placeholder="Notes..." style="max-width: 200px;" disabled>
+                            </div>
+                        </div>
+                    {{/if}}
+                {{/each}}
+                </div>
+            {{else}}
+                <div class="empty-section">
+                    <i class="bi bi-inbox text-muted" style="font-size: 2rem;"></i>
+                    <p class="mt-2 mb-0">No fields in this section</p>
+                </div>
+            {{/if}}
+        </div>
+        {{/each}}
+    {{else}}
+        <!-- No parsed sections - show raw content or message -->
+        <div class="form-section">
+            <div class="section-header">
+                <h4 class="section-title">
+                    <span class="section-number"><i class="bi bi-file-text"></i></span>
+                    Form Content
+                </h4>
+            </div>
+            {{#if form.rawContent}}
+                <p class="text-muted mb-3">The form content is shown below. The parser couldn't extract structured fields from this format.</p>
+                <div class="raw-content">{{form.rawContent}}</div>
+            {{else}}
+                <div class="empty-section">
+                    <i class="bi bi-file-earmark-x text-muted" style="font-size: 3rem;"></i>
+                    <p class="mt-3 mb-0">No form content available for preview.</p>
+                    <p class="text-muted">The markdown file may be empty or not found.</p>
+                </div>
+            {{/if}}
+        </div>
+    {{/if}}
     
     <!-- Form Info Card -->
     <div class="card mt-4">
@@ -256,19 +275,46 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
-                    <p><strong>Slug:</strong> <code>{{form.slug}}</code></p>
-                    <p><strong>Title:</strong> {{form.title}}</p>
+                    <p class="mb-2"><strong>Slug:</strong> <code>{{form.slug}}</code></p>
+                    <p class="mb-2"><strong>Title:</strong> {{form.title}}</p>
+                    {{#if form.id}}
+                    <p class="mb-2"><strong>ID:</strong> {{form.id}}</p>
+                    {{/if}}
                 </div>
                 <div class="col-md-6">
-                    <p><strong>Created:</strong> {{formatDate form.created_at}}</p>
+                    {{#if form.created_at}}
+                    <p class="mb-2"><strong>Created:</strong> {{formatDate form.created_at}}</p>
+                    {{/if}}
                     {{#if form.markdown_file}}
-                    <p><strong>File:</strong> <code>{{form.markdown_file}}</code></p>
+                    <p class="mb-2"><strong>Markdown File:</strong> <code>{{form.markdown_file}}</code></p>
+                    {{/if}}
+                    {{#if form.markdownFile}}
+                    <p class="mb-2"><strong>Markdown File:</strong> <code>{{form.markdownFile}}</code></p>
+                    {{/if}}
+                    {{#if form.foundPath}}
+                    <p class="mb-2"><strong>Found At:</strong> <code>{{form.foundPath}}</code></p>
                     {{/if}}
                 </div>
             </div>
             {{#if form.description}}
-            <p><strong>Description:</strong> {{form.description}}</p>
+            <p class="mb-0"><strong>Description:</strong> {{form.description}}</p>
             {{/if}}
         </div>
     </div>
+    
+    <!-- Debug Info Card (temporary) -->
+    {{#if form.debugInfo}}
+    <div class="card mt-3 border-warning">
+        <div class="card-header bg-warning text-dark">
+            <strong><i class="bi bi-bug me-2"></i>Debug Info (remove after fixing)</strong>
+        </div>
+        <div class="card-body">
+            <p class="mb-2"><strong>Has Content:</strong> {{form.debugInfo.hasContent}}</p>
+            <p class="mb-2"><strong>Content Length:</strong> {{form.debugInfo.contentLength}} chars</p>
+            <p class="mb-2"><strong>Sections Found:</strong> {{form.debugInfo.sectionsFound}}</p>
+            <p class="mb-2"><strong>Fields Found:</strong> {{form.debugInfo.fieldsFound}}</p>
+            <p class="mb-0"><strong>Form Object Keys:</strong> <code>{{json form.debugInfo.formKeys}}</code></p>
+        </div>
+    </div>
+    {{/if}}
 </div>

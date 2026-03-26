@@ -158,39 +158,109 @@ router.get('/forms/:slug/preview', async (req, res) => {
             return res.redirect('/admin/forms');
         }
         
-        // Try to parse the form if parseForm exists
+        // Debug: log the form object to see what fields are available
+        console.log('Form object keys:', Object.keys(form));
+        console.log('Form object:', JSON.stringify(form, null, 2).substring(0, 500));
+        
         let parsedForm = { sections: [], totalFields: 0 };
-        if (typeof formLoader.parseForm === 'function') {
+        let content = null;
+        
+        // Method 1: Check if form already has content
+        if (form.content) {
+            content = form.content;
+            console.log('Found content in form.content');
+        }
+        
+        // Method 2: Check if form has markdown_content or markdownContent
+        if (!content && (form.markdown_content || form.markdownContent)) {
+            content = form.markdown_content || form.markdownContent;
+            console.log('Found content in markdown_content');
+        }
+        
+        // Method 3: Try formLoader.getFormContent if it exists
+        if (!content && typeof formLoader.getFormContent === 'function') {
             try {
-                parsedForm = formLoader.parseForm(form);
-            } catch (e) {
-                console.error('Error parsing form:', e);
-            }
-        } else if (typeof formLoader.getFormContent === 'function') {
-            // Alternative: try to get form content
-            try {
-                const content = formLoader.getFormContent(form.slug || form.id);
-                form.content = content;
+                content = formLoader.getFormContent(form.slug || form.id);
+                console.log('Got content from formLoader.getFormContent');
             } catch (e) {
                 console.error('Error getting form content:', e);
             }
         }
         
-        // If we have a markdown file, try to read and parse it
-        if (form.markdown_file && !parsedForm.sections.length) {
+        // Method 4: Try formLoader.parseForm if it exists
+        if (!content && typeof formLoader.parseForm === 'function') {
             try {
-                const filepath = path.join(__dirname, '..', 'questionnaires', form.markdown_file);
-                if (fs.existsSync(filepath)) {
-                    const content = fs.readFileSync(filepath, 'utf8');
-                    form.rawContent = content;
-                    
-                    // Simple markdown parsing to extract sections and fields
-                    parsedForm = parseMarkdownForm(content);
-                }
+                parsedForm = formLoader.parseForm(form);
+                console.log('Parsed form via formLoader.parseForm');
             } catch (e) {
-                console.error('Error reading markdown file:', e);
+                console.error('Error parsing form:', e);
             }
         }
+        
+        // Method 5: Try to read from file system
+        if (!content && !parsedForm.sections.length) {
+            const possibleFileNames = [
+                form.markdown_file,
+                form.markdownFile, 
+                form.file,
+                form.filename,
+                `${req.params.slug}.md`,
+                `${form.slug}.md`
+            ].filter(Boolean);
+            
+            const possibleDirs = [
+                path.join(__dirname, '..', 'questionnaires'),
+                path.join(__dirname, '..', 'forms'),
+                path.join(__dirname, '..', 'data', 'forms'),
+                path.join(__dirname, '..', 'data', 'questionnaires'),
+                path.join(__dirname, '..')
+            ];
+            
+            for (const dir of possibleDirs) {
+                if (content) break;
+                for (const fileName of possibleFileNames) {
+                    const filepath = path.join(dir, fileName);
+                    try {
+                        if (fs.existsSync(filepath)) {
+                            content = fs.readFileSync(filepath, 'utf8');
+                            form.foundPath = filepath;
+                            console.log('Found form file at:', filepath);
+                            break;
+                        }
+                    } catch (e) {
+                        // Continue to next
+                    }
+                }
+            }
+        }
+        
+        // Method 6: Check database for form content
+        if (!content && !parsedForm.sections.length) {
+            try {
+                const dbForm = db.getFormById ? db.getFormById(form.id) : null;
+                if (dbForm && (dbForm.content || dbForm.markdown_content)) {
+                    content = dbForm.content || dbForm.markdown_content;
+                    console.log('Got content from database');
+                }
+            } catch (e) {
+                console.error('Error getting form from database:', e);
+            }
+        }
+        
+        // Parse the content if we found it
+        if (content && !parsedForm.sections.length) {
+            form.rawContent = content;
+            parsedForm = parseMarkdownForm(content);
+        }
+        
+        // Pass debug info to template
+        form.debugInfo = {
+            hasContent: !!content,
+            contentLength: content ? content.length : 0,
+            sectionsFound: parsedForm.sections.length,
+            fieldsFound: parsedForm.totalFields,
+            formKeys: Object.keys(form)
+        };
         
         res.render('admin/form-preview', {
             title: `Preview: ${form.title}`,
@@ -213,60 +283,118 @@ function parseMarkdownForm(content) {
     let totalFields = 0;
     
     const lines = content.split('\n');
+    let inTable = false;
+    let tableHeaders = [];
     
-    for (const line of lines) {
-        // Section headers (## Section Name)
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        
+        // Main section headers (## Section Name)
         if (line.startsWith('## ')) {
             if (currentSection) {
                 sections.push(currentSection);
             }
             currentSection = {
-                title: line.replace('## ', '').trim(),
+                title: line.replace('## ', '').replace(/^\d+\.\s*/, '').trim(),
                 description: '',
                 fields: []
             };
+            inTable = false;
         }
-        // Subsection or field group (### Name)
+        // Subsection headers (### Name) - could be description or subsection
         else if (line.startsWith('### ') && currentSection) {
-            // Treat as a field label
-            const label = line.replace('### ', '').trim();
+            const title = line.replace('### ', '').trim();
+            // Add as a subsection divider
             currentSection.fields.push({
-                label,
-                type: 'text',
-                required: false
+                label: title,
+                type: 'subsection',
+                isSubsection: true
             });
-            totalFields++;
         }
-        // List items as fields (- [ ] Field or - Field)
-        else if ((line.startsWith('- [ ]') || line.startsWith('- [x]') || line.match(/^- \*\*.*\*\*/)) && currentSection) {
-            let label = line.replace(/^- \[.\] /, '').replace(/^- /, '').trim();
-            let type = 'yesno';
+        // "What Is It?" descriptions
+        else if (currentSection && !currentSection.description && line.trim() && !line.startsWith('#') && !line.startsWith('|') && !line.startsWith('-') && !line.startsWith('*') && !line.startsWith('>')) {
+            if (!line.includes('📖') && !line.includes('Learn More')) {
+                currentSection.description = line.trim();
+            }
+        }
+        // Table header row (| Feature | Description | ...)
+        else if (line.startsWith('|') && line.includes('|')) {
+            const cells = line.split('|').map(c => c.trim()).filter(c => c);
             
-            // Check for specific patterns
-            if (line.includes('**')) {
-                label = label.replace(/\*\*/g, '');
-                type = 'yesno';
+            // Check if this is the separator row (|---|---|)
+            if (cells.every(c => c.match(/^[-:]+$/))) {
+                inTable = true;
+                continue;
             }
             
-            // Check for required
-            const required = label.includes('*') || label.includes('(required)');
-            label = label.replace(/\*$/, '').replace(/\(required\)/gi, '').trim();
+            // Check if this is a header row
+            if (cells.some(c => c.toLowerCase().includes('feature') || c.toLowerCase().includes('question') || c.toLowerCase().includes('type') || c.toLowerCase().includes('component'))) {
+                tableHeaders = cells;
+                inTable = true;
+                continue;
+            }
+            
+            // This is a data row
+            if (inTable && currentSection && cells.length >= 2) {
+                const label = cells[0].replace(/\*\*/g, '').replace(/🏢/g, '').trim();
+                const description = cells[1] || '';
+                
+                // Check if there's a decision column with checkboxes
+                let hasCheckboxes = false;
+                let fieldType = 'yesno';
+                
+                for (const cell of cells) {
+                    if (cell.includes('☐') || cell.includes('OOB') || cell.includes('CUSTOMIZE') || cell.includes('ENABLE') || cell.includes('DISABLE') || cell.includes('Yes') || cell.includes('No')) {
+                        hasCheckboxes = true;
+                        // Determine type based on options
+                        if (cell.includes('OOB') || cell.includes('CUSTOMIZE')) {
+                            fieldType = 'select';
+                        }
+                        break;
+                    }
+                }
+                
+                if (label && label !== 'Feature' && label !== 'Question' && label !== 'Type' && !label.match(/^[-]+$/)) {
+                    currentSection.fields.push({
+                        label,
+                        description,
+                        type: fieldType,
+                        required: false,
+                        hasDecision: hasCheckboxes
+                    });
+                    totalFields++;
+                }
+            }
+        }
+        // List items with checkboxes (- [ ] or - [x])
+        else if ((line.match(/^[\s]*- \[.\]/) || line.match(/^[\s]*\* \[.\]/)) && currentSection) {
+            let label = line.replace(/^[\s]*[-*] \[.\]\s*/, '').trim();
+            label = label.replace(/\*\*/g, '');
             
             if (label) {
                 currentSection.fields.push({
                     label,
-                    type,
-                    required
+                    type: 'yesno',
+                    required: false
                 });
                 totalFields++;
             }
         }
-        // Regular list items
-        else if (line.startsWith('- ') && currentSection && !line.startsWith('- [ ]')) {
-            const label = line.replace('- ', '').replace(/\*\*/g, '').trim();
-            if (label && !label.startsWith('[') && label.length > 3) {
+        // Regular bold list items (- **Field Name**)
+        else if (line.match(/^[\s]*[-*] \*\*.*\*\*/) && currentSection) {
+            let label = line.replace(/^[\s]*[-*]\s*/, '').replace(/\*\*/g, '').trim();
+            const colonIndex = label.indexOf(':');
+            let description = '';
+            
+            if (colonIndex > 0) {
+                description = label.substring(colonIndex + 1).trim();
+                label = label.substring(0, colonIndex).trim();
+            }
+            
+            if (label) {
                 currentSection.fields.push({
                     label,
+                    description,
                     type: 'yesno',
                     required: false
                 });
