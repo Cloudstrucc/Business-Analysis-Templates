@@ -1043,12 +1043,16 @@ router.get('/submissions/:id/validation', async (req, res) => {
         const pendingCount = totalRequirements - metCount - notMetCount;
         const validationComplete = totalRequirements > 0 && pendingCount === 0;
 
+        // Generate base URL for client links
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        
         res.render('admin/submission-validation', {
             title: `Validation: ${submission.clientName || 'Unknown'}`,
             layout: 'admin',
             submission,
             categoryGroups,
             categories,
+            baseUrl,
             pagination: {
                 currentPage,
                 totalPages,
@@ -1600,6 +1604,7 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
         
         let filteredFields = [];
         let message = '';
+        let recipientEmail = '';
         
         if (req.body.filteredFields) {
             try {
@@ -1615,20 +1620,28 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
             message = req.body.message;
         }
         
+        // Use custom recipient email if provided, otherwise fall back to submission's client email
+        recipientEmail = req.body.recipientEmail || submission.clientEmail;
+        
+        if (!recipientEmail) {
+            return res.status(400).json({ success: false, error: 'No recipient email provided' });
+        }
+        
         const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
         
         db.updateSubmissionValidationStatus(req.params.id, 'pending_user_validation', adminEmail, filteredFields);
         
         db.addAuditLog(req.params.id, 'sent_for_revalidation', adminEmail, 'admin', {
             filteredFieldCount: Array.isArray(filteredFields) ? filteredFields.length : 0,
-            message: message || ''
+            message: message || '',
+            recipientEmail: recipientEmail
         });
         
-        if (submission.clientEmail && emailService.isConfigured()) {
+        if (recipientEmail && emailService.isConfigured()) {
             try {
                 const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
                 await emailService.sendValidationRequest({
-                    to: submission.clientEmail,
+                    to: recipientEmail,
                     clientName: submission.clientName,
                     formTitle: submission.formName,
                     validationLink: `${baseUrl}/validate/submission/${submission.inviteCode}/${submission.id}/validate`,
@@ -1640,15 +1653,22 @@ router.post('/submissions/:id/send-for-validation', async (req, res) => {
             }
         }
         
+        // Generate the client validation URL
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+        const clientValidationUrl = `${baseUrl}/validate/submission/${submission.inviteCode}/${submission.id}/validate`;
+        
         if (req.xhr || req.headers.accept?.includes('application/json')) {
             return res.json({ 
                 success: true, 
                 message: 'Re-validation request sent',
-                fieldCount: Array.isArray(filteredFields) ? filteredFields.length : 0
+                fieldCount: Array.isArray(filteredFields) ? filteredFields.length : 0,
+                sentTo: recipientEmail,
+                validationUrl: clientValidationUrl,
+                inviteCode: submission.inviteCode
             });
         }
         
-        req.flash('success', `Re-validation request sent for ${filteredFields.length} items`);
+        req.flash('success', `Re-validation request sent to ${recipientEmail} for ${filteredFields.length} items`);
         res.redirect(`/admin/submissions/${req.params.id}`);
     } catch (error) {
         console.error('Send for validation error:', error);
@@ -1771,6 +1791,389 @@ router.post('/submissions/:id/approval/resend/:role', async (req, res) => {
         }
     } catch (error) {
         res.status(500).json({ success: false, error: 'Error resending email' });
+    }
+});
+
+// =============================================================
+// APPROVAL SUMMARY & WORKFLOW
+// =============================================================
+
+// GET Approval Summary page
+router.get('/submissions/:id/approval-summary', async (req, res) => {
+    try {
+        const submission = db.getSubmissionById(req.params.id);
+        if (!submission) {
+            req.flash('error', 'Submission not found');
+            return res.redirect('/admin/submissions');
+        }
+
+        const parsedData = typeof submission.data === 'string' ? JSON.parse(submission.data) : (submission.data || {});
+        const validationData = db.getValidationData(req.params.id) || {};
+        const approvers = db.getApprovers(req.params.id) || [];
+        const auditLog = db.getAuditLog(req.params.id) || [];
+        
+        // Get met requirements only
+        const metRequirements = [];
+        let totalRequirements = 0;
+        let metCount = 0;
+        let globalIndex = 0;
+
+        for (const [key, value] of Object.entries(parsedData)) {
+            if (key.startsWith('_') || key === 'metadata') continue;
+            
+            totalRequirements++;
+            globalIndex++;
+            
+            const fieldValidation = validationData[key] || {};
+            
+            if (fieldValidation.met === 'yes') {
+                metCount++;
+                
+                const label = key
+                    .replace(/_/g, ' ')
+                    .replace(/([A-Z])/g, ' $1')
+                    .replace(/^./, str => str.toUpperCase())
+                    .trim();
+                
+                // Determine category
+                const keyLower = key.toLowerCase();
+                let category = 'General';
+                if (keyLower.includes('security') || keyLower.includes('auth')) category = 'Security';
+                else if (keyLower.includes('perform')) category = 'Performance';
+                else if (keyLower.includes('integrat') || keyLower.includes('api')) category = 'Integration';
+                else if (keyLower.includes('ui') || keyLower.includes('ux')) category = 'UI/UX';
+                else if (keyLower.includes('data') || keyLower.includes('storage')) category = 'Data Management';
+                
+                let responseType = 'other';
+                let responseDisplay = '';
+                if (typeof value === 'boolean') {
+                    responseType = value ? 'yes' : 'no';
+                    responseDisplay = value ? 'Yes' : 'No';
+                } else if (value) {
+                    responseDisplay = String(value);
+                }
+                
+                metRequirements.push({
+                    index: globalIndex,
+                    key,
+                    label,
+                    category,
+                    responseType,
+                    responseDisplay,
+                    comment: fieldValidation.comment || ''
+                });
+            }
+        }
+
+        // Check if project is closed
+        const projectClosed = submission.status === 'closed';
+        const closedAt = submission.closed_at;
+
+        // Check if all approvers have approved
+        const allApproved = approvers.length > 0 && approvers.every(a => a.approved_at);
+
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+        res.render('admin/approval-summary', {
+            title: `Approval Summary: ${submission.clientName || 'Unknown'}`,
+            layout: 'admin',
+            submission,
+            metRequirements,
+            approvers,
+            auditLog,
+            projectClosed,
+            closedAt,
+            allApproved,
+            baseUrl,
+            stats: {
+                total: totalRequirements,
+                met: metCount,
+                percentMet: totalRequirements > 0 ? Math.round((metCount / totalRequirements) * 100) : 0
+            }
+        });
+    } catch (error) {
+        console.error('Approval summary error:', error);
+        req.flash('error', 'Error loading approval summary');
+        res.redirect(`/admin/submissions/${req.params.id}`);
+    }
+});
+
+// Export Approval Summary PDF
+router.get('/submissions/:id/approval-summary/export-pdf', async (req, res) => {
+    try {
+        const PDFDocument = require('pdfkit');
+        const submission = db.getSubmissionById(req.params.id);
+        if (!submission) {
+            return res.status(404).send('Submission not found');
+        }
+
+        const parsedData = typeof submission.data === 'string' ? JSON.parse(submission.data) : (submission.data || {});
+        const validationData = db.getValidationData(req.params.id) || {};
+        const approvers = db.getApprovers(req.params.id) || [];
+        
+        // Get met requirements
+        const metRequirements = [];
+        let totalRequirements = 0;
+        let metCount = 0;
+
+        for (const [key, value] of Object.entries(parsedData)) {
+            if (key.startsWith('_') || key === 'metadata') continue;
+            totalRequirements++;
+            
+            const fieldValidation = validationData[key] || {};
+            if (fieldValidation.met === 'yes') {
+                metCount++;
+                const label = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()).trim();
+                let responseDisplay = '';
+                if (typeof value === 'boolean') responseDisplay = value ? 'Yes' : 'No';
+                else if (value) responseDisplay = String(value);
+                
+                metRequirements.push({
+                    label,
+                    responseDisplay,
+                    comment: fieldValidation.comment || ''
+                });
+            }
+        }
+
+        const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 50, right: 50 } });
+        const filename = `approval-summary-${submission.clientName || submission.id}-${Date.now()}.pdf`;
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        doc.pipe(res);
+
+        // Header
+        doc.fontSize(20).font('Helvetica-Bold').text('Approval Summary Report', { align: 'center' });
+        doc.fontSize(12).font('Helvetica').text(submission.formName || 'Requirements Validation', { align: 'center' });
+        doc.moveDown();
+
+        // Client info
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Client: ${submission.clientName || 'N/A'}`);
+        doc.text(`Company: ${submission.companyName || 'N/A'}`);
+        doc.text(`Generated: ${new Date().toLocaleString()}`);
+        doc.moveDown();
+
+        // Stats
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+        doc.fontSize(14).font('Helvetica-Bold').text('Summary:', { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(12).font('Helvetica');
+        doc.text(`Total Requirements: ${totalRequirements}`);
+        doc.text(`Met Requirements: ${metCount}`);
+        doc.text(`Completion Rate: ${totalRequirements > 0 ? Math.round((metCount / totalRequirements) * 100) : 0}%`);
+        doc.moveDown();
+
+        // Approvers
+        if (approvers.length > 0) {
+            doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+            doc.moveDown();
+            doc.fontSize(14).font('Helvetica-Bold').text('Approvers:', { underline: true });
+            doc.moveDown(0.5);
+            doc.fontSize(10).font('Helvetica');
+            
+            approvers.forEach((approver, idx) => {
+                const status = approver.approved_at ? '✓ Approved' : approver.returned_at ? '✗ Returned' : '○ Pending';
+                doc.text(`${idx + 1}. ${approver.name} (${approver.email}) - ${status}`);
+            });
+            doc.moveDown();
+        }
+
+        // Met Requirements
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+        doc.fontSize(14).font('Helvetica-Bold').fillColor('#198754').text('Met Requirements:', { underline: true });
+        doc.fillColor('black');
+        doc.moveDown(0.5);
+        doc.fontSize(9).font('Helvetica');
+
+        metRequirements.forEach((req, idx) => {
+            if (doc.y > 680) doc.addPage();
+            
+            doc.font('Helvetica-Bold').text(`${idx + 1}. ${req.label}`);
+            if (req.responseDisplay) {
+                doc.font('Helvetica').text(`   Response: ${req.responseDisplay}`, { width: 500 });
+            }
+            if (req.comment) {
+                doc.fillColor('#0066cc').text(`   Comment: ${req.comment}`, { width: 500 });
+                doc.fillColor('black');
+            }
+            doc.moveDown(0.3);
+        });
+
+        // Signature lines
+        doc.moveDown(2);
+        doc.moveTo(50, doc.y).lineTo(562, doc.y).stroke();
+        doc.moveDown();
+        doc.fontSize(12).font('Helvetica-Bold').text('Signatures:', { underline: true });
+        doc.moveDown();
+        
+        approvers.forEach((approver, idx) => {
+            if (doc.y > 680) doc.addPage();
+            doc.fontSize(10).font('Helvetica');
+            doc.text(`${approver.name} (${approver.role || 'Approver'}):`);
+            doc.moveDown(0.5);
+            doc.text('Signature: _______________________________     Date: _______________');
+            doc.moveDown();
+        });
+
+        doc.moveDown(2);
+        doc.fontSize(8).fillColor('gray').text(`Generated by Cloudstrucc BA Forms`, { align: 'center' });
+        doc.end();
+
+    } catch (error) {
+        console.error('Approval PDF export error:', error);
+        res.status(500).send('Error generating PDF');
+    }
+});
+
+// Add approver
+router.post('/submissions/:id/approvers', async (req, res) => {
+    try {
+        const { name, email, role, sendEmail } = req.body;
+        
+        if (!name || !email) {
+            return res.status(400).json({ success: false, error: 'Name and email required' });
+        }
+
+        // Generate unique token
+        const token = require('crypto').randomBytes(32).toString('hex');
+        
+        const approver = db.addApprover(req.params.id, {
+            name,
+            email,
+            role: role || null,
+            token,
+            created_at: new Date().toISOString()
+        });
+
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        db.addAuditLog(req.params.id, 'approver_added', adminEmail, 'admin', { name, email });
+
+        // Send email if requested
+        if (sendEmail && emailService.isConfigured()) {
+            const submission = db.getSubmissionById(req.params.id);
+            const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+            
+            try {
+                await emailService.sendApprovalRequest({
+                    to: email,
+                    stakeholderName: name,
+                    role: role || 'Approver',
+                    formTitle: submission.formName,
+                    clientName: submission.clientName,
+                    approvalLink: `${baseUrl}/approve/${token}`
+                });
+            } catch (emailError) {
+                console.error('Email error:', emailError);
+            }
+        }
+
+        res.json({ success: true, approver });
+    } catch (error) {
+        console.error('Add approver error:', error);
+        res.status(500).json({ success: false, error: 'Error adding approver' });
+    }
+});
+
+// Remove approver
+router.delete('/submissions/:id/approvers/:approverId', async (req, res) => {
+    try {
+        db.removeApprover(req.params.approverId);
+        
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        db.addAuditLog(req.params.id, 'approver_removed', adminEmail, 'admin', { approverId: req.params.approverId });
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Remove approver error:', error);
+        res.status(500).json({ success: false, error: 'Error removing approver' });
+    }
+});
+
+// Resend approval email
+router.post('/submissions/:id/approvers/:approverId/resend', async (req, res) => {
+    try {
+        const approver = db.getApproverById(req.params.approverId);
+        if (!approver) {
+            return res.status(404).json({ success: false, error: 'Approver not found' });
+        }
+
+        const submission = db.getSubmissionById(req.params.id);
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+        if (emailService.isConfigured()) {
+            await emailService.sendApprovalRequest({
+                to: approver.email,
+                stakeholderName: approver.name,
+                role: approver.role || 'Approver',
+                formTitle: submission.formName,
+                clientName: submission.clientName,
+                approvalLink: `${baseUrl}/approve/${approver.token}`
+            });
+            res.json({ success: true });
+        } else {
+            res.json({ success: true, message: 'Email not configured', link: `${baseUrl}/approve/${approver.token}` });
+        }
+    } catch (error) {
+        console.error('Resend approval email error:', error);
+        res.status(500).json({ success: false, error: 'Error sending email' });
+    }
+});
+
+// Send all approval requests
+router.post('/submissions/:id/approvers/send-all', async (req, res) => {
+    try {
+        const approvers = db.getApprovers(req.params.id) || [];
+        const pendingApprovers = approvers.filter(a => !a.approved_at && !a.returned_at);
+        
+        const submission = db.getSubmissionById(req.params.id);
+        const baseUrl = process.env.BASE_URL || `${req.protocol}://${req.get('host')}`;
+
+        let sentCount = 0;
+        
+        if (emailService.isConfigured()) {
+            for (const approver of pendingApprovers) {
+                try {
+                    await emailService.sendApprovalRequest({
+                        to: approver.email,
+                        stakeholderName: approver.name,
+                        role: approver.role || 'Approver',
+                        formTitle: submission.formName,
+                        clientName: submission.clientName,
+                        approvalLink: `${baseUrl}/approve/${approver.token}`
+                    });
+                    sentCount++;
+                } catch (emailError) {
+                    console.error(`Email error for ${approver.email}:`, emailError);
+                }
+            }
+        }
+
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        db.addAuditLog(req.params.id, 'approval_requests_sent', adminEmail, 'admin', { count: sentCount });
+
+        res.json({ success: true, count: sentCount });
+    } catch (error) {
+        console.error('Send all approvals error:', error);
+        res.status(500).json({ success: false, error: 'Error sending emails' });
+    }
+});
+
+// Re-open project
+router.post('/submissions/:id/reopen', async (req, res) => {
+    try {
+        db.updateSubmissionStatus(req.params.id, 'reopened');
+        db.clearApprovalStatuses(req.params.id);
+        
+        const adminEmail = req.session.adminEmail || 'admin@cloudstrucc.com';
+        db.addAuditLog(req.params.id, 'project_reopened', adminEmail, 'admin', {});
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Reopen project error:', error);
+        res.status(500).json({ success: false, error: 'Error reopening project' });
     }
 });
 

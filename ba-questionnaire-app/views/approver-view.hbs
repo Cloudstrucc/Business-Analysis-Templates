@@ -1,0 +1,412 @@
+{{!-- views/approver-view.hbs --}}
+{{!-- External approver view to approve or return validation summary --}}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Approval Request - {{submission.formName}}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .approval-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem 1rem;
+        }
+        .approval-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        .approval-header {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+        .approval-header h1 {
+            margin: 0;
+            font-size: 1.75rem;
+        }
+        .status-banner {
+            padding: 1rem;
+            text-align: center;
+        }
+        .status-banner.approved {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-banner.returned {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status-banner.closed {
+            background: #cce5ff;
+            color: #004085;
+        }
+        .requirements-section {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+        }
+        .requirement-item {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .requirement-item:last-child {
+            border-bottom: none;
+        }
+        .requirement-item:nth-child(even) {
+            background: #f8f9fa;
+        }
+        .approval-actions {
+            background: #f8f9fa;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid #dee2e6;
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+        }
+        .btn-approve:hover {
+            background: linear-gradient(135deg, #0d7d73 0%, #2bc866 100%);
+            color: white;
+        }
+        .btn-return {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 0.75rem 2rem;
+            font-size: 1.1rem;
+        }
+        .btn-return:hover {
+            background: #c82333;
+            color: white;
+        }
+        .approver-info {
+            background: #e7f3ff;
+            border-left: 4px solid #0d6efd;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            border-radius: 0 8px 8px 0;
+        }
+        .stat-card {
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+        .stat-card h3 {
+            margin: 0;
+            font-size: 2rem;
+            font-weight: 700;
+        }
+        .stat-card p {
+            margin: 0;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="approval-container">
+        <div class="approval-card">
+            <!-- Header -->
+            <div class="approval-header">
+                <i class="bi bi-clipboard-check fs-1 mb-2 d-block"></i>
+                <h1>Approval Request</h1>
+                <p class="mb-0 mt-2">{{submission.formName}}</p>
+            </div>
+
+            {{#if alreadyApproved}}
+            <div class="status-banner approved">
+                <i class="bi bi-check-circle-fill fs-4 me-2"></i>
+                <strong>You have already approved this on {{formatDate approver.approved_at}}</strong>
+            </div>
+            {{/if}}
+
+            {{#if alreadyReturned}}
+            <div class="status-banner returned">
+                <i class="bi bi-arrow-return-left fs-4 me-2"></i>
+                <strong>You returned this for revision on {{formatDate approver.returned_at}}</strong>
+                <p class="mb-0 mt-1">Reason: {{approver.return_reason}}</p>
+            </div>
+            {{/if}}
+
+            {{#if projectClosed}}
+            <div class="status-banner closed">
+                <i class="bi bi-lock-fill fs-4 me-2"></i>
+                <strong>This project has been closed</strong>
+                <p class="mb-0 mt-1">All approvals have been received and the project is now complete.</p>
+            </div>
+            {{/if}}
+
+            <div class="p-4">
+                <!-- Approver Info -->
+                <div class="approver-info">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong><i class="bi bi-person me-2"></i>{{approver.name}}</strong>
+                            {{#if approver.role}}
+                            <span class="badge bg-secondary ms-2">{{approver.role}}</span>
+                            {{/if}}
+                        </div>
+                        <small class="text-muted">{{approver.email}}</small>
+                    </div>
+                </div>
+
+                <!-- Project Info -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Client:</strong> {{submission.clientName}}</p>
+                        <p class="mb-1"><strong>Company:</strong> {{submission.companyName}}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Form:</strong> {{submission.formName}}</p>
+                        <p class="mb-1"><strong>Submitted:</strong> {{formatDate submission.submitted_at}}</p>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="row mb-4">
+                    <div class="col-4">
+                        <div class="stat-card bg-success text-white">
+                            <h3>{{stats.met}}</h3>
+                            <p>Met</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-card bg-light">
+                            <h3>{{stats.total}}</h3>
+                            <p>Total</p>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="stat-card bg-info text-white">
+                            <h3>{{stats.percentMet}}%</h3>
+                            <p>Complete</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Met Requirements -->
+                <h5 class="mb-3">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    Met Requirements ({{metRequirements.length}})
+                </h5>
+                
+                <div class="requirements-section mb-4">
+                    {{#each metRequirements}}
+                    <div class="requirement-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <strong class="d-block">{{this.label}}</strong>
+                                {{#if this.comment}}
+                                <small class="text-info"><i class="bi bi-chat-left-text me-1"></i>{{this.comment}}</small>
+                                {{/if}}
+                            </div>
+                            <div class="text-end ms-3">
+                                <span class="badge bg-secondary">{{this.category}}</span>
+                                <br>
+                                {{#if (eq this.responseType "yes")}}
+                                <span class="badge bg-success mt-1">Yes</span>
+                                {{else}}
+                                <small class="text-muted">{{this.responseDisplay}}</small>
+                                {{/if}}
+                            </div>
+                        </div>
+                    </div>
+                    {{else}}
+                    <div class="text-center py-4 text-muted">
+                        <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                        No requirements to display.
+                    </div>
+                    {{/each}}
+                </div>
+
+                <!-- Other Approvers Status -->
+                {{#if otherApprovers.length}}
+                <h5 class="mb-3">
+                    <i class="bi bi-people me-2"></i>
+                    Other Approvers
+                </h5>
+                <div class="row mb-4">
+                    {{#each otherApprovers}}
+                    <div class="col-md-6 mb-2">
+                        <div class="d-flex align-items-center p-2 border rounded">
+                            {{#if this.approved_at}}
+                            <i class="bi bi-check-circle-fill text-success fs-5 me-2"></i>
+                            {{else}}
+                            {{#if this.returned_at}}
+                            <i class="bi bi-arrow-return-left text-danger fs-5 me-2"></i>
+                            {{else}}
+                            <i class="bi bi-clock text-warning fs-5 me-2"></i>
+                            {{/if}}
+                            {{/if}}
+                            <div>
+                                <strong>{{this.name}}</strong>
+                                {{#if this.role}}<small class="text-muted"> - {{this.role}}</small>{{/if}}
+                                <br>
+                                <small class="text-muted">
+                                    {{#if this.approved_at}}Approved{{else}}{{#if this.returned_at}}Returned{{else}}Pending{{/if}}{{/if}}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    {{/each}}
+                </div>
+                {{/if}}
+
+                <!-- Download PDF -->
+                <div class="text-center mb-3">
+                    <a href="/approve/{{approver.token}}/pdf" class="btn btn-outline-primary">
+                        <i class="bi bi-file-pdf me-2"></i>Download PDF Report
+                    </a>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            {{#unless alreadyApproved}}
+            {{#unless projectClosed}}
+            <div class="approval-actions">
+                <div class="row">
+                    <div class="col-md-6 mb-3 mb-md-0">
+                        <button type="button" class="btn btn-approve w-100" onclick="showApproveConfirm()">
+                            <i class="bi bi-check-lg me-2"></i>Approve
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="button" class="btn btn-return w-100" data-bs-toggle="modal" data-bs-target="#returnModal">
+                            <i class="bi bi-arrow-return-left me-2"></i>Return for Revision
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {{/unless}}
+            {{/unless}}
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-white mt-4">
+            <small>Powered by <a href="https://cloudstrucc.com" class="text-white">Cloudstrucc Inc.</a></small>
+        </div>
+    </div>
+
+    <!-- Approve Confirmation Modal -->
+    <div class="modal fade" id="approveModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Confirm Approval</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>You are about to approve this validation summary with <strong>{{metRequirements.length}}</strong> met requirements.</p>
+                    <p class="mb-0">Your approval will be recorded and the project owner will be notified.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-success" onclick="submitApproval()">
+                        <i class="bi bi-check-lg me-1"></i>Confirm Approval
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Return Modal -->
+    <div class="modal fade" id="returnModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="bi bi-arrow-return-left me-2"></i>Return for Revision</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Please provide a reason for returning this validation for revision:</p>
+                    <div class="mb-3">
+                        <textarea class="form-control" id="returnReason" rows="4" placeholder="Enter your reason or feedback..." required></textarea>
+                    </div>
+                    <p class="text-muted small mb-0">The project owner will be notified and can address your concerns before resubmitting for approval.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" onclick="submitReturn()">
+                        <i class="bi bi-arrow-return-left me-1"></i>Return
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const token = '{{approver.token}}';
+        
+        function showApproveConfirm() {
+            new bootstrap.Modal(document.getElementById('approveModal')).show();
+        }
+        
+        async function submitApproval() {
+            try {
+                const response = await fetch(`/approve/${token}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'approve' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Thank you! Your approval has been recorded.');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error submitting approval');
+            }
+        }
+        
+        async function submitReturn() {
+            const reason = document.getElementById('returnReason').value.trim();
+            
+            if (!reason) {
+                alert('Please provide a reason for returning.');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/approve/${token}/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'return', reason })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Your feedback has been submitted. The project owner will be notified.');
+                    location.reload();
+                } else {
+                    alert('Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                console.error(error);
+                alert('Error submitting return');
+            }
+        }
+    </script>
+</body>
+</html>

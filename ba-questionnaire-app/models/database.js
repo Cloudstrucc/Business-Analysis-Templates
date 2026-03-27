@@ -130,7 +130,7 @@ async function initDatabase() {
     )
   `);
 
-  // Create submission_approvals table for approval workflow
+  // Create submission_approvals table for approval workflow (legacy 3-tier)
   db.run(`
     CREATE TABLE IF NOT EXISTS submission_approvals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,6 +159,23 @@ async function initDatabase() {
       completed_at DATETIME,
       status TEXT DEFAULT 'pending',
       
+      FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
+    )
+  `);
+
+  // Create approvers table for flexible multi-approver workflow (NEW)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS approvers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      submission_id INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT,
+      token TEXT UNIQUE NOT NULL,
+      approved_at DATETIME,
+      returned_at DATETIME,
+      return_reason TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (submission_id) REFERENCES submissions(id) ON DELETE CASCADE
     )
   `);
@@ -193,6 +210,11 @@ async function initDatabase() {
   // Add approval_status column if it doesn't exist
   try {
     db.run(`ALTER TABLE submissions ADD COLUMN approval_status TEXT DEFAULT 'none'`);
+  } catch (e) {}
+
+  // Add closed_at column if it doesn't exist (NEW for approval workflow)
+  try {
+    db.run(`ALTER TABLE submissions ADD COLUMN closed_at DATETIME`);
   } catch (e) {}
 
   // Create default admin if not exists
@@ -460,6 +482,11 @@ function getSubmissionValidation(id) {
   return {};
 }
 
+// Alias for getSubmissionValidation (used by approval workflow)
+function getValidationData(id) {
+  return getSubmissionValidation(id);
+}
+
 // Validation status tracking
 function updateSubmissionValidationStatus(id, validationStatus, actor = 'admin', filteredFields = null) {
   // Update status to waiting_for_validation when sending to client
@@ -563,7 +590,7 @@ function getSubmissionUserValidation(id) {
 }
 
 // ============================================================
-// APPROVAL WORKFLOW
+// APPROVAL WORKFLOW (Legacy 3-tier)
 // ============================================================
 function generateAccessCode() {
   return crypto.randomBytes(16).toString('hex');
@@ -742,6 +769,93 @@ function getApprovalStatus(submissionId) {
 }
 
 // ============================================================
+// FLEXIBLE APPROVERS WORKFLOW (NEW - Multi-approver)
+// ============================================================
+
+// Get all approvers for a submission
+function getApprovers(submissionId) {
+  return all(`SELECT * FROM approvers WHERE submission_id = ? ORDER BY created_at ASC`, [submissionId]);
+}
+
+// Get approver by ID
+function getApproverById(approverId) {
+  return get(`SELECT * FROM approvers WHERE id = ?`, [approverId]);
+}
+
+// Get approver by token
+function getApproverByToken(token) {
+  return get(`SELECT * FROM approvers WHERE token = ?`, [token]);
+}
+
+// Add approver
+function addApprover(submissionId, approverData) {
+  const id = run(`
+    INSERT INTO approvers (submission_id, name, email, role, token, created_at)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `, [
+    submissionId,
+    approverData.name,
+    approverData.email,
+    approverData.role || null,
+    approverData.token,
+    approverData.created_at || new Date().toISOString()
+  ]);
+  
+  saveDatabase();
+  
+  return {
+    id,
+    submission_id: submissionId,
+    name: approverData.name,
+    email: approverData.email,
+    role: approverData.role || null,
+    token: approverData.token,
+    created_at: approverData.created_at || new Date().toISOString()
+  };
+}
+
+// Remove approver
+function removeApprover(approverId) {
+  run(`DELETE FROM approvers WHERE id = ?`, [approverId]);
+  saveDatabase();
+}
+
+// Update approver status (approve or return)
+function updateApproverStatus(approverId, statusData) {
+  run(`
+    UPDATE approvers 
+    SET approved_at = ?, returned_at = ?, return_reason = ?
+    WHERE id = ?
+  `, [
+    statusData.approved_at || null,
+    statusData.returned_at || null,
+    statusData.return_reason || null,
+    approverId
+  ]);
+  saveDatabase();
+}
+
+// Clear all approval statuses for a submission (used when reopening)
+function clearApprovalStatuses(submissionId) {
+  run(`
+    UPDATE approvers 
+    SET approved_at = NULL, returned_at = NULL, return_reason = NULL
+    WHERE submission_id = ?
+  `, [submissionId]);
+  saveDatabase();
+}
+
+// Update submission status (for closing/reopening projects)
+function updateSubmissionStatus(submissionId, status, closedAt = null) {
+  if (closedAt) {
+    run(`UPDATE submissions SET status = ?, closed_at = ? WHERE id = ?`, [status, closedAt, submissionId]);
+  } else {
+    run(`UPDATE submissions SET status = ?, closed_at = NULL WHERE id = ?`, [status, submissionId]);
+  }
+  saveDatabase();
+}
+
+// ============================================================
 // AUDIT LOG
 // ============================================================
 function addAuditLog(submissionId, action, actor, actorType = 'admin', details = {}) {
@@ -883,6 +997,7 @@ module.exports = {
   // Validation
   updateSubmissionValidation,
   getSubmissionValidation,
+  getValidationData, // Alias for getSubmissionValidation
   updateSubmissionValidationStatus,
   getSubmissionValidationStatus,
   getSubmissionFilteredFields,
@@ -890,13 +1005,22 @@ module.exports = {
   getSubmissionUserValidation,
   updateSubmissionAdminComments,
   getSubmissionAdminComments,
-  // Approval Workflow
+  // Approval Workflow (Legacy 3-tier)
   createApproval,
   getApprovalBySubmissionId,
   getApprovalByAccessCode,
   canApprove,
   submitApproval,
   getApprovalStatus,
+  // Flexible Approvers Workflow (NEW)
+  getApprovers,
+  getApproverById,
+  getApproverByToken,
+  addApprover,
+  removeApprover,
+  updateApproverStatus,
+  clearApprovalStatuses,
+  updateSubmissionStatus,
   // Audit Log
   addAuditLog,
   getAuditLog,
